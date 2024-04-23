@@ -17,13 +17,13 @@ applications:
 
   keystone-mysql-router:
     charm: ch:mysql-router
-    channel: latest/edge
+    channel: 8.0/edge
   glance-mysql-router:
     charm: ch:mysql-router
-    channel: latest/edge
+    channel: 8.0/edge
   cinder-mysql-router:
     charm: ch:mysql-router
-    channel: latest/edge
+    channel: 8.0/edge
 
   mysql-innodb-cluster:
     charm: ch:mysql-innodb-cluster
@@ -34,7 +34,7 @@ applications:
       - '0'
       - '1'
       - '2'
-    channel: latest/edge
+    channel: 8.0/edge
 
   keystone:
     charm: ch:keystone
@@ -48,7 +48,7 @@ applications:
     num_units: 1
     options:
       source: *openstack-origin
-    channel: latest/edge
+    channel: 3.9/edge
 
   cinder:
     charm: ch:cinder

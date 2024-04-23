@@ -3,7 +3,6 @@ smoke_bundles:
 - jammy-antelope
 gate_bundles:
 - jammy-bobcat
-- mantic-bobcat
 comment: |
   The e2e bundles are useful for development but adds no additional value to
   the functional tests.
@@ -20,4 +19,3 @@ tests:
 - zaza.openstack.charm_tests.ceph.rbd_mirror.tests.CephRBDMirrorDisasterFailoverTest
 tests_options:
   force_deploy:
-    - mantic-bobcat

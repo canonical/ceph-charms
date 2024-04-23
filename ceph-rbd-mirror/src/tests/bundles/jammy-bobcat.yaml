@@ -40,7 +40,7 @@ applications:
     num_units: 1
     options:
       openstack-origin: *openstack-origin
-    channel: latest/edge
+    channel: 2023.2/edge
 
   rabbitmq-server:
     charm: ch:rabbitmq-server
@@ -54,26 +54,26 @@ applications:
       block-device: None
       glance-api-version: 2
       openstack-origin: *openstack-origin
-    channel: latest/edge
+    channel: 2023.2/edge
 
   cinder-ceph:
     charm: ch:cinder-ceph
     num_units: 0
-    channel: latest/edge
+    channel: 2023.2/edge
 
   glance:
     charm: ch:glance
     num_units: 1
     options:
       openstack-origin: *openstack-origin
-    channel: latest/edge
+    channel: 2023.2/edge
 
   nova-compute:
     charm: ch:nova-compute
     num_units: 1
     options:
       openstack-origin: *openstack-origin
-    channel: latest/edge
+    channel: 2023.2/edge
 
   ceph-mon:
     charm: ch:ceph-mon
@@ -81,7 +81,7 @@ applications:
     options:
       expected-osd-count: 3
       source: *openstack-origin
-    channel: latest/edge
+    channel: reef/edge
 
   ceph-osd:
     charm: ch:ceph-osd
@@ -91,7 +91,7 @@ applications:
     options:
       source: *openstack-origin
       osd-devices: '/dev/test-non-existent'
-    channel: latest/edge
+    channel: reef/edge
 
   ceph-rbd-mirror:
     series: *series
@@ -106,7 +106,7 @@ applications:
     options:
       expected-osd-count: 3
       source: *openstack-origin
-    channel: latest/edge
+    channel: reef/edge
 
   ceph-osd-b:
     charm: ch:ceph-osd
@@ -116,7 +116,7 @@ applications:
     options:
       source: *openstack-origin
       osd-devices: '/dev/test-non-existent'
-    channel: latest/edge
+    channel: reef/edge
 
   ceph-rbd-mirror-b:
     series: *series

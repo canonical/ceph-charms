@@ -18,8 +18,6 @@ tags:
 series:
 - focal
 - jammy
-- lunar
-- mantic
 extra-bindings:
   public:
   cluster:
