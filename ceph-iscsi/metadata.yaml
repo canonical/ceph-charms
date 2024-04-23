@@ -7,13 +7,12 @@ description: |
   (RBD) images as SCSI disks.
 docs: https://discourse.charmhub.io/t/ceph-iscsi-docs-index/11222
 tags:
-  - openstack
-  - storage
-  - misc
+- openstack
+- storage
+- misc
 series:
 - focal
 - jammy
-- lunar
 subordinate: false
 min-juju-version: 2.7.6
 extra-bindings:

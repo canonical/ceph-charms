@@ -3,36 +3,15 @@
       - charm-unit-jobs-py310
     check:
       jobs:
-      - ceph-iscsi-focal-quincy
-      - ceph-iscsi-focal-quincy-ec
       - ceph-iscsi-jammy-quincy
       - ceph-iscsi-jammy-quincy-ec
       - ceph-iscsi-jammy-reef
       - ceph-iscsi-jammy-reef-ec
-      - ceph-iscsi-lunar-quincy:
-          voting: false
-      - ceph-iscsi-lunar-quincy-ec:
-          voting: false
     vars:
       needs_charm_build: true
       charm_build_name: ceph-iscsi
       build_type: charmcraft
       charmcraft_channel: 2.2/stable
-- job:
-    name: ceph-iscsi-focal-quincy
-    parent: func-target
-    dependencies:
-      - ceph-iscsi-jammy-quincy
-    vars:
-      tox_extra_args: -- focal
-- job:
-    name: ceph-iscsi-focal-quincy-ec
-    parent: func-target
-    dependencies:
-      - ceph-iscsi-jammy-quincy
-    vars:
-      tox_extra_args: -- focal-ec
-
 - job:
     name: ceph-iscsi-jammy-quincy
     parent: func-target
@@ -69,19 +48,3 @@
     vars:
       tox_extra_args: -- jammy-reef-ec
 
-- job:
-    name: ceph-iscsi-lunar-quincy
-    parent: func-target
-    voting: false
-    dependencies:
-      - ceph-iscsi-jammy-quincy
-    vars:
-      tox_extra_args: -- lunar
-- job:
-    name: ceph-iscsi-lunar-quincy-ec
-    parent: func-target
-    voting: false
-    dependencies:
-      - ceph-iscsi-jammy-quincy
-    vars:
-      tox_extra_args: -- lunar-ec

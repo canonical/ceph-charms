@@ -59,7 +59,7 @@ applications:
       - '11'
       - '12'
       - '13'
-    channel: latest/edge
+    channel: quincy/edge
   ceph-mon:
     charm: ch:ceph-mon
     num_units: 3
@@ -70,7 +70,7 @@ applications:
       - '3'
       - '4'
       - '5'
-    channel: latest/edge
+    channel: quincy/edge
   vault:
     num_units: 1
     charm: ch:vault
