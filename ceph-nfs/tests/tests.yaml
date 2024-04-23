@@ -4,7 +4,6 @@ gate_bundles:
   - focal-pacific
   - jammy-quincy
   - jammy-reef
-  - mantic-quincy
 smoke_bundles:
   - focal-pacific
 configure: []

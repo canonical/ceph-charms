@@ -6,13 +6,11 @@ description: |
   that are backed by CephFS.
 docs: https://discourse.charmhub.io/t/ceph-nfs-docs-index/11224
 tags:
-  - storage
-  - misc
+- storage
+- misc
 series:
-  - focal
-  - jammy
-  - lunar
-  - mantic
+- focal
+- jammy
 subordinate: false
 min-juju-version: 2.7.6
 extra-bindings:

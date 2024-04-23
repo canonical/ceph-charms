@@ -4,64 +4,26 @@
       - charm-unit-jobs-py39
     check:
       jobs:
-      - focal-pacific
-      - focal-quincy
       - jammy-quincy
       - jammy-reef
-      - lunar-quincy
-      - mantic-quincy
     vars:
       needs_charm_build: true
       charm_build_name: ceph-nfs
       build_type: charmcraft
       charmcraft_channel: 2.x/stable
 - job:
-    name: focal-pacific
-    parent: func-target
-    dependencies:
-      - charm-build
-      - osci-lint
-      - tox-py38
-      - tox-py39
-    vars:
-      tox_extra_args: -- focal-pacific
-- job:
-    name: focal-quincy
-    parent: func-target
-    dependencies:
-      - charm-build
-      - osci-lint
-      - tox-py38
-      - tox-py39
-    vars:
-      tox_extra_args: -- focal-quincy
-- job:
     name: jammy-quincy
     parent: func-target
     dependencies:
-      - focal-quincy
+      - charm-build
+      - osci-lint
+      - tox-py39
     vars:
       tox_extra_args: -- jammy-quincy
 - job:
     name: jammy-reef
     parent: func-target
     dependencies:
-      - focal-quincy
+      - jammy-quincy
     vars:
       tox_extra_args: -- jammy-reef
-- job:
-    name: lunar-quincy
-    parent: func-target
-    voting: false
-    dependencies:
-      - focal-quincy
-    vars:
-      tox_extra_args: -- lunar-quincy
-- job:
-    name: mantic-quincy
-    parent: func-target
-    voting: false
-    dependencies:
-      - focal-quincy
-    vars:
-      tox_extra_args: -- mantic-quincy
