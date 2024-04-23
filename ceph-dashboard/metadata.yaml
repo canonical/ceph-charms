@@ -17,8 +17,6 @@ subordinate: true
 series:
 - focal
 - jammy
-- lunar
-- mantic
 requires:
   dashboard:
     interface: ceph-dashboard

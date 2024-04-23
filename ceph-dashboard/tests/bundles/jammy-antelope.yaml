@@ -25,10 +25,10 @@ applications:
     charm: ch:mysql-innodb-cluster
     constraints: mem=3072M
     num_units: 3
-    channel: latest/edge
+    channel: 8.0/edge
   vault-mysql-router:
     charm: ch:mysql-router
-    channel: latest/edge
+    channel: 8.0/edge
   ceph-dashboard:
     charm: ../../ceph-dashboard.charm
     options:

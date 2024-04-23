@@ -3,7 +3,6 @@ gate_bundles:
   - focal
   - jammy
   - jammy-bobcat
-  - mantic-bobcat
 smoke_bundles:
   - focal
 configure:
@@ -31,4 +30,3 @@ target_deploy_status:
     workload-status-message-prefix: Monitoring
 tests_options:
   force_deploy:
-    - mantic-bobcat
