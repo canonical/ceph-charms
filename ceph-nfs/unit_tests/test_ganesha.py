@@ -78,3 +78,43 @@ class ExportTest(unittest.TestCase):
             [
                 {'Access_Type': 'rw', 'Clients': '10.0.0.0/8, 192.168.0.0/16'},
             ])
+
+
+class TestGaneshaNFS(unittest.TestCase):
+
+    @unittest.mock.patch.object(ganesha.GaneshaNFS, '_ceph_subvolume_command')
+    @unittest.mock.patch.object(ganesha.GaneshaNFS, '_ganesha_add_export')
+    @unittest.mock.patch.object(ganesha.GaneshaNFS, '_get_next_export_id')
+    @unittest.mock.patch.object(ganesha.GaneshaNFS, 'list_shares')
+    @unittest.mock.patch.object(ganesha.GaneshaNFS, '_ceph_auth_key')
+    @unittest.mock.patch.object(ganesha.GaneshaNFS, '_rados_get')
+    @unittest.mock.patch.object(ganesha.GaneshaNFS, '_rados_put')
+    @unittest.mock.patch.object(ganesha.Export, 'to_export')
+    def test_create_share(self, mock_export,
+                          mock_rados_put,
+                          mock_rados_get,
+                          mock_auth_key,
+                          mock_list_shares,
+                          mock_export_id,
+                          mock_add_export,
+                          mock_subvolume_command):
+        mock_subvolume_command.return_value = b'mock-volume'
+        mock_list_shares.return_value = []
+        mock_export_id.return_value = 1
+        mock_auth_key.return_value = b'mock-auth-key'
+
+        inst = ganesha.GaneshaNFS('ceph-client', 'mypool')
+        inst.create_share('test-create-share', size=3, access_ips=None)
+
+        mock_subvolume_command.assert_any_call('create', 'ceph-fs',
+                                               'test-create-share',
+                                               str(3 * 1024 * 1024 * 1024))
+
+    @unittest.mock.patch.object(ganesha.GaneshaNFS, '_ceph_subvolume_command')
+    def test_resize_share(self, mock_subvolume_command):
+        inst = ganesha.GaneshaNFS('ceph-client', 'mypool')
+        inst.resize_share('test-resize-share', 5)
+        mock_subvolume_command.assert_any_call('resize', 'ceph-fs',
+                                               'test-resize-share',
+                                               str(5 * 1024 * 1024 * 1024),
+                                               '--no_shrink')

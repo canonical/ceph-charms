@@ -126,7 +126,7 @@ class GaneshaNFS(object):
             if existing_shares:
                 return existing_shares[0].path
         if size is not None:
-            size_in_bytes = size * 1024 * 1024
+            size_in_bytes = size * 1024 * 1024 * 1024
         if access_ips is None:
             access_ips = ['0.0.0.0']
         # Ganesha deals with networks just fine, except when the network is
@@ -188,7 +188,7 @@ class GaneshaNFS(object):
         return exports
 
     def resize_share(self, name: str, size: int):
-        size_in_bytes = size * 1024 * 1024
+        size_in_bytes = size * 1024 * 1024 * 1024
         self._ceph_subvolume_command('resize', 'ceph-fs', name,
                                      str(size_in_bytes), '--no_shrink')
 
