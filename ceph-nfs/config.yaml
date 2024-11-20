@@ -10,7 +10,7 @@
 options:
   source:
     type: string
-    default: quincy
+    default: bobcat
     description: |
       Optional configuration to support use of additional sources such as:
         - ppa:myteam/ppa
