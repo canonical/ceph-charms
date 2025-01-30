@@ -1,0 +1,45 @@
+- project:
+    templates:
+      - charm-unit-jobs-py38
+      - charm-unit-jobs-py310
+    check:
+      jobs:
+      - focal-quincy
+      - jammy-quincy
+      - jammy-reef
+      - jammy-squid
+    vars:
+      needs_charm_build: true
+      charm_build_name: ceph-nfs
+      build_type: charmcraft
+      charmcraft_channel: 2.x/stable
+- job:
+    name: focal-quincy
+    parent: func-target
+    dependencies:
+      - charm-build
+      - osci-lint
+      - tox-py38
+    vars:
+      tox_extra_args: -- focal-quincy
+- job:
+    name: jammy-quincy
+    parent: func-target
+    dependencies:
+      - focal-quincy
+    vars:
+      tox_extra_args: -- jammy-quincy
+- job:
+    name: jammy-reef
+    parent: func-target
+    dependencies:
+      - focal-quincy
+    vars:
+      tox_extra_args: -- jammy-reef
+- job:
+    name: jammy-squid
+    parent: func-target
+    dependencies:
+      - focal-quincy
+    vars:
+      tox_extra_args: -- jammy-squid

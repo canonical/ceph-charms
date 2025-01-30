@@ -1,0 +1,50 @@
+options:
+  source: &source cloud:jammy-caracal
+
+local_overlay_enabled: False
+series: jammy
+applications:
+  ubuntu:
+    charm: cs:ubuntu
+    num_units: 2
+  ceph-nfs:
+    charm: ../../ceph-nfs.charm
+    num_units: 2
+    options:
+      source: *source
+  ceph-osd:
+    charm: ch:ceph-osd
+    channel: latest/edge
+    num_units: 3
+    storage:
+      osd-devices: '2,10G'
+    options:
+      source: *source
+  ceph-mon:
+    charm: ch:ceph-mon
+    channel: latest/edge
+    num_units: 3
+    options:
+      monitor-count: '3'
+      expected-osd-count: 6
+      source: *source
+  ceph-fs:
+    charm: ch:ceph-fs
+    channel: latest/edge
+    num_units: 2
+    options:
+      source: *source
+  hacluster:
+    charm: ch:hacluster
+    channel: 2.4/edge
+    options:
+      cluster_count: 2
+relations:
+  - - 'ceph-mon:client'
+    - 'ceph-nfs:ceph-client'
+  - - 'ceph-osd:mon'
+    - 'ceph-mon:osd'
+  - - 'ceph-fs'
+    - 'ceph-mon'
+  - - 'ceph-nfs:ha'
+    - 'hacluster:ha'
