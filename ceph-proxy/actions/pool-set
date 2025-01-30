@@ -1,0 +1,34 @@
+#!/usr/bin/env python3
+import os
+from subprocess import CalledProcessError
+import sys
+
+_path = os.path.dirname(os.path.realpath(__file__))
+_hooks = os.path.abspath(os.path.join(_path, '../hooks'))
+_root = os.path.abspath(os.path.join(_path, '..'))
+
+
+def _add_path(path):
+    if path not in sys.path:
+        sys.path.insert(1, path)
+
+_add_path(_hooks)
+_add_path(_root)
+
+from charmhelpers.core.hookenv import action_get, config, log, action_fail
+from ceph_broker import handle_set_pool_value
+
+if __name__ == '__main__':
+    name = action_get("pool-name")
+    key = action_get("key")
+    value = action_get("value")
+    request = {'name': name,
+               'key': key,
+               'value': value}
+
+    try:
+        handle_set_pool_value(service=config('admin-user'), request=request)
+    except CalledProcessError as e:
+        log(str(e))
+        action_fail("Setting pool key: {} and value: {} failed with "
+                    "message: {}".format(key, value, str(e)))
