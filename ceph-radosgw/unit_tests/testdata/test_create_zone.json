@@ -1,0 +1,36 @@
+{
+    "id": "a69d4cd8-1881-4040-ad7c-914ca35af3b2",
+    "name": "brundall-east",
+    "domain_root": "brundall-east.rgw.meta:root",
+    "control_pool": "brundall-east.rgw.control",
+    "gc_pool": "brundall-east.rgw.log:gc",
+    "lc_pool": "brundall-east.rgw.log:lc",
+    "log_pool": "brundall-east.rgw.log",
+    "intent_log_pool": "brundall-east.rgw.log:intent",
+    "usage_log_pool": "brundall-east.rgw.log:usage",
+    "reshard_pool": "brundall-east.rgw.log:reshard",
+    "user_keys_pool": "brundall-east.rgw.meta:users.keys",
+    "user_email_pool": "brundall-east.rgw.meta:users.email",
+    "user_swift_pool": "brundall-east.rgw.meta:users.swift",
+    "user_uid_pool": "brundall-east.rgw.meta:users.uid",
+    "system_key": {
+        "access_key": "90FM6V8B44BSN1MVKYW6",
+        "secret_key": "bFHSPN3PB4QZqHfTiNIn11ey8kA8OA6Php6kGpdH"
+    },
+    "placement_pools": [
+        {
+            "key": "default-placement",
+            "val": {
+                "index_pool": "brundall-east.rgw.buckets.index",
+                "data_pool": "brundall-east.rgw.buckets.data",
+                "data_extra_pool": "brundall-east.rgw.buckets.non-ec",
+                "index_type": 0,
+                "compression": ""
+            }
+        }
+    ],
+    "metadata_heap": "",
+    "tier_config": [],
+    "realm_id": "793a0176-ef7d-4d97-b544-a921e19a52e7"
+}
+

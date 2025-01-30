@@ -1,0 +1,52 @@
+charm_name: ceph-radosgw
+
+gate_bundles:
+  - focal-yoga-multisite
+  - vault: focal-yoga
+  - vault: focal-yoga-namespaced
+
+smoke_bundles:
+  - jammy-antelope-multisite
+  - vault: jammy-antelope
+
+dev_bundles:
+  - jammy-antelope-multisite
+  - jammy-bobcat-multisite
+  - jammy-caracal-multisite
+  - vault: jammy-antelope
+  - vault: jammy-bobcat
+  - vault: jammy-caracal
+  - vault: jammy-antelope-namespaced
+  - vault: jammy-bobcat-namespaced
+  - vault: jammy-caracal-namespaced
+
+target_deploy_status:
+  vault:
+    workload-status: blocked
+    workload-status-message-prefix: Vault needs to be initialized
+
+configure:
+  - vault:
+    - zaza.openstack.charm_tests.vault.setup.auto_initialize
+
+tests:
+  - zaza.openstack.charm_tests.ceph.tests.CephRGWTest
+  - vault:
+    - zaza.openstack.charm_tests.ceph.tests.CephRGWTest
+    - zaza.openstack.charm_tests.swift.tests.S3APITest
+    - zaza.openstack.charm_tests.ceph.tests.CheckPoolTypes
+    - zaza.openstack.charm_tests.ceph.tests.BlueStoreCompressionCharmOperation
+    # Charm upgrade, then re-run tests
+    - zaza.charm_tests.lifecycle.tests.UpgradeCharmsToPath;ceph-radosgw
+    - zaza.openstack.charm_tests.ceph.tests.CephRGWTest
+    - zaza.openstack.charm_tests.swift.tests.S3APITest
+    - zaza.openstack.charm_tests.ceph.tests.CheckPoolTypes
+    - zaza.openstack.charm_tests.ceph.tests.BlueStoreCompressionCharmOperation
+    - zaza.openstack.charm_tests.ceph.tests.CephMonKeyRotationTests
+
+tests_options:
+  force_deploy:
+    - jammy-antelope
+    - jammy-bobcat
+    - jammy-antelope-namespaced
+    - jammy-bobcat-namespaced
