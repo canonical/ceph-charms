@@ -1,0 +1,9 @@
+- project:
+    templates:
+      - charm-unit-jobs-py310
+      - charm-functional-jobs
+    vars:
+      needs_charm_build: true
+      charm_build_name: ceph-mon
+      build_type: charmcraft
+      charmcraft_channel: 2.x/stable

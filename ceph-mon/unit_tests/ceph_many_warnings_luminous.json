@@ -1,0 +1,147 @@
+{
+    "fsid": "b03a2900-e297-11e8-a7db-00163ed10659",
+    "health": {
+        "checks": {
+            "OBJECT_MISPLACED": {
+                "severity": "HEALTH_WARN",
+                "summary": {
+                    "message": "1560/12264 objects misplaced (12.720%)"
+                }
+            },
+            "PG_AVAILABILITY": {
+                "severity": "HEALTH_WARN",
+                "summary": {
+                    "message": "Reduced data availability: 27 pgs inactive, 30 pgs peering"
+                }
+            },
+            "POOL_APP_NOT_ENABLED": {
+                "severity": "HEALTH_WARN",
+                "summary": {
+                    "message": "application not enabled on 1 pool(s)"
+                }
+            },
+            "TOO_FEW_PGS": {
+                "severity": "HEALTH_WARN",
+                "summary": {
+                    "message": "too few PGs per OSD (21 < min 30)"
+                }
+            }
+        },
+        "status": "HEALTH_WARN"
+    },
+    "election_epoch": 5,
+    "quorum": [
+        0
+    ],
+    "quorum_names": [
+        "juju-460e0f-11"
+    ],
+    "monmap": {
+        "epoch": 1,
+        "fsid": "b03a2900-e297-11e8-a7db-00163ed10659",
+        "modified": "2018-11-07 14:17:12.324408",
+        "created": "2018-11-07 14:17:12.324408",
+        "features": {
+            "persistent": [
+                "kraken",
+                "luminous"
+            ],
+            "optional": []
+        },
+        "mons": [
+            {
+                "rank": 0,
+                "name": "juju-460e0f-11",
+                "addr": "192.168.100.81:6789/0",
+                "public_addr": "192.168.100.81:6789/0"
+            }
+        ]
+    },
+    "osdmap": {
+        "osdmap": {
+            "epoch": 118,
+            "num_osds": 9,
+            "num_up_osds": 9,
+            "num_in_osds": 9,
+            "full": false,
+            "nearfull": false,
+            "num_remapped_pgs": 15
+        }
+    },
+    "pgmap": {
+        "pgs_by_state": [
+            {
+                "state_name": "unknown",
+                "count": 65
+            },
+            {
+                "state_name": "peering",
+                "count": 31
+            },
+            {
+                "state_name": "activating",
+                "count": 17
+            },
+            {
+                "state_name": "activating+remapped",
+                "count": 15
+            }
+        ],
+        "num_pgs": 128,
+        "num_pools": 1,
+        "num_objects": 4088,
+        "data_bytes": 17187733578,
+        "bytes_used": 14360064000,
+        "bytes_avail": 15023263744,
+        "bytes_total": 29383327744,
+        "unknown_pgs_ratio": 0.507812,
+        "inactive_pgs_ratio": 0.492188,
+        "misplaced_objects": 1560,
+        "misplaced_total": 12264,
+        "misplaced_ratio": 0.127202,
+        "recovering_objects_per_sec": 14,
+        "recovering_bytes_per_sec": 60779755,
+        "recovering_keys_per_sec": 0,
+        "num_objects_recovered": 113,
+        "num_bytes_recovered": 471859200,
+        "num_keys_recovered": 0,
+        "read_bytes_sec": 0,
+        "write_bytes_sec": 244132150,
+        "read_op_per_sec": 0,
+        "write_op_per_sec": 116
+    },
+    "fsmap": {
+        "epoch": 1,
+        "by_rank": []
+    },
+    "mgrmap": {
+        "epoch": 5,
+        "active_gid": 14097,
+        "active_name": "juju-460e0f-11",
+        "active_addr": "192.168.100.81:6800/204",
+        "available": true,
+        "standbys": [],
+        "modules": [
+            "balancer",
+            "restful",
+            "status"
+        ],
+        "available_modules": [
+            "balancer",
+            "dashboard",
+            "influx",
+            "localpool",
+            "prometheus",
+            "restful",
+            "selftest",
+            "status",
+            "zabbix"
+        ],
+        "services": {}
+    },
+    "servicemap": {
+        "epoch": 1,
+        "modified": "0.000000",
+        "services": {}
+    }
+}

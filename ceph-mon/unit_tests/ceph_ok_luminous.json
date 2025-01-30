@@ -1,0 +1,180 @@
+{
+    "fsid": "1111111-11111-1111-1111-111111111111",
+    "health": {
+        "checks": {},
+        "status": "HEALTH_OK"
+    },
+    "election_epoch": 28,
+    "quorum": [
+        0,
+        1,
+        2
+    ],
+    "quorum_names": [
+        "juju-badbad-1-lxd-0",
+        "juju-badbad-0-lxd-0",
+        "juju-badbad-12-lxd-0"
+    ],
+    "monmap": {
+        "epoch": 2,
+        "fsid": "1111111-11111-1111-1111-111111111111",
+        "modified": "2018-04-06 06:37:04.978765",
+        "created": "2018-04-06 06:35:06.513449",
+        "features": {
+            "persistent": [
+                "kraken",
+                "luminous"
+            ],
+            "optional": []
+        },
+        "mons": [
+            {
+                "rank": 0,
+                "name": "juju-badbad-1-lxd-0",
+                "addr": "10.11.12.75:6789/0",
+                "public_addr": "10.11.12.75:6789/0"
+            },
+            {
+                "rank": 1,
+                "name": "juju-badbad-0-lxd-0",
+                "addr": "10.11.12.76:6789/0",
+                "public_addr": "10.11.12.76:6789/0"
+            },
+            {
+                "rank": 2,
+                "name": "juju-badbad-12-lxd-0",
+                "addr": "10.11.12.84:6789/0",
+                "public_addr": "10.11.12.84:6789/0"
+            }
+        ]
+    },
+    "osdmap": {
+        "osdmap": {
+            "epoch": 262,
+            "num_osds": 33,
+            "num_up_osds": 32,
+            "num_in_osds": 32,
+            "full": false,
+            "nearfull": false,
+            "num_remapped_pgs": 0
+        }
+    },
+    "pgmap": {
+        "pgs_by_state": [
+            {
+                "state_name": "active+clean",
+                "count": 1032
+            }
+        ],
+        "num_pgs": 1032,
+        "num_pools": 20,
+        "num_objects": 561,
+        "data_bytes": 1584814720,
+        "bytes_used": 2884842602496,
+        "bytes_avail": 125077821714432,
+        "bytes_total": 127962664316928,
+        "read_bytes_sec": 1513,
+        "read_op_per_sec": 1,
+        "write_op_per_sec": 0
+    },
+    "fsmap": {
+        "epoch": 1,
+        "by_rank": []
+    },
+    "mgrmap": {
+        "epoch": 4,
+        "active_gid": 4131,
+        "active_name": "juju-badbad-1-lxd-0",
+        "active_addr": "10.11.12.75:6800/88914",
+        "available": true,
+        "standbys": [
+            {
+                "gid": 4134,
+                "name": "juju-badbad-0-lxd-0",
+                "available_modules": [
+                    "balancer",
+                    "dashboard",
+                    "influx",
+                    "localpool",
+                    "prometheus",
+                    "restful",
+                    "selftest",
+                    "status",
+                    "zabbix"
+                ]
+            },
+            {
+                "gid": 4299,
+                "name": "juju-badbad-12-lxd-0",
+                "available_modules": [
+                    "balancer",
+                    "dashboard",
+                    "influx",
+                    "localpool",
+                    "prometheus",
+                    "restful",
+                    "selftest",
+                    "status",
+                    "zabbix"
+                ]
+            }
+        ],
+        "modules": [
+            "balancer",
+            "restful",
+            "status"
+        ],
+        "available_modules": [
+            "balancer",
+            "dashboard",
+            "influx",
+            "localpool",
+            "prometheus",
+            "restful",
+            "selftest",
+            "status",
+            "zabbix"
+        ],
+        "services": {}
+    },
+    "servicemap": {
+        "epoch": 29,
+        "modified": "2018-04-18 06:25:04.076050",
+        "services": {
+            "rgw": {
+                "daemons": {
+                    "summary": "",
+                    "radosgw.gateway": {
+                        "start_epoch": 29,
+                        "start_stamp": "2018-04-18 06:25:02.612368",
+                        "gid": 231504,
+                        "addr": "10.11.12.78:0/2747422053",
+                        "metadata": {
+                            "arch": "x86_64",
+                            "ceph_version": "ceph version 12.2.2 (cf0baeeeeba3b47f9427c6c97e2144b094b7e5ba) luminous (stable)",
+                            "cpu": "Intel(R) Xeon(R) CPU E5-2680 v4 @ 2.40GHz",
+                            "distro": "ubuntu",
+                            "distro_description": "Ubuntu 16.04.4 LTS",
+                            "distro_version": "16.04",
+                            "frontend_config#0": "civetweb port=60",
+                            "frontend_type#0": "civetweb",
+                            "hostname": "juju-badbad-0-lxd-1",
+                            "kernel_description": "#43~16.04.1-Ubuntu SMP Wed Mar 14 17:48:43 UTC 2018",
+                            "kernel_version": "4.13.0-38-generic",
+                            "mem_swap_kb": "8388604",
+                            "mem_total_kb": "528154640",
+                            "num_handles": "1",
+                            "os": "Linux",
+                            "pid": "225487",
+                            "zone_id": "11111111-1111-1111-1111-111111111111",
+                            "zone_name": "default",
+                            "zonegroup_id": "11111111-1111-1111-1111-111111111111",
+                            "zonegroup_name": "default"
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+

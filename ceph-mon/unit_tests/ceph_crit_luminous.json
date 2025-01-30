@@ -1,0 +1,196 @@
+{
+    "fsid": "a7285ad8-3961-11e8-b715-00163e030140",
+    "health": {
+        "checks": {
+            "OSD_DOWN": {
+                "severity": "HEALTH_WARN",
+                "summary": {
+                    "message": "1 osds down"
+                }
+            },
+            "PG_DEGRADED": {
+                "severity": "HEALTH_WARN",
+                "summary": {
+                    "message": "Degraded data redundancy: 31/906 objects degraded (3.422%), 74 pgs unclean, 74 pgs degraded"
+                }
+            }
+        },
+        "status": "HEALTH_WARN"
+    },
+    "election_epoch": 28,
+    "quorum": [
+        0,
+        1,
+        2
+    ],
+    "quorum_names": [
+        "juju-7cfc1d-1-lxd-0",
+        "juju-7cfc1d-0-lxd-0",
+        "juju-7cfc1d-12-lxd-0"
+    ],
+    "monmap": {
+        "epoch": 2,
+        "fsid": "a7285ad8-3961-11e8-b715-00163e030140",
+        "modified": "2018-04-06 06:37:04.978765",
+        "created": "2018-04-06 06:35:06.513449",
+        "features": {
+            "persistent": [
+                "kraken",
+                "luminous"
+            ],
+            "optional": []
+        },
+        "mons": [
+            {
+                "rank": 0,
+                "name": "juju-7cfc1d-1-lxd-0",
+                "addr": "172.18.250.75:6789/0",
+                "public_addr": "172.18.250.75:6789/0"
+            },
+            {
+                "rank": 1,
+                "name": "juju-7cfc1d-0-lxd-0",
+                "addr": "172.18.250.76:6789/0",
+                "public_addr": "172.18.250.76:6789/0"
+            },
+            {
+                "rank": 2,
+                "name": "juju-7cfc1d-12-lxd-0",
+                "addr": "172.18.250.84:6789/0",
+                "public_addr": "172.18.250.84:6789/0"
+            }
+        ]
+    },
+    "osdmap": {
+        "osdmap": {
+            "epoch": 257,
+            "num_osds": 33,
+            "num_up_osds": 32,
+            "num_in_osds": 33,
+            "full": false,
+            "nearfull": false,
+            "num_remapped_pgs": 0
+        }
+    },
+    "pgmap": {
+        "pgs_by_state": [
+            {
+                "state_name": "active+clean",
+                "count": 958
+            },
+            {
+                "state_name": "active+undersized+degraded",
+                "count": 74
+            }
+        ],
+        "num_pgs": 1032,
+        "num_pools": 20,
+        "num_objects": 302,
+        "data_bytes": 580388173,
+        "bytes_used": 2971890057216,
+        "bytes_avail": 128989599563776,
+        "bytes_total": 131961489620992,
+        "degraded_objects": 31,
+        "degraded_total": 906,
+        "degraded_ratio": 0.034216
+    },
+    "fsmap": {
+        "epoch": 1,
+        "by_rank": []
+    },
+    "mgrmap": {
+        "epoch": 4,
+        "active_gid": 4131,
+        "active_name": "juju-7cfc1d-1-lxd-0",
+        "active_addr": "172.18.250.75:6800/88914",
+        "available": true,
+        "standbys": [
+            {
+                "gid": 4134,
+                "name": "juju-7cfc1d-0-lxd-0",
+                "available_modules": [
+                    "balancer",
+                    "dashboard",
+                    "influx",
+                    "localpool",
+                    "prometheus",
+                    "restful",
+                    "selftest",
+                    "status",
+                    "zabbix"
+                ]
+            },
+            {
+                "gid": 4299,
+                "name": "juju-7cfc1d-12-lxd-0",
+                "available_modules": [
+                    "balancer",
+                    "dashboard",
+                    "influx",
+                    "localpool",
+                    "prometheus",
+                    "restful",
+                    "selftest",
+                    "status",
+                    "zabbix"
+                ]
+            }
+        ],
+        "modules": [
+            "balancer",
+            "restful",
+            "status"
+        ],
+        "available_modules": [
+            "balancer",
+            "dashboard",
+            "influx",
+            "localpool",
+            "prometheus",
+            "restful",
+            "selftest",
+            "status",
+            "zabbix"
+        ],
+        "services": {}
+    },
+    "servicemap": {
+        "epoch": 22,
+        "modified": "2018-04-14 06:25:03.499825",
+        "services": {
+            "rgw": {
+                "daemons": {
+                    "summary": "",
+                    "radosgw.gateway": {
+                        "start_epoch": 22,
+                        "start_stamp": "2018-04-14 06:25:02.277715",
+                        "gid": 156351,
+                        "addr": "172.18.250.74:0/2962286796",
+                        "metadata": {
+                            "arch": "x86_64",
+                            "ceph_version": "ceph version 12.2.2 (cf0baeeeeba3b47f9427c6c97e2144b094b7e5ba) luminous (stable)",
+                            "cpu": "Intel(R) Xeon(R) CPU E5-2680 v4 @ 2.40GHz",
+                            "distro": "ubuntu",
+                            "distro_description": "Ubuntu 16.04.4 LTS",
+                            "distro_version": "16.04",
+                            "frontend_config#0": "civetweb port=60",
+                            "frontend_type#0": "civetweb",
+                            "hostname": "juju-7cfc1d-1-lxd-1",
+                            "kernel_description": "#43~16.04.1-Ubuntu SMP Wed Mar 14 17:48:43 UTC 2018",
+                            "kernel_version": "4.13.0-38-generic",
+                            "mem_swap_kb": "8388604",
+                            "mem_total_kb": "528154640",
+                            "num_handles": "1",
+                            "os": "Linux",
+                            "pid": "225019",
+                            "zone_id": "34009c14-e608-47e6-84c5-bf2cefbe94f8",
+                            "zone_name": "default",
+                            "zonegroup_id": "7771c284-f980-41f0-861b-66c95357cb3d",
+                            "zonegroup_name": "default"
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
