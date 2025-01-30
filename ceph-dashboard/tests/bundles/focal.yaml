@@ -1,0 +1,114 @@
+local_overlay_enabled: False
+series: focal
+applications:
+  ceph-osd:
+    charm: ch:ceph-osd
+    num_units: 6
+    storage:
+      osd-devices: 'cinder,10G,2'
+    options:
+      osd-devices: '/dev/test-non-existent'
+    channel: latest/edge
+  ceph-mon:
+    charm: ch:ceph-mon
+    num_units: 3
+    options:
+      monitor-count: '3'
+    channel: latest/edge
+  vault:
+    num_units: 1
+    charm: ch:vault
+    channel: 1.8/stable
+  mysql-innodb-cluster:
+    charm: ch:mysql-innodb-cluster
+    constraints: mem=3072M
+    num_units: 3
+    channel: latest/edge
+  vault-mysql-router:
+    charm: ch:mysql-router
+    channel: latest/edge
+  ceph-dashboard:
+    charm: ../../ceph-dashboard.charm
+    options:
+      public-hostname: 'ceph-dashboard.zaza.local'
+  prometheus:
+    charm: cs:prometheus2
+    num_units: 1
+  grafana:
+    # SSL and allow_embedding are not released into cs:grafana yet, due 
+    # Octrober 2021
+    charm: ch:grafana
+    num_units: 1
+    options:
+      anonymous: True
+      install_method: snap
+      allow_embedding: True
+  telegraf:
+    charm: telegraf
+    channel: stable
+    options:
+       hostname: "{host}"
+  prometheus-alertmanager:
+    charm: cs:prometheus-alertmanager
+    num_units: 1
+  ceph-radosgw:
+    charm: ch:ceph-radosgw
+    num_units: 3
+    channel: latest/edge
+  ceph-fs:
+    charm: ch:ceph-fs
+    num_units: 1
+    channel: latest/edge
+  ceph-iscsi:
+    charm: ch:ceph-iscsi
+    num_units: 2
+    options:
+      gateway-metadata-pool: iscsi-foo-metadata
+    channel: latest/edge
+relations:
+  - - 'ceph-osd:mon'
+    - 'ceph-mon:osd'
+  - - 'vault:shared-db'
+    - 'vault-mysql-router:shared-db'
+  - - 'vault-mysql-router:db-router'
+    - 'mysql-innodb-cluster:db-router'
+  - - 'ceph-dashboard:dashboard'
+    - 'ceph-mon:dashboard'
+  - - 'ceph-dashboard:certificates'
+    - 'vault:certificates'
+  - - 'ceph-mon:prometheus'
+    - 'prometheus:target'
+  - - 'grafana:grafana-source'
+    - 'prometheus:grafana-source'
+  - - 'grafana:certificates'
+    - 'vault:certificates'
+  - - 'ceph-osd:juju-info'
+    - 'telegraf:juju-info'
+  - - 'ceph-mon:juju-info'
+    - 'telegraf:juju-info'
+  - - 'telegraf:prometheus-client'
+    - 'prometheus:target'
+  - - 'telegraf:dashboards'
+    - 'grafana:dashboards'
+  - - 'ceph-dashboard:grafana-dashboard'
+    - 'grafana:dashboards'
+  - - 'ceph-dashboard:alertmanager-service'
+    - 'prometheus-alertmanager:alertmanager-service'
+  - - 'ceph-dashboard:prometheus'
+    - 'prometheus:website'
+  - - 'prometheus:alertmanager-service'
+    - 'prometheus-alertmanager:alertmanager-service'
+  - - 'ceph-radosgw:mon'
+    - 'ceph-mon:radosgw'
+  - - 'ceph-radosgw:certificates'
+    - 'vault:certificates'
+  - - 'ceph-dashboard:radosgw-dashboard'
+    - 'ceph-radosgw:radosgw-user'
+  - - 'ceph-mon:mds'
+    - 'ceph-fs:ceph-mds'
+  - - 'ceph-mon:client'
+    - 'ceph-iscsi:ceph-client'
+  - - 'vault:certificates'
+    - 'ceph-iscsi:certificates'
+  - - 'ceph-dashboard:iscsi-dashboard'
+    - 'ceph-iscsi:admin-access'
