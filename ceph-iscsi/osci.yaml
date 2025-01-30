@@ -1,0 +1,55 @@
+- project:
+    templates:
+      - charm-unit-jobs-py310
+    check:
+      jobs:
+      - ceph-iscsi-focal-quincy
+      - ceph-iscsi-focal-quincy-ec
+      - ceph-iscsi-jammy-reef
+      - ceph-iscsi-jammy-reef-ec
+      - ceph-iscsi-jammy-caracal
+      - ceph-iscsi-jammy-caracal-ec
+    vars:
+      needs_charm_build: true
+      charm_build_name: ceph-iscsi
+      build_type: charmcraft
+      charmcraft_channel: 2.2/stable
+- job:
+    name: ceph-iscsi-focal-quincy
+    parent: func-target
+    vars:
+      tox_extra_args: -- focal
+- job:
+    name: ceph-iscsi-focal-quincy-ec
+    parent: func-target
+    vars:
+      tox_extra_args: -- focal-ec
+- job:
+    name: ceph-iscsi-jammy-reef
+    parent: func-target
+    dependencies:
+      - charm-build
+      - osci-lint
+      - name: tox-py310
+        soft: true
+    vars:
+      tox_extra_args: -- jammy-reef
+- job:
+    name: ceph-iscsi-jammy-reef-ec
+    parent: func-target
+    dependencies:
+      - ceph-iscsi-jammy-reef
+    vars:
+      tox_extra_args: -- jammy-reef-ec
+- job:
+    name: ceph-iscsi-jammy-caracal
+    parent: func-target
+    vars:
+      tox_extra_args: -- jammy-caracal
+- job:
+    name: ceph-iscsi-jammy-caracal-ec
+    parent: func-target
+    dependencies:
+      - ceph-iscsi-jammy-caracal
+    vars:
+      tox_extra_args: -- jammy-caracal-ec

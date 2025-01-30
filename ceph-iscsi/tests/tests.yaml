@@ -1,0 +1,26 @@
+charm_name: ceph-iscsi
+gate_bundles:
+  - focal-ec
+  - focal
+  - jammy-ec
+  - jammy
+  - jammy-reef
+  - jammy-reef-ef
+smoke_bundles:
+  - jammy
+dev_bundles:
+  - jammy-ec
+  - jammy
+configure:
+  - zaza.openstack.charm_tests.vault.setup.auto_initialize_no_validation
+  - zaza.openstack.charm_tests.ceph.iscsi.setup.basic_guest_setup
+tests:
+  - zaza.openstack.charm_tests.ceph.iscsi.tests.CephISCSIGatewayTest
+  - zaza.openstack.charm_tests.ceph.tests.BlueStoreCompressionCharmOperation
+target_deploy_status:
+  ubuntu:
+    workload-status: active
+    workload-status-message-prefix: ''
+  vault:
+    workload-status: blocked
+    workload-status-message-prefix: Vault needs to be initialized
