@@ -1,4 +1,14 @@
 charm_name: ceph-nvme
+
+gate_bundles:
+  - noble-caracal
+
+smoke_bundles:
+  - noble-caracal
+
+dev_bundles:
+  - noble-caracal
+
 configure:
   - tests.target.setup_osds_and_pools
 tests:

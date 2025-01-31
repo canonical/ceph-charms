@@ -3,6 +3,8 @@ gate_bundles:
   - noble-caracal
 smoke_bundles:
   - noble-caracal
+dev_bundles:
+  - noble-caracal
 configure:
   - zaza.openstack.charm_tests.vault.setup.auto_initialize_no_validation
   - tests.target.setup.check_dashboard_cert
