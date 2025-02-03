@@ -1,0 +1,226 @@
+{
+  "health": {
+    "health": {
+      "health_services": [
+        {
+          "mons": [
+            {
+              "name": "juju-2691ab-1-lxd-1",
+              "kb_total": 155284096,
+              "kb_used": 1247744,
+              "kb_avail": 154036352,
+              "avail_percent": 99,
+              "last_updated": "2017-05-17 03:31:35.562497",
+              "store_stats": {
+                "bytes_total": 1012055342,
+                "bytes_sst": 0,
+                "bytes_log": 29673298,
+                "bytes_misc": 982382044,
+                "last_updated": "0.000000"
+              },
+              "health": "HEALTH_OK"
+            },
+            {
+              "name": "juju-2691ab-13-lxd-0",
+              "kb_total": 153820288,
+              "kb_used": 1361280,
+              "kb_avail": 152459008,
+              "avail_percent": 99,
+              "last_updated": "2017-05-17 03:31:04.097201",
+              "store_stats": {
+                "bytes_total": 1370003168,
+                "bytes_sst": 0,
+                "bytes_log": 29813159,
+                "bytes_misc": 1340190009,
+                "last_updated": "0.000000"
+              },
+              "health": "HEALTH_OK"
+            },
+            {
+              "name": "juju-2691ab-2-lxd-1",
+              "kb_total": 155251072,
+              "kb_used": 1373440,
+              "kb_avail": 153877632,
+              "avail_percent": 99,
+              "last_updated": "2017-05-17 03:31:20.684777",
+              "store_stats": {
+                "bytes_total": 1400974192,
+                "bytes_sst": 0,
+                "bytes_log": 1129945,
+                "bytes_misc": 1399844247,
+                "last_updated": "0.000000"
+              },
+              "health": "HEALTH_OK"
+            }
+          ]
+        }
+      ]
+    },
+    "timechecks": {
+      "epoch": 32,
+      "round": 24492,
+      "round_status": "finished",
+      "mons": [
+        {
+          "name": "juju-2691ab-1-lxd-1",
+          "skew": 0,
+          "latency": 0,
+          "health": "HEALTH_OK"
+        },
+        {
+          "name": "juju-2691ab-13-lxd-0",
+          "skew": 0.000919,
+          "latency": 0.001036,
+          "health": "HEALTH_OK"
+        },
+        {
+          "name": "juju-2691ab-2-lxd-1",
+          "skew": 0,
+          "latency": 0.001009,
+          "health": "HEALTH_OK"
+        }
+      ]
+    },
+    "summary": [
+      {
+        "severity": "HEALTH_WARN",
+        "summary": "48 pgs backfill_wait"
+      },
+      {
+        "severity": "HEALTH_WARN",
+        "summary": "45 pgs backfilling"
+      },
+      {
+        "severity": "HEALTH_WARN",
+        "summary": "1 pgs degraded"
+      },
+      {
+        "severity": "HEALTH_WARN",
+        "summary": "1 pgs recovery_wait"
+      },
+      {
+        "severity": "HEALTH_WARN",
+        "summary": "22 pgs stuck unclean"
+      },
+      {
+        "severity": "HEALTH_WARN",
+        "summary": "recovery 14/46842755 objects degraded (0.000%)"
+      },
+      {
+        "severity": "HEALTH_WARN",
+        "summary": "recovery 448540/46842755 objects misplaced (0.958%)"
+      },
+      {
+        "severity": "HEALTH_CRITICAL",
+        "summary": "Test critical status message"
+      }
+    ],
+    "overall_status": "HEALTH_CRITICAL",
+    "detail": []
+  },
+  "fsid": "ca9451f1-5c4f-4e85-bb14-a08dfc0568f7",
+  "election_epoch": 32,
+  "quorum": [
+    0,
+    1,
+    2
+  ],
+  "quorum_names": [
+    "juju-2691ab-1-lxd-1",
+    "juju-2691ab-13-lxd-0",
+    "juju-2691ab-2-lxd-1"
+  ],
+  "monmap": {
+    "epoch": 1,
+    "fsid": "ca9451f1-5c4f-4e85-bb14-a08dfc0568f7",
+    "modified": "2016-12-03 08:09:21.854671",
+    "created": "2016-12-03 08:09:21.854671",
+    "mons": [
+      {
+        "rank": 0,
+        "name": "juju-2691ab-1-lxd-1",
+        "addr": "10.182.254.221:6789/0"
+      },
+      {
+        "rank": 1,
+        "name": "juju-2691ab-13-lxd-0",
+        "addr": "10.182.254.229:6789/0"
+      },
+      {
+        "rank": 2,
+        "name": "juju-2691ab-2-lxd-1",
+        "addr": "10.182.254.242:6789/0"
+      }
+    ]
+  },
+  "osdmap": {
+    "osdmap": {
+      "epoch": 141540,
+      "num_osds": 314,
+      "num_up_osds": 314,
+      "num_in_osds": 314,
+      "full": false,
+      "nearfull": false,
+      "num_remapped_pgs": 92
+    }
+  },
+  "pgmap": {
+    "pgs_by_state": [
+      {
+        "state_name": "active+clean",
+        "count": 9274
+      },
+      {
+        "state_name": "active+remapped+wait_backfill",
+        "count": 48
+      },
+      {
+        "state_name": "active+remapped+backfilling",
+        "count": 45
+      },
+      {
+        "state_name": "active+clean+scrubbing+deep",
+        "count": 9
+      },
+      {
+        "state_name": "active+remapped",
+        "count": 2
+      },
+      {
+        "state_name": "active+recovery_wait+degraded",
+        "count": 1
+      },
+      {
+        "state_name": "active+clean+scrubbing",
+        "count": 1
+      }
+    ],
+    "version": 13885884,
+    "num_pgs": 9380,
+    "data_bytes": 64713222471610,
+    "bytes_used": 193613093122048,
+    "bytes_avail": 690058090491904,
+    "bytes_total": 883671183613952,
+    "degraded_objects": 14,
+    "degraded_total": 46842755,
+    "degraded_ratio": 0,
+    "misplaced_objects": 448540,
+    "misplaced_total": 46842755,
+    "misplaced_ratio": 0.009575,
+    "recovering_objects_per_sec": 389,
+    "recovering_bytes_per_sec": 1629711746,
+    "recovering_keys_per_sec": 0,
+    "num_objects_recovered": 218,
+    "num_bytes_recovered": 912252928,
+    "num_keys_recovered": 0,
+    "read_bytes_sec": 117041457,
+    "write_bytes_sec": 293414043,
+    "read_op_per_sec": 5282,
+    "write_op_per_sec": 5270
+  },
+  "fsmap": {
+    "epoch": 1,
+    "by_rank": []
+  }
+}
+

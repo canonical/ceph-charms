@@ -1,0 +1,54 @@
+charm_name: ceph-radosgw
+
+gate_bundles:
+  - jammy-yoga-multisite
+  - vault: jammy-yoga
+  - vault: jammy-yoga-namespaced
+  - focal-yoga-multisite
+  - vault: focal-yoga
+  - vault: focal-yoga-namespaced
+
+smoke_bundles:
+  - jammy-yoga-multisite
+  - vault: jammy-yoga
+
+dev_bundles:
+  - jammy-yoga-multisite
+  - jammy-zed-multisite
+  - lunar-antelope-multisite
+  - kinetic-zed-multisite
+  - jammy-antelope-multisite
+  - vault: jammy-yoga
+  - vault: jammy-yoga-namespaced
+  - vault: jammy-zed
+  - vault: lunar-antelope
+  - vault: jammy-zed-namespaced
+  - vault: lunar-antelope-namespaced
+  - vault: kinetic-zed
+  - vault: jammy-antelope
+  - vault: kinetic-zed-namespaced
+  - vault: jammy-antelope-namespaced
+
+target_deploy_status:
+  vault:
+    workload-status: blocked
+    workload-status-message-prefix: Vault needs to be initialized
+
+configure:
+  - vault:
+    - zaza.openstack.charm_tests.vault.setup.auto_initialize
+
+tests:
+  - zaza.openstack.charm_tests.ceph.tests.CephRGWTest
+  - vault:
+    - zaza.openstack.charm_tests.ceph.tests.CephRGWTest
+    - zaza.openstack.charm_tests.swift.tests.S3APITest
+    - zaza.openstack.charm_tests.ceph.tests.CheckPoolTypes
+    - zaza.openstack.charm_tests.ceph.tests.BlueStoreCompressionCharmOperation
+
+tests_options:
+  force_deploy:
+    - kinetic-zed
+    - jammy-antelope
+    - kinetic-zed-namespaced
+    - jammy-antelope-namespaced
