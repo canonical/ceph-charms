@@ -1,0 +1,9 @@
+.tox
+**/*.swp
+__pycache__
+.stestr/
+lib/*
+!lib/README.txt
+*.charm
+.vscode/settings.json
+build

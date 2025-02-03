@@ -1,0 +1,40 @@
+- project:
+    templates:
+      - charm-unit-jobs-py38
+      - charm-unit-jobs-py39
+    check:
+      jobs:
+      - focal-pacific
+      - focal-quincy
+      - jammy-quincy
+    vars:
+      needs_charm_build: true
+      charm_build_name: ceph-nfs
+      build_type: charmcraft
+- job:
+    name: focal-pacific
+    parent: func-target
+    dependencies:
+      - charm-build
+      - osci-lint
+      - tox-py38
+      - tox-py39
+    vars:
+      tox_extra_args: focal-pacific
+- job:
+    name: focal-quincy
+    parent: func-target
+    dependencies:
+      - charm-build
+      - osci-lint
+      - tox-py38
+      - tox-py39
+    vars:
+      tox_extra_args: focal-quincy
+- job:
+    name: jammy-quincy
+    parent: func-target
+    dependencies:
+      - focal-quincy
+    vars:
+      tox_extra_args: jammy-quincy
