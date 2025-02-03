@@ -1,0 +1,15 @@
+charm_name: ceph-osd
+
+gate_bundles:
+  - focal-yoga
+  - jammy-yoga
+
+configure:
+  - zaza.openstack.charm_tests.glance.setup.add_lts_image
+
+tests:
+  - zaza.openstack.charm_tests.ceph.tests.CephLowLevelTest
+  - zaza.openstack.charm_tests.ceph.tests.CephTest
+  - zaza.openstack.charm_tests.ceph.osd.tests.SecurityTest
+  - zaza.openstack.charm_tests.ceph.osd.tests.ServiceTest
+  - zaza.openstack.charm_tests.ceph.tests.CephMonKeyRotationTests
