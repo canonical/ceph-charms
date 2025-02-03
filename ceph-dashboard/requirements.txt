@@ -1,0 +1,8 @@
+importlib-resources
+ops >= 1.2.0, <= 1.5.2
+tenacity
+git+https://github.com/openstack/charms.ceph#egg=charms_ceph
+git+https://opendev.org/openstack/charm-ops-openstack#egg=ops_openstack
+git+https://opendev.org/openstack/charm-ops-interface-tls-certificates#egg=interface_tls_certificates
+git+https://github.com/openstack-charmers/ops-interface-ceph-iscsi-admin-access#egg=interface_ceph_iscsi_admin_access
+git+https://github.com/openstack-charmers/ops-interface-openstack-loadbalancer#egg=interface_openstack_loadbalancer
