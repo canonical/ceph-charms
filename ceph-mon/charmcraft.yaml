@@ -1,0 +1,38 @@
+type: charm
+
+parts:
+  charm:
+    prime:
+      - actions/*
+      - lib/*
+      - templates/*
+      - files/*
+    after:
+      - update-certificates
+    charm-python-packages:
+      # Use the updated version of setuptools (needed by jinja2).
+      - setuptools
+    build-packages:
+      - git
+
+  update-certificates:
+    # Ensure that certificates in the base image are up-to-date.
+    plugin: nil
+    override-build: |
+      apt update
+      apt install -y ca-certificates
+      update-ca-certificates
+
+bases:
+  - build-on:
+      - name: ubuntu
+        channel: "20.04"
+        architectures:
+          - amd64
+    run-on:
+      - name: ubuntu
+        channel: "20.04"
+        architectures: [amd64, s390x, ppc64el, arm64]
+      - name: ubuntu
+        channel: "22.04"
+        architectures: [amd64, s390x, ppc64el, arm64]
