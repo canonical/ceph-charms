@@ -11,3 +11,4 @@ then
 fi
 echo "Renaming charm here."
 mv ${charm}_*.charm ${charm}.charm
+cp ${charm}.charm ../

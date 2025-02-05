@@ -1,32 +1,45 @@
 variables:
-  openstack-origin: &openstack-origin cloud:jammy-bobcat
-
-local_overlay_enabled: False
+  openstack-origin: &openstack-origin jammy-bobcat
 
 series: &series jammy
 
+machines:
+  '0':
+    constraints: cores=2 mem=4G root-disk=25G virt-type=virtual-machine
+  '1':
+    constraints: cores=2 mem=4G root-disk=25G virt-type=virtual-machine
+  '2':
+    constraints: cores=2 mem=4G root-disk=25G virt-type=virtual-machine
+  '3':
+  '4':
+  '5':
+
 applications:
-  ubuntu: # used to test mounts
-    charm: ch:ubuntu
-    num_units: 2
   ceph-fs:
-    charm: ../../../ceph-fs.charm
+    charm: ch:ceph-fs
+    channel: reef/edge
     num_units: 1
     options:
       source: *openstack-origin
       pool-type: erasure-coded
       ec-profile-k: 4
       ec-profile-m: 2
+    to:
+      - '2'
 
   ceph-osd:
     charm: ch:ceph-osd
-    num_units: 6
+    num_units: 3
     storage:
-      osd-devices: 'cinder,10G'
+      osd-devices: 'loop,10G'
     options:
       osd-devices: '/dev/test-non-existent'
       source: *openstack-origin
     channel: reef/edge
+    to:
+      - '0'
+      - '1'
+      - '2'
 
   ceph-mon:
     charm: ch:ceph-mon
@@ -35,6 +48,10 @@ applications:
       monitor-count: '3'
       source: *openstack-origin
     channel: reef/edge
+    to:
+      - '3'
+      - '4'
+      - '5'
 
 relations:
   - - 'ceph-mon:mds'
