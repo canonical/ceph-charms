@@ -1,0 +1,61 @@
+charm_name: ceph-proxy
+
+configure:
+  - zaza.openstack.configure.ceph_proxy.setup_ceph_proxy
+  - erasure-coded:
+    - zaza.openstack.configure.ceph_proxy.setup_ceph_proxy
+
+tests:
+  - zaza.openstack.charm_tests.ceph.tests.CephProxyTest
+  - zaza.openstack.charm_tests.ceph.fs.tests.CephFSWithCephProxyTests
+  - erasure-coded:
+    - zaza.openstack.charm_tests.ceph.tests.CephProxyTest
+    - zaza.openstack.charm_tests.ceph.tests.CheckPoolTypes
+
+gate_bundles:
+  - jammy-yoga
+  - erasure-coded: jammy-yoga-ec
+
+dev_bundles:
+  - jammy-yoga
+  - erasure-coded: jammy-yoga-ec
+  - jammy-antelope
+  - jammy-bobcat
+  - erasure-coded: jammy-antelope-ec
+  - erasure-coded: jammy-bobcat-ec
+
+smoke_bundles:
+  - jammy-yoga
+
+target_deploy_status:
+  ceph-proxy:
+    workload-status: blocked
+    workload-status-message-prefix: "Ensure FSID and admin-key are set"
+  ceph-radosgw:
+    workload-status: waiting
+    workload-status-message-prefix: "Incomplete relations: mon"
+  keystone:
+    workload-status: active
+    workload-status-message-prefix: "Unit is ready"
+  cinder-ceph:
+    workload-status: waiting
+    workload-status-message-prefix: "Ceph broker request incomplete"
+  ceph-fs:
+    workload-status: waiting
+    workload-status-message-prefix: "'ceph-mds' incomplete"
+  nova-compute:
+    workload-status: waiting
+    workload-status-message-prefix: "Incomplete relations: storage-backend"
+  glance:
+    workload-status: waiting
+    workload-status-message-prefix: "Incomplete relations: storage-backend"
+  ubuntu:
+    workload-status: active
+    workload-status-message-prefix: ''
+
+tests_options:
+  force_deploy:
+    - jammy-antelope
+    - jammy-bobcat
+    - jammy-antelope-ec
+    - jammy-bobcat-ec
