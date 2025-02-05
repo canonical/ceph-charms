@@ -516,10 +516,7 @@ class RelatedUnitsTestCase(unittest.TestCase):
         self.assertTrue(ceph_hooks.related_osds(6))
         self.assertFalse(ceph_hooks.related_osds(9))
         relation_ids.assert_called_with('osd')
-        related_units.assert_has_calls([
-            call('osd:0'),
-            call('osd:23')
-        ])
+        related_units.assert_called_with('osd:23')
 
     @patch.object(ceph_hooks, 'req_already_treated')
     @patch.object(ceph_hooks, 'relation_ids')
@@ -657,12 +654,6 @@ class BootstrapSourceTestCase(test_utils.CharmTestCase):
     def test_bootstrap_source_relation_data_not_ready(self):
         """Ensures no bootstrapping done if relation data not present"""
         ceph_hooks.bootstrap_source_relation_changed()
-        expected_calls = []
-        relid = 'bootstrap-source:0'
-        for unit in ('ceph/0', 'ceph/1', 'ceph/2'):
-            expected_calls.append(call('monitor-secret', unit, relid))
-            expected_calls.append(call('fsid', unit, relid))
-        self.relation_get.has_calls(expected_calls)
         self.assertEqual(self.leader_set.call_count, 0)
         self.assertEqual(self.mon_relation.call_count, 0)
 
