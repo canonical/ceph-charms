@@ -18,8 +18,8 @@ parts:
       - CHARM_INTERFACES_DIR: $CRAFT_PROJECT_DIR/interfaces/
       - CHARM_LAYERS_DIR: $CRAFT_PROJECT_DIR/layers/
 
-base: ubuntu@20.04
-build-base: ubuntu@20.04
+base: ubuntu@22.04
+build-base: ubuntu@22.04
 platforms:
   amd64:
     build-on: amd64

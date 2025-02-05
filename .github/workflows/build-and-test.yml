@@ -152,9 +152,9 @@ jobs:
           date
           mv ~/artifacts/*.charm ./
           if [[ -f "./${{ matrix.part }}/src/tox.ini" ]]; then
-            tox -c ${{ matrix.part }}/src -e func-target -- noble-caracal
+            tox -c ${{ matrix.part }}/src -e func-target -- jammy-bobcat
           else
-            tox -c ${{ matrix.part }} -e func-target -- noble-caracal
+            tox -c ${{ matrix.part }} -e func-target -- jammy-bobcat
           fi
 
       - name: Generate crash dumps
