@@ -1,0 +1,102 @@
+{
+    "fsid": "b03a2900-e297-11e8-a7db-00163ed10659",
+    "health": {
+        "checks": {
+            "OSDMAP_FLAGS": {
+                "severity": "HEALTH_WARN",
+                "summary": {
+                    "message": "noout flag(s) set"
+                }
+            }
+        },
+        "status": "HEALTH_WARN"
+    },
+    "election_epoch": 5,
+    "quorum": [
+        0
+    ],
+    "quorum_names": [
+        "juju-460e0f-11"
+    ],
+    "monmap": {
+        "epoch": 1,
+        "fsid": "b03a2900-e297-11e8-a7db-00163ed10659",
+        "modified": "2018-11-07 14:17:12.324408",
+        "created": "2018-11-07 14:17:12.324408",
+        "features": {
+            "persistent": [
+                "kraken",
+                "luminous"
+            ],
+            "optional": []
+        },
+        "mons": [
+            {
+                "rank": 0,
+                "name": "juju-460e0f-11",
+                "addr": "192.168.100.81:6789/0",
+                "public_addr": "192.168.100.81:6789/0"
+            }
+        ]
+    },
+    "osdmap": {
+        "osdmap": {
+            "epoch": 518,
+            "num_osds": 9,
+            "num_up_osds": 9,
+            "num_in_osds": 9,
+            "full": false,
+            "nearfull": false,
+            "num_remapped_pgs": 0
+        }
+    },
+    "pgmap": {
+        "pgs_by_state": [
+            {
+                "state_name": "active+clean",
+                "count": 128
+            }
+        ],
+        "num_pgs": 128,
+        "num_pools": 1,
+        "num_objects": 14896,
+        "data_bytes": 62440603919,
+        "bytes_used": 14225776640,
+        "bytes_avail": 9450938368,
+        "bytes_total": 23676715008
+    },
+    "fsmap": {
+        "epoch": 1,
+        "by_rank": []
+    },
+    "mgrmap": {
+        "epoch": 5,
+        "active_gid": 14097,
+        "active_name": "juju-460e0f-11",
+        "active_addr": "192.168.100.81:6800/204",
+        "available": true,
+        "standbys": [],
+        "modules": [
+            "balancer",
+            "restful",
+            "status"
+        ],
+        "available_modules": [
+            "balancer",
+            "dashboard",
+            "influx",
+            "localpool",
+            "prometheus",
+            "restful",
+            "selftest",
+            "status",
+            "zabbix"
+        ],
+        "services": {}
+    },
+    "servicemap": {
+        "epoch": 1,
+        "modified": "0.000000",
+        "services": {}
+    }
+}
