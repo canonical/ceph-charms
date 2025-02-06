@@ -29,6 +29,7 @@ jobs:
         env:
           INPUT_PART: ${{ inputs.part }}
           GITHUB_EVENT_NAME: ${{ github.event_name }}
+          ALL_MOD_FILES: ${{ steps.changed-files.outputs.all_modified_files }}
         run: |
           if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
             if [ -n "$INPUT_PART" ]; then
@@ -40,9 +41,10 @@ jobs:
             fi
           else
             # Automatic run: use changed-files to determine modified charms
+            echo "Modified files to eval: ${ALL_MOD_FILES}"
             components=()
             # Retrieve components with a 'tox.ini' file.
-            for file in ${{ steps.changed-files.outputs.all_changed_files }}; do
+            for file in ${ALL_MOD_FILES} ; do
               component=$(echo "$file" | cut -d "/" -f1)
               if [[ -f "./$component/charmcraft.yaml" ]]; then
                 # This is a charm.
@@ -152,9 +154,9 @@ jobs:
           date
           mv ~/artifacts/*.charm ./
           if [[ -f "./${{ matrix.part }}/src/tox.ini" ]]; then
-            tox -c ${{ matrix.part }}/src -e func-target -- noble-caracal
+            tox -c ${{ matrix.part }}/src -e func-target -- jammy-bobcat
           else
-            tox -c ${{ matrix.part }} -e func-target -- noble-caracal
+            tox -c ${{ matrix.part }} -e func-target -- jammy-bobcat
           fi
 
       - name: Generate crash dumps
