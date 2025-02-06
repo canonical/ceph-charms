@@ -654,7 +654,6 @@ class BootstrapSourceTestCase(test_utils.CharmTestCase):
     def test_bootstrap_source_relation_data_not_ready(self):
         """Ensures no bootstrapping done if relation data not present"""
         ceph_hooks.bootstrap_source_relation_changed()
-        relid = 'bootstrap-source:0'
         self.assertEqual(self.leader_set.call_count, 0)
         self.assertEqual(self.mon_relation.call_count, 0)
 
