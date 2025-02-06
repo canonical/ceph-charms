@@ -1,0 +1,31 @@
+charm_name: ceph-osd
+
+gate_bundles:
+  - focal-xena
+  - focal-yoga
+  - jammy-yoga
+  - jammy-bobcat
+
+smoke_bundles:
+  - jammy-antelope
+
+configure:
+  - install:
+    - zaza.openstack.charm_tests.glance.setup.add_lts_image
+
+tests:
+  - install:
+    - zaza.openstack.charm_tests.ceph.tests.CephLowLevelTest
+    - zaza.openstack.charm_tests.ceph.tests.CephTest
+    - zaza.openstack.charm_tests.ceph.osd.tests.SecurityTest
+    - zaza.openstack.charm_tests.ceph.osd.tests.ServiceTest
+  - zaza.openstack.charm_tests.ceph.tests.CephLowLevelTest
+  - zaza.openstack.charm_tests.ceph.tests.CephTest
+  - zaza.openstack.charm_tests.ceph.osd.tests.SecurityTest
+  - zaza.openstack.charm_tests.ceph.osd.tests.ServiceTest
+  # Charm upgrade, then re-run tests
+  - zaza.charm_tests.lifecycle.tests.UpgradeCharmsToPath;ceph-osd
+  - zaza.openstack.charm_tests.ceph.tests.CephLowLevelTest
+  - zaza.openstack.charm_tests.ceph.tests.CephTest
+  - zaza.openstack.charm_tests.ceph.osd.tests.SecurityTest
+  - zaza.openstack.charm_tests.ceph.osd.tests.ServiceTest
