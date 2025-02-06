@@ -68,7 +68,8 @@ class CephClientProvides(Object):
         self._handle_client_relation(event.relation, event.unit)
 
     def _get_ceph_info_from_configs(self):
-        """Create dictionary of ceph information required to set client relation.
+        """
+        Create dictionary of ceph information required to set client relation.
 
         :returns: Dictionary of ceph configurations needed for client relation
         :rtype: dict
@@ -126,7 +127,8 @@ class CephClientProvides(Object):
 
     def _handle_broker_request(
             self, relation, unit, add_legacy_response=False, force=False):
-        """Retrieve broker request from relation, process, return response data.
+        """
+        Retrieve broker request from relation, process, return response data.
 
         :param event: Operator event for the relation
         :type relid: Event
