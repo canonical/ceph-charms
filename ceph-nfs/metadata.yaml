@@ -1,0 +1,26 @@
+name: ceph-nfs
+summary: Gateway for provisioning NFS shares backed by ceph.
+maintainer: OpenStack Charmers <openstack-charmers@lists.ubuntu.com>
+description: |
+  The NFS gateway is provided by NFS-Ganesha and provides NFS shares
+  that are backed by CephFS.
+docs: https://discourse.charmhub.io/t/ceph-nfs-docs-index/11224
+tags:
+- storage
+- misc
+series:
+- focal
+- jammy
+subordinate: false
+min-juju-version: 2.7.6
+extra-bindings:
+  public:
+requires:
+  ceph-client:
+    interface: ceph-client
+  ha:
+    interface: hacluster
+    scope: container
+peers:
+  cluster:
+    interface: ceph-nfs-peer

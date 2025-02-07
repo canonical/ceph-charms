@@ -1,0 +1,15 @@
+charm_name: ceph-nfs
+gate_bundles:
+  - focal-quincy
+  - focal-pacific
+  - jammy-quincy
+  - jammy-reef
+smoke_bundles:
+  - focal-pacific
+configure: []
+tests:
+  - tests.nfs_ganesha.NfsGaneshaTest
+target_deploy_status:
+  ubuntu:
+    workload-status: active
+    workload-status-message-prefix: ''
