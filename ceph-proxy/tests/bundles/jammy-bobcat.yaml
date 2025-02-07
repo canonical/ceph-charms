@@ -1,4 +1,4 @@
-series: noble
+series: jammy
 
 machines:
   '0':
