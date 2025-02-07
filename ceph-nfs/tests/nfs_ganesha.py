@@ -99,14 +99,16 @@ class NfsGaneshaTest(unittest.TestCase):
                 share_ip,
                 export_path))
         if retry:
-            for attempt in tenacity.Retrying(
-                    stop=tenacity.stop_after_attempt(5),
-                    wait=tenacity.wait_exponential(multiplier=3,
-                                                   min=2, max=10)):
-                with attempt:
-                    zaza.utilities.generic.run_via_ssh(
-                        unit_name=unit_name,
-                        cmd=ssh_cmd)
+            @tenacity.retry(
+                stop=tenacity.stop_after_attempt(5),
+                wait=tenacity.wait_exponential(multiplier=3, min=2, max=10),
+                retry=tenacity.retry_if_result(
+                    lambda res: res.get('Code') != '0')
+            )
+            def _do_mount():
+                return model.run_on_unit(unit_name, ssh_cmd)
+
+            _do_mount()
         else:
             zaza.utilities.generic.run_via_ssh(
                 unit_name=unit_name,
