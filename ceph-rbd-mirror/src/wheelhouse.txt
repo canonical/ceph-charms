@@ -1,4 +1,5 @@
 git+https://github.com/juju/charm-helpers.git#egg=charmhelpers
 psutil
-poetry-core
 git+https://github.com/openstack/charms.openstack.git#egg=charms.openstack
+# https://github.com/canonical/charms.reactive/pull/260
+git+https://github.com/canonical/charms.reactive.git#egg=charms.reactive
