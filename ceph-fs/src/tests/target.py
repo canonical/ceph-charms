@@ -63,7 +63,7 @@ class CephFSTests(unittest.TestCase):
             )
             def _do_mount():
                 logging.info(f"Mounting CephFS on {unit_name}")
-                res = model.run_on_unit(unit_name, cmd)
+                res = model.run_on_unit(unit_name, ssh_cmd)
                 logging.info(f"Mount result: {res}")
                 return res
 
