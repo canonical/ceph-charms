@@ -106,7 +106,7 @@ class NfsGaneshaTest(unittest.TestCase):
                     lambda res: res.get('Code') != '0')
             )
             def _do_mount():
-                return model.run_on_unit(unit_name, ssh_cmd)
+                return zaza.model.run_on_unit(unit_name, ssh_cmd)
 
             _do_mount()
         else:
