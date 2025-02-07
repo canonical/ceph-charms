@@ -19,7 +19,7 @@ import json
 import subprocess
 from tenacity import (
     retry, Retrying, stop_after_attempt, wait_exponential,
-    retry_if_exception_type)
+    retry_if_exception_type, retry_if_result)
 import unittest
 import zaza
 import zaza.model as model
@@ -48,22 +48,26 @@ class CephFSTests(unittest.TestCase):
                         "Failed to cleanup mounts on {}".format(unit))
 
     def _mount_share(self, unit_name: str,
-                     retry: bool = True):
+                     perform_retry: bool = True):
         self._install_dependencies(unit_name)
         self._install_keyring(unit_name)
         ssh_cmd = (
             'sudo mkdir -p {0} && '
             'sudo ceph-fuse {0}'.format(self.mount_dir)
         )
-        if retry:
-            for attempt in Retrying(
-                    stop=stop_after_attempt(5),
-                    wait=wait_exponential(multiplier=3,
-                                          min=2, max=10)):
-                with attempt:
-                    zaza.utilities.generic.run_via_ssh(
-                        unit_name=unit_name,
-                        cmd=ssh_cmd)
+        if perform_retry:
+            @retry(
+                stop=stop_after_attempt(5),
+                wait=wait_exponential(multiplier=3, min=2, max=10),
+                retry=retry_if_result(lambda res: res.get('Code') != '0')
+            )
+            def _do_mount():
+                logging.info(f"Mounting CephFS on {unit_name}")
+                res = model.run_on_unit(unit_name, cmd)
+                logging.info(f"Mount result: {res}")
+                return res
+
+            _do_mount()
         else:
             zaza.utilities.generic.run_via_ssh(
                 unit_name=unit_name,
