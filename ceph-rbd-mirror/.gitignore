@@ -1,0 +1,11 @@
+.tox
+.stestr
+*__pycache__*
+*.pyc
+build
+.coverage
+cover/
+layers/
+interfaces/
+*.swp
+*.charm

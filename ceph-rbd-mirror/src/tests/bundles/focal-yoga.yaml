@@ -1,0 +1,187 @@
+variables:
+  openstack-origin: &openstack-origin cloud:focal-yoga
+
+local_overlay_enabled: False
+
+series: &series focal
+
+machines:
+  '0':
+    constraints: "mem=3072M"
+  '1':
+    constraints: "mem=3072M"
+  '2':
+    constraints: "mem=3072M"
+
+applications:
+
+  keystone-mysql-router:
+    charm: ch:mysql-router
+    channel: 8.0/edge
+  glance-mysql-router:
+    charm: ch:mysql-router
+    channel: 8.0/edge
+  cinder-mysql-router:
+    charm: ch:mysql-router
+    channel: 8.0/edge
+
+  mysql-innodb-cluster:
+    charm: ch:mysql-innodb-cluster
+    num_units: 3
+    options:
+      source: *openstack-origin
+    to:
+      - '0'
+      - '1'
+      - '2'
+    channel: 8.0/edge
+
+  keystone:
+    charm: ch:keystone
+    num_units: 1
+    options:
+      openstack-origin: *openstack-origin
+    channel: yoga/edge
+
+  rabbitmq-server:
+    charm: ch:rabbitmq-server
+    num_units: 1
+    options:
+      source: *openstack-origin
+    channel: 3.9/edge
+
+  cinder:
+    charm: ch:cinder
+    num_units: 1
+    options:
+      block-device: None
+      glance-api-version: 2
+      openstack-origin: *openstack-origin
+    channel: yoga/edge
+
+  cinder-ceph:
+    charm: ch:cinder-ceph
+    num_units: 0
+    channel: yoga/edge
+
+  glance:
+    charm: ch:glance
+    num_units: 1
+    options:
+      openstack-origin: *openstack-origin
+    channel: yoga/edge
+
+  nova-compute:
+    charm: ch:nova-compute
+    num_units: 1
+    options:
+      openstack-origin: *openstack-origin
+    channel: yoga/edge
+
+  ceph-mon:
+    charm: ch:ceph-mon
+    num_units: 3
+    options:
+      expected-osd-count: 3
+      source: *openstack-origin
+    channel: quincy/edge
+
+  ceph-osd:
+    charm: ch:ceph-osd
+    num_units: 3
+    storage:
+      osd-devices: 'cinder,10G'
+    options:
+      source: *openstack-origin
+      bluestore: False
+      use-direct-io: False
+      osd-devices: '/dev/test-non-existent'
+    channel: quincy/edge
+
+  ceph-rbd-mirror:
+    series: *series
+    charm: ../../../ceph-rbd-mirror.charm
+    num_units: 1
+    options:
+      source: *openstack-origin
+
+  ceph-mon-b:
+    charm: ch:ceph-mon
+    num_units: 3
+    options:
+      expected-osd-count: 3
+      source: *openstack-origin
+    channel: quincy/edge
+
+  ceph-osd-b:
+    charm: ch:ceph-osd
+    num_units: 3
+    storage:
+      osd-devices: 'cinder,10G'
+    options:
+      source: *openstack-origin
+      bluestore: False
+      use-direct-io: False
+      osd-devices: '/dev/test-non-existent'
+    channel: quincy/edge
+
+  ceph-rbd-mirror-b:
+    series: *series
+    charm: ../../../ceph-rbd-mirror.charm
+    num_units: 1
+    options:
+      source: *openstack-origin
+
+relations:
+
+- - keystone:shared-db
+  - keystone-mysql-router:shared-db
+- - keystone-mysql-router:db-router
+  - mysql-innodb-cluster:db-router
+
+- - glance:shared-db
+  - glance-mysql-router:shared-db
+- - glance-mysql-router:db-router
+  - mysql-innodb-cluster:db-router
+
+- - cinder:shared-db
+  - cinder-mysql-router:shared-db
+- - cinder-mysql-router:db-router
+  - mysql-innodb-cluster:db-router
+
+- - rabbitmq-server
+  - cinder
+
+- - 'keystone:identity-service'
+  - cinder
+- - 'keystone:identity-service'
+  - glance
+
+- - cinder
+  - cinder-ceph
+- - cinder-ceph:ceph
+  - ceph-mon:client
+
+- - nova-compute:ceph-access
+  - cinder-ceph:ceph-access
+- - nova-compute:amqp
+  - rabbitmq-server:amqp
+
+- - glance:image-service
+  - nova-compute:image-service
+- - glance
+  - ceph-mon
+
+- - ceph-mon:osd
+  - ceph-osd:mon
+- - ceph-mon
+  - ceph-rbd-mirror:ceph-local
+- - ceph-mon
+  - ceph-rbd-mirror-b:ceph-remote
+
+- - ceph-mon-b:osd
+  - ceph-osd-b:mon
+- - ceph-mon-b
+  - ceph-rbd-mirror-b:ceph-local
+- - ceph-mon-b
+  - ceph-rbd-mirror:ceph-remote
