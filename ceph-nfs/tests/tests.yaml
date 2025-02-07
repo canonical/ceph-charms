@@ -1,15 +1,9 @@
 charm_name: ceph-nfs
 gate_bundles:
-  - focal-quincy
-  - focal-pacific
-  - jammy-quincy
-  - jammy-reef
+  - jammy-bobcat
 smoke_bundles:
-  - focal-pacific
+  - jammy-bobcat
 configure: []
 tests:
+  - zaza.charm_tests.lifecycle.refresh.CharmRefreshAll
   - tests.nfs_ganesha.NfsGaneshaTest
-target_deploy_status:
-  ubuntu:
-    workload-status: active
-    workload-status-message-prefix: ''
