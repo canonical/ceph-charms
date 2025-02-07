@@ -107,7 +107,7 @@ class NfsGaneshaTest(unittest.TestCase):
             )
             def _do_mount():
                 logging.info(f"Mounting Ceph-NFS on {unit_name}")
-                res = model.run_on_unit(unit_name, ssh_cmd)
+                res = zaza.model.run_on_unit(unit_name, ssh_cmd)
                 logging.info(f"Mount result: {res}")
                 return res
 
