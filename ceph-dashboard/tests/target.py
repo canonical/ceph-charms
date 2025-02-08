@@ -87,6 +87,7 @@ SAML_IDP_METADATA = '''
 </EntityDescriptor>
 '''
 
+
 def check_dashboard_cert(model_name=None):
     """Wait for Dashboard to be ready.
 
