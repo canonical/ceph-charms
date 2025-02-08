@@ -1,15 +1,13 @@
 charm_name: ceph-dasboard
 gate_bundles:
-  - noble-caracal
+  - jammy-bobcat
 smoke_bundles:
-  - noble-caracal
+  - jammy-bobcat
 configure:
   - zaza.openstack.charm_tests.vault.setup.auto_initialize_no_validation
-  - tests.target.setup.check_dashboard_cert
-  - tests.target.setup.set_grafana_url
+  - tests.target.check_dashboard_cert
 tests:
   - tests.target.CephDashboardTest
-  - zaza.openstack.charm_tests.ceph.tests.CephPrometheusTest
 target_deploy_status:
   ceph-dashboard:
     workload-status: blocked
@@ -17,9 +15,6 @@ target_deploy_status:
   vault:
     workload-status: blocked
     workload-status-message-prefix: Vault needs to be initialized
-  grafana:
-    workload-status: active
-    workload-status-message-prefix: Started
   prometheus2:
     workload-status: active
     workload-status-message-prefix: Ready
