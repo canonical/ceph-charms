@@ -1,0 +1,6 @@
+charm_name: ceph-fs
+tests:
+  - zaza.charm_tests.lifecycle.refresh.CharmRefreshAll
+  - tests.target.CephFSTests
+  - tests.target.CharmOperationTest
+  - tests.target.CephKeyRotationTests

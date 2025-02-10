@@ -1,0 +1,118 @@
+{
+    "health": {
+        "health": {
+            "health_services": [
+                {
+                    "mons": [
+                        {
+                            "name": "juju-460e0f-12",
+                            "kb_total": 1829760,
+                            "kb_used": 835072,
+                            "kb_avail": 994688,
+                            "avail_percent": 54,
+                            "last_updated": "2018-11-07 18:46:32.308592",
+                            "store_stats": {
+                                "bytes_total": 15678387,
+                                "bytes_sst": 0,
+                                "bytes_log": 420953,
+                                "bytes_misc": 15257434,
+                                "last_updated": "0.000000"
+                            },
+                            "health": "HEALTH_OK"
+                        }
+                    ]
+                }
+            ]
+        },
+        "timechecks": {
+            "epoch": 3,
+            "round": 0,
+            "round_status": "finished"
+        },
+        "summary": [
+            {
+                "severity": "HEALTH_ERR",
+                "summary": "6 pgs are stuck inactive for more than 300 seconds"
+            },
+            {
+                "severity": "HEALTH_WARN",
+                "summary": "7 pgs peering"
+            },
+            {
+                "severity": "HEALTH_WARN",
+                "summary": "6 pgs stuck inactive"
+            },
+            {
+                "severity": "HEALTH_WARN",
+                "summary": "6 pgs stuck unclean"
+            }
+        ],
+        "overall_status": "HEALTH_ERR",
+        "detail": []
+    },
+    "fsid": "68a9ca14-e297-11e8-843c-00163e64b0c0",
+    "election_epoch": 3,
+    "quorum": [
+        0
+    ],
+    "quorum_names": [
+        "juju-460e0f-12"
+    ],
+    "monmap": {
+        "epoch": 1,
+        "fsid": "68a9ca14-e297-11e8-843c-00163e64b0c0",
+        "modified": "2018-11-07 14:17:27.659064",
+        "created": "2018-11-07 14:17:27.659064",
+        "mons": [
+            {
+                "rank": 0,
+                "name": "juju-460e0f-12",
+                "addr": "192.168.100.26:6789\/0"
+            }
+        ]
+    },
+    "osdmap": {
+        "osdmap": {
+            "epoch": 28,
+            "num_osds": 9,
+            "num_up_osds": 9,
+            "num_in_osds": 9,
+            "full": false,
+            "nearfull": false,
+            "num_remapped_pgs": 0
+        }
+    },
+    "pgmap": {
+        "pgs_by_state": [
+            {
+                "state_name": "creating",
+                "count": 113
+            },
+            {
+                "state_name": "active+clean",
+                "count": 64
+            },
+            {
+                "state_name": "activating",
+                "count": 8
+            },
+            {
+                "state_name": "peering",
+                "count": 7
+            }
+        ],
+        "version": 7831,
+        "num_pgs": 192,
+        "data_bytes": 1790967809,
+        "bytes_used": 9995157504,
+        "bytes_avail": 9157476352,
+        "bytes_total": 19152633856,
+        "write_bytes_sec": 89844495,
+        "read_op_per_sec": 0,
+        "write_op_per_sec": 21
+    },
+    "fsmap": {
+        "epoch": 1,
+        "by_rank": []
+    }
+}

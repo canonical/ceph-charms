@@ -1,0 +1,10 @@
+- project:
+    templates:
+      - charm-unit-jobs-py38
+      - charm-unit-jobs-py39
+      - charm-functional-jobs
+    vars:
+      needs_charm_build: true
+      charm_build_name: ceph-fs
+      build_type: charmcraft
+      charmcraft_channel: 2.x/stable
