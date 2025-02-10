@@ -1,5 +1,14 @@
 charm_name: ceph-proxy
 
+gate_bundles:
+  - noble-caracal
+
+smoke_bundles:
+  - noble-caracal
+
+dev_bundles:
+  - noble-caracal
+
 configure:
   - tests.target.setup_ceph_proxy
 
