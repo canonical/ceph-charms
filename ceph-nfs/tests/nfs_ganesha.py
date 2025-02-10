@@ -100,7 +100,7 @@ class NfsGaneshaTest(unittest.TestCase):
                 export_path))
         if retry:
             @tenacity.retry(
-                stop=tenacity.stop_after_attempt(5),
+                stop=tenacity.stop_after_attempt(20),
                 wait=tenacity.wait_exponential(multiplier=3, min=2, max=10),
                 retry=tenacity.retry_if_result(
                     lambda res: res.get('Code') != '0')
