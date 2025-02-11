@@ -1,17 +1,16 @@
 charm_name: ceph-dasboard
 gate_bundles:
-  - focal
-  - jammy
-  - jammy-bobcat
   - jammy-caracal
 smoke_bundles:
-  - focal
+  - jammy-caracal
+dev_bundles:
+  - jammy-caracal
 configure:
   - zaza.openstack.charm_tests.vault.setup.auto_initialize_no_validation
-  - zaza.openstack.charm_tests.ceph.dashboard.setup.check_dashboard_cert
-  - zaza.openstack.charm_tests.ceph.dashboard.setup.set_grafana_url
+  - tests.target.setup.check_dashboard_cert
+  - tests.target.setup.set_grafana_url
 tests:
-  - zaza.openstack.charm_tests.ceph.dashboard.tests.CephDashboardTest
+  - tests.target.CephDashboardTest
   - zaza.openstack.charm_tests.ceph.tests.CephPrometheusTest
 target_deploy_status:
   ceph-dashboard:
@@ -26,6 +25,3 @@ target_deploy_status:
   prometheus2:
     workload-status: active
     workload-status-message-prefix: Ready
-  telegraf:
-    workload-status: active
-    workload-status-message-prefix: Monitoring

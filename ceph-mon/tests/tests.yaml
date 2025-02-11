@@ -1,40 +1,11 @@
 charm_name: ceph-mon
 
-gate_bundles:
-  - jammy-yoga
-  - jammy-bobcat
-  - jammy-caracal
-
-smoke_bundles:
-  - jammy-caracal
-
-configure:
-  - install:
-    - zaza.openstack.charm_tests.glance.setup.add_lts_image
-
 tests:
-  - install:
-    - zaza.openstack.charm_tests.ceph.tests.CheckPoolTypes
-    - zaza.openstack.charm_tests.ceph.tests.CephLowLevelTest
-    - zaza.openstack.charm_tests.ceph.tests.CephTest
-    - zaza.openstack.charm_tests.ceph.osd.tests.SecurityTest
-    - zaza.openstack.charm_tests.ceph.tests.CephPrometheusTest
-    - zaza.openstack.charm_tests.ceph.mon.tests.CephPermissionUpgradeTest
-  - zaza.openstack.charm_tests.ceph.tests.CheckPoolTypes
-  - zaza.openstack.charm_tests.ceph.tests.CephLowLevelTest
-  - zaza.openstack.charm_tests.ceph.tests.CephTest
-  - zaza.openstack.charm_tests.ceph.osd.tests.SecurityTest
-  - zaza.openstack.charm_tests.ceph.tests.CephPrometheusTest
-  # Charm upgrade, then re-run tests
-  - zaza.charm_tests.lifecycle.tests.UpgradeCharmsToPath;ceph-mon
-  - zaza.openstack.charm_tests.ceph.tests.CephMonJujuPersistent
-  - zaza.openstack.charm_tests.ceph.tests.CheckPoolTypes
-  - zaza.openstack.charm_tests.ceph.tests.CephLowLevelTest
-  - zaza.openstack.charm_tests.ceph.tests.CephTest
-  - zaza.openstack.charm_tests.ceph.osd.tests.SecurityTest
-  - zaza.openstack.charm_tests.ceph.tests.CephPrometheusTest
-  # Tests from quincy.
-  - zaza.openstack.charm_tests.ceph.tests.CephAuthTest
-  - zaza.openstack.charm_tests.ceph.tests.CephMonActionsTest
-  - zaza.openstack.charm_tests.ceph.mon.tests.CephPermissionUpgradeTest
-  - zaza.openstack.charm_tests.ceph.tests.CephMonKeyRotationTests
+  - zaza.charm_tests.lifecycle.refresh.CharmRefreshAll
+  - tests.target.CephLowLevelTest
+  - tests.target.CephTest
+  - tests.target.CephPrometheusTest
+  - tests.target.CephAuthTest
+  - tests.target.CephMonActionsTest
+  - tests.target.CephMonKeyRotationTests
+  - tests.target.CephMonJujuPersistent

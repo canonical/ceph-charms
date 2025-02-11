@@ -30,14 +30,26 @@ class NfsGaneshaTest(unittest.TestCase):
     mounts_share = False
     created_share = None
 
+    def setUp(self):
+        super(NfsGaneshaTest, self).setUp()
+        ip1 = zaza.model.get_unit_public_address(
+            zaza.model.get_unit_from_name('ceph-nfs/0')
+        )
+        ip2 = zaza.model.get_unit_public_address(
+            zaza.model.get_unit_from_name('ceph-nfs/1')
+        )
+        zaza.model.set_application_config(
+            'ceph-nfs',
+            {'vip': ' '.join([str(ip1), str(ip2)])})
+
     def tearDown(self):
         if self.mounts_share:
             try:
                 zaza.utilities.generic.run_via_ssh(
-                    unit_name='ubuntu/0',
+                    unit_name='ceph-osd/0',
                     cmd='sudo umount /mnt/test && sudo rmdir /mnt/test')
                 zaza.utilities.generic.run_via_ssh(
-                    unit_name='ubuntu/1',
+                    unit_name='ceph-osd/1',
                     cmd='sudo umount /mnt/test && sudo rmdir /mnt/test')
             except subprocess.CalledProcessError:
                 logging.warning("Failed to cleanup mounts")
@@ -120,7 +132,7 @@ class NfsGaneshaTest(unittest.TestCase):
         wait=tenacity.wait_exponential(multiplier=3, min=2, max=10))
     def _verify_testing_file_on_instance(self, instance_name: str):
         run_with_juju_ssh = zaza.utilities.installers.make_juju_ssh_fn(
-            'ubuntu/1', sudo=True
+            'ceph-osd/1', sudo=True
         )
         output = run_with_juju_ssh(
             'sudo cat {}/test'.format(self.mount_dir))
@@ -130,36 +142,31 @@ class NfsGaneshaTest(unittest.TestCase):
     def test_create_share(self):
         logging.info("Creating a share")
         # Todo - enable ACL testing
-        ubuntu_0_ip = zaza.model.get_unit_public_address(
-            zaza.model.get_unit_from_name('ubuntu/0')
+        osd_0_ip = zaza.model.get_unit_public_address(
+            zaza.model.get_unit_from_name('ceph-osd/0')
         )
-        ubuntu_1_ip = zaza.model.get_unit_public_address(
-            zaza.model.get_unit_from_name('ubuntu/1')
+        osd_1_ip = zaza.model.get_unit_public_address(
+            zaza.model.get_unit_from_name('ceph-osd/1')
         )
-        share = self._create_share('test_ganesha_share', access_ip=ubuntu_0_ip)
+        share = self._create_share('test_ganesha_share', access_ip=osd_0_ip)
         # share = self._create_share('test_ganesha_share')
-        zaza.model.wait_for_application_states(states={
-            'ubuntu': {
-                "workload-status-message-regex": "^$",
-            }
-        })
         export_path = share['path']
         ip = share['ip']
-        logging.info("Mounting share on ubuntu units")
-        self._mount_share('ubuntu/0', ip, export_path)
-        logging.info("writing to the share on ubuntu/0")
-        self._write_testing_file_on_instance('ubuntu/0')
+        logging.info("Mounting share on ceph-osd units")
+        self._mount_share('ceph-osd/0', ip, export_path)
+        logging.info("writing to the share on ceph-osd/0")
+        self._write_testing_file_on_instance('ceph-osd/0')
         # Todo - enable ACL testing
         try:
-            self._mount_share('ubuntu/1', ip, export_path, retry=False)
+            self._mount_share('ceph-osd/1', ip, export_path, retry=False)
             self.fail('Mounting should not have succeeded')
         except:  # noqa: E722
             pass
-        self._grant_access('test_ganesha_share', access_ip=ubuntu_1_ip)
+        self._grant_access('test_ganesha_share', access_ip=osd_1_ip)
 
-        self._mount_share('ubuntu/1', ip, export_path)
-        logging.info("reading from the share on ubuntu/1")
-        self._verify_testing_file_on_instance('ubuntu/1')
+        self._mount_share('ceph-osd/1', ip, export_path)
+        logging.info("reading from the share on ceph-osd/1")
+        self._verify_testing_file_on_instance('ceph-osd/1')
 
     def test_list_shares(self):
         self._create_share('test_ganesha_list_share')

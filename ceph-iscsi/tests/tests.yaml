@@ -1,21 +1,15 @@
 charm_name: ceph-iscsi
 gate_bundles:
-  - focal-ec
-  - focal
-  - jammy-ec
-  - jammy
-  - jammy-reef
-  - jammy-reef-ef
+  - jammy-caracal
 smoke_bundles:
-  - jammy
+  - jammy-caracal
 dev_bundles:
-  - jammy-ec
-  - jammy
+  - jammy-caracal
 configure:
   - zaza.openstack.charm_tests.vault.setup.auto_initialize_no_validation
-  - zaza.openstack.charm_tests.ceph.iscsi.setup.basic_guest_setup
 tests:
-  - zaza.openstack.charm_tests.ceph.iscsi.tests.CephISCSIGatewayTest
+  - zaza.charm_tests.lifecycle.refresh.CharmRefreshAll
+  - tests.target.SimpleISCSITest
   - zaza.openstack.charm_tests.ceph.tests.BlueStoreCompressionCharmOperation
 target_deploy_status:
   ubuntu:

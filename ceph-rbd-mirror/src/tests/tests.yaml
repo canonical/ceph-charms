@@ -1,22 +1,17 @@
 charm_name: ceph-rbd-mirror
-smoke_bundles:
-- jammy-antelope
-gate_bundles:
-- jammy-bobcat
-comment: |
-  The e2e bundles are useful for development but adds no additional value to
-  the functional tests.
-dev_bundles:
-- focal-yoga
-- focal-yoga-image-mirroring
-- jammy-yoga
-- jammy-yoga-image-mirroring
 configure:
-- zaza.openstack.charm_tests.glance.setup.add_cirros_image
+  - tests.target.setup_rbd_mirror
 tests:
-- zaza.openstack.charm_tests.ceph.rbd_mirror.tests.CephRBDMirrorTest
-- zaza.openstack.charm_tests.ceph.rbd_mirror.tests.CephRBDMirrorControlledFailoverTest
-- zaza.openstack.charm_tests.ceph.rbd_mirror.tests.CephRBDMirrorDisasterFailoverTest
-tests_options:
-  force_deploy:
-    - jammy-caracal
+- zaza.charm_tests.lifecycle.refresh.CharmRefreshAll
+- tests.target.CephRBDMirrorTest
+- tests.target.CephRBDMirrorControlledFailoverTest
+- tests.target.CephRBDMirrorDisasterFailoverTest
+
+target_deploy_status:
+  ceph-rbd-mirror:
+    workload-status: waiting
+    workload-status-message: 'Waiting for pools to be created'
+
+  ceph-rbd-mirror-b:
+    workload-status: waiting
+    workload-status-message: 'Waiting for pools to be created'
