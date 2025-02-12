@@ -156,15 +156,7 @@ jobs:
       - name: Run the tests
         run: |
           date
-          # Cache LXD images for both VM and containers.
-          lxc launch ubuntu:22.04 ctemp
-          lxc launch ubuntu:22.04 vmtemp --vm -c limits.cpu=2 -c limits.memory=4GiB -d root,size=25GiB
-          lxc stop ctemp
-          lxc delete ctemp
-          sleep 60
-          lxc stop vmtemp
-          lxc delete vmtemp
-          # Now move on with the rest of the test.
+          ~/actionutils.sh cacheimgs "ubuntu:22.04"
           mv ~/artifacts/*.charm ./
           if [[ -f "./${{ matrix.part }}/src/tox.ini" ]]; then
             tox -c ${{ matrix.part }}/src -e func-target -- jammy-bobcat
