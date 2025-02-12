@@ -1,0 +1,8 @@
+charm_name: ceph-osd
+
+tests:
+  - zaza.charm_tests.lifecycle.refresh.CharmRefreshAll
+  - tests.target.CephLowLevelTest
+  - tests.target.CephTest
+  - tests.target.SecurityTest
+  - tests.target.ServiceTest

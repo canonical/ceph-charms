@@ -1,0 +1,7 @@
+charm_name: ceph-radosgw
+
+tests:
+    - tests.target.CephRGWTest
+    - tests.target.BlueStoreCompressionCharmOperation
+    - tests.target.CephKeyRotationTests
+

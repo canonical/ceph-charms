@@ -1,0 +1,64 @@
+demote:
+  description: |
+    Demote all primary images within given pools to non-primary.
+  params:
+    force:
+      type: boolean
+    pools:
+      type: string
+      description: |
+        Comma-separated list of pools to demote. If this is not set, all the
+        pools will be demoted.
+promote:
+  description: |
+    Promote all non-primary images within given pools to primary.
+  params:
+    force:
+      type: boolean
+    pools:
+      type: string
+      description: |
+        Comma-separated list of pools to promote. If this is not set, all the
+        pools will be promoted.
+refresh-pools:
+  description: |
+    \
+        Refresh list of pools from local and remote Ceph endpoint.
+        As a side effect, mirroring will be configured for any manually created
+        pools that the charm currently does not know about.
+resync-pools:
+  description: |
+    \
+        USE WITH CAUTION - Force image resync for all images in the given
+                           pools on local Ceph endpoint.
+  params:
+    i-really-mean-it:
+      type: boolean
+      description: |
+        This must be set to true to perform the action
+    pools:
+      type: string
+      description: |
+        Comma-separated list of pools to resync from the local Ceph endpoint.
+        If this is not set, all the pools from the local Ceph endpoint will
+        be resynced.
+  required:
+    - i-really-mean-it
+status:
+  description: |
+    Get mirror pool status
+  params:
+    verbose:
+      type: boolean
+    format:
+      type: string
+      default: plain
+      enum:
+        - plain
+        - json
+        - xml
+    pools:
+      type: string
+      description: |
+        Comma-separated list of pools to include in the status. If this is
+        not set, all the pools will be included.
