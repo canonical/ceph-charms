@@ -1,0 +1,4 @@
+# Requirements for ceph_metrics dependencies
+
+# the build process expects charms.ceph and charms.ceph_metrics be at lib/ inside the charm directory.
+../charms.ceph # charms.ceph from local repository
