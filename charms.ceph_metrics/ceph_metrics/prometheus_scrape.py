@@ -326,7 +326,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Union
 
 import yaml
-from charms.observability_libs.v0.juju_topology import JujuTopology
+from cosl import JujuTopology
 from ops.charm import CharmBase, RelationRole
 from ops.framework import BoundEvent, EventBase, EventSource, Object, ObjectEvents
 
