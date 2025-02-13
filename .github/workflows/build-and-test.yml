@@ -1,0 +1,194 @@
+name: Build/Test
+
+on:
+  workflow_call:
+  workflow_dispatch:
+    inputs:
+      part:
+        description: 'Name of the charm to build/test manually. Defaults to all charms'
+        required: false
+        default: ''
+
+jobs:
+  modifiedparts:
+    runs-on: ubuntu-latest
+    outputs:
+      parts: ${{ steps.determine-parts.outputs.parts }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # For non-manual triggered runs
+      - name: Get modified files
+        id: changed-files
+        if: ${{ github.event_name != 'workflow_dispatch' }}
+        uses: tj-actions/changed-files@v35
+        with:
+          since_last_remote_commit: false
+
+      - name: Determine charms to build/test
+        id: determine-parts
+        env:
+          INPUT_PART: ${{ inputs.part }}
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+          ALL_MOD_FILES: ${{ steps.changed-files.outputs.all_modified_files }}
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
+            if [ -n "$INPUT_PART" ]; then
+              # Manual run with a specified charm
+              components=($INPUT_PART)
+            else
+              # Manual run, no charm specified -> run all
+              components=($(find . -maxdepth 1 -type d ! -path '.' -exec bash -c '[[ -f "$0/charmcraft.yaml" ]] && basename "$0"' {} \; | sort))
+            fi
+          else
+            # Automatic run: use changed-files to determine modified charms
+            echo "Modified files to eval: ${ALL_MOD_FILES}"
+            components=()
+            # Retrieve components with a 'tox.ini' file.
+            for file in ${ALL_MOD_FILES} ; do
+              component=$(echo "$file" | cut -d "/" -f1)
+              if [[ -f "./$component/charmcraft.yaml" ]]; then
+                # This is a charm.
+                components+=("$component")
+              elif [[ -f "./$component/tox.ini" ]]; then
+                # Assume this is a library.
+                # TODO: Add dependent charms here.
+                :
+              fi
+            done
+            # Remove dups
+            components=($(echo "${components[@]}" | tr ' ' '\n' | sort -u))
+          fi
+          json_output=$(jq --compact-output --null-input '$ARGS.positional' --args -- "${components[@]}")
+          echo "Modified parts: $json_output"
+          echo "parts=$json_output" >> $GITHUB_OUTPUT
+
+  build:
+    needs: modifiedparts
+    name: Build the charm
+    runs-on: ubuntu-latest
+    if: ${{ needs.modifiedparts.outputs.parts != '[]' }}
+    strategy:
+      matrix:
+        part: ${{ fromJson(needs.modifiedparts.outputs.parts) }}
+      fail-fast: false
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get -qq install libxslt-dev libxml2-dev python3-lxml tox
+
+      - name: Run linters
+        run: tox -c ${{ matrix.part }} -e pep8
+
+      - name: Run unit tests
+        run: tox -c ${{ matrix.part }} -e py3
+
+      - name: Setup LXD
+        uses: canonical/setup-lxd@v0.1.1
+        with:
+          channel: 5.21/stable
+
+      - name: Build charm(s)
+        id: builder
+        run: |
+          sudo snap install charmcraft --classic
+          tox -c ${{ matrix.part }} -e build
+
+      - name: Upload built charm
+        uses: actions/upload-artifact@v4
+        with:
+          name: charm-${{ matrix.part }}
+          path: "./${{ matrix.part }}/*.charm"
+
+  functional-test:
+    needs:
+      - modifiedparts
+      - build
+    name: Functional tests
+    runs-on: [self-hosted, linux, amd64, X64, large, noble]
+    if: ${{ needs.modifiedparts.outputs.parts != '[]' }}
+    strategy:
+      matrix:
+        part: ${{ fromJson(needs.modifiedparts.outputs.parts) }}
+      fail-fast: false
+    steps:
+      - name: Download charm
+        uses: actions/download-artifact@v4
+        with:
+          name: charm-${{ matrix.part }}
+          path: ~/artifacts/
+
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Copy utils
+        run: cp tests/scripts/actionutils.sh $HOME
+
+      - name: Clear FORWARD firewall rules
+        run: ~/actionutils.sh cleaript
+
+      - name: Setup LXD
+        run: |
+          if [[ "$(snap list | grep -c lxd)" -eq 0 ]]; then
+            sudo snap install lxd --channel=5.21/stable
+            sudo usermod -aG lxd "$USER"
+            newgrp lxd
+            lxd init --minimal
+          fi
+
+      - name: Install dependencies
+        run: |
+          sudo apt -y install tox
+          if [ ! -d "$HOME/.local/share/juju" ]; then
+            sudo snap install juju --channel=3.6/stable
+            mkdir -p ~/.local/share/juju
+            juju bootstrap localhost localhost
+          fi
+
+          sudo snap install --classic juju-crashdump
+
+      - name: Run the tests
+        run: |
+          date
+          ~/actionutils.sh cacheimgs "ubuntu:22.04"
+          mv ~/artifacts/*.charm ./
+          if [[ -f "./${{ matrix.part }}/src/tox.ini" ]]; then
+            tox -c ${{ matrix.part }}/src -e func-target -- jammy-bobcat
+          else
+            tox -c ${{ matrix.part }} -e func-target -- jammy-bobcat
+          fi
+
+      - name: Generate crash dumps
+        if: failure()
+        run: |
+          models=$(juju models | grep zaza | awk '{print $1}' | tr -d '*')
+          rm -rf ./crashdumps
+          mkdir ./crashdumps
+          for model in $models; do
+            juju-crashdump -m $model -o ./crashdumps
+          done
+
+      - name: Upload artifacts on failure
+        uses: actions/upload-artifact@v4
+        with:
+          name: crashdumps-${{ matrix.part }}
+          path: "./crashdumps/*"
+        if: failure()
+
+      - name: Setup tmate session
+        if: ${{ failure() && runner.debug }}
+        uses: canonical/action-tmate@main
+
+      - name: Tear down models
+        if: always()
+        run: |
+          models=$(juju models | grep zaza | awk '{print $1}' | tr -d '*')
+          for model in $models; do
+            juju destroy-model --no-prompt --force --destroy-storage $model
+          done

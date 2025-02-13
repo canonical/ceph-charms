@@ -1,0 +1,123 @@
+# Copyright 2021 Canonical
+# See LICENSE file for licensing details.
+
+options:
+  debug:
+    type: boolean
+    default: False
+    description: |
+      Control debug mode. It is recommended that debug be disabled in
+      production deployments.
+  grafana-api-url:
+    type: string
+    default:
+    description: |
+      URL of grafana api. The url must be using https.
+  public-hostname:
+    type: string
+    default:
+    description: |
+      The hostname or address of the public endpoints created for the
+      dashboard
+  enable-password-policy:
+    type: boolean
+    default: True
+    description: Enable password policy
+  password-policy-check-length:
+    type: boolean
+    default: True
+    description: |
+      Reject password if it is shorter then password-policy-min-length
+  password-policy-check-oldpwd:
+    type: boolean
+    default: True
+    description: Reject password if it matches previous password.
+  password-policy-check-username:
+    type: boolean
+    default: True
+    description: Reject password if username is included in password.
+  password-policy-check-exclusion-list:
+    type: boolean
+    default: True
+    description: Reject password if it contains a word from a forbidden list.
+  password-policy-check-complexity:
+    type: boolean
+    default: True
+    description: |
+      Check password meets a complexity score of password-policy-min-complexity.
+      See https://docs.ceph.com/en/latest/mgr/dashboard/#password-policy
+  password-policy-check-sequential-chars:
+    type: boolean
+    default: True
+    description: |
+      Reject password if it contains a sequence of sequential characters. e.g.
+      a password containing '123' or 'efg' would be rejected.
+  password-policy-check-repetitive-chars:
+    type: boolean
+    default: True
+    description: |
+      Reject password if password contains consecutive repeating charachters.
+  password-policy-min-length:
+    type: int
+    default: 8
+    description: Set minimum password length.
+  password-policy-min-complexity:
+    type: int
+    default: 10
+    description: |
+      Set minimum password complexity score.
+      See https://docs.ceph.com/en/latest/mgr/dashboard/#password-policy
+  audit-api-enabled:
+    type: boolean
+    default: False
+    description: |
+        Log requests made to the dashboard REST API to the Ceph audit log.
+  audit-api-log-payload:
+    type: boolean
+    default: True
+    description: |
+      Include payload in Ceph audit logs. audit-api-enabled must be set to True
+      to enable this.,
+  motd:
+    type: string
+    default: ""
+    description: |
+        Message of the day settings. Should be in the format "severity|expires|message". Set to "" to disable.
+  saml-base-url:
+    type: string
+    default: ""
+    description: |
+        The base URL from where the Ceph dashboard is accessed. Must support the SAML protocol.
+  saml-idp-metadata:
+    type: string
+    default: ""
+    description: |
+        URL that points to the IdP metadata XML. Can be remote or local.
+  saml-username-attribute:
+    type: string
+    default: ""
+    description: |
+        The attribute that is used to get the username from the authentication response.
+  saml-idp-entity-id:
+    type: string
+    default: "uid"
+    description: |
+        Unique ID to disambiguate when more than one entity id exists on the IdP metadata.
+  ssl_cert:
+    type: string
+    default:
+    description: |
+      SSL certificate to install and use for API ports. Setting this value
+      and ssl_key will enable reverse proxying, point Neutron's entry in the
+      Keystone catalog to use https, and override any certificate and key
+      issued by Keystone (if it is configured to do so).
+  ssl_key:
+    type: string
+    default:
+    description: SSL key to use with certificate specified as ssl_cert.
+  ssl_ca:
+    type: string
+    default:
+    description: |
+      SSL CA to use with the certificate and key provided - this is only
+      required if you are providing a privately signed ssl_cert and ssl_key.

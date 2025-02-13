@@ -1,0 +1,8 @@
+.tox
+**/*.swp
+__pycache__
+.stestr/
+lib/*
+!lib/README.txt
+build
+*.charm

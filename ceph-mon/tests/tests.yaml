@@ -1,0 +1,11 @@
+charm_name: ceph-mon
+
+tests:
+  - zaza.charm_tests.lifecycle.refresh.CharmRefreshAll
+  - tests.target.CephLowLevelTest
+  - tests.target.CephTest
+  - tests.target.CephPrometheusTest
+  - tests.target.CephAuthTest
+  - tests.target.CephMonActionsTest
+  - tests.target.CephMonKeyRotationTests
+  - tests.target.CephMonJujuPersistent

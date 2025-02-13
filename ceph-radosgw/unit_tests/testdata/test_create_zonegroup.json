@@ -1,0 +1,51 @@
+{
+    "id": "3f41f138-5669-4b63-bf61-278f28fc9306",
+    "name": "brundall",
+    "api_name": "brundall",
+    "is_master": "true",
+    "endpoints": [
+        "http://10.5.100.2:80"
+    ],
+    "hostnames": [],
+    "hostnames_s3website": [],
+    "master_zone": "a69d4cd8-1881-4040-ad7c-914ca35af3b2",
+    "zones": [
+        {
+            "id": "8be215da-5316-4d12-a584-44b246285a3f",
+            "name": "brundall-west",
+            "endpoints": [
+                "http://10.5.100.2:80"
+            ],
+            "log_meta": "false",
+            "log_data": "true",
+            "bucket_index_max_shards": 0,
+            "read_only": "false",
+            "tier_type": "",
+            "sync_from_all": "true",
+            "sync_from": []
+        },
+        {
+            "id": "a69d4cd8-1881-4040-ad7c-914ca35af3b2",
+            "name": "brundall-east",
+            "endpoints": [
+                "http://10.5.100.1:80"
+            ],
+            "log_meta": "false",
+            "log_data": "true",
+            "bucket_index_max_shards": 0,
+            "read_only": "false",
+            "tier_type": "",
+            "sync_from_all": "true",
+            "sync_from": []
+        }
+    ],
+    "placement_targets": [
+        {
+            "name": "default-placement",
+            "tags": []
+        }
+    ],
+    "default_placement": "default-placement",
+    "realm_id": "793a0176-ef7d-4d97-b544-a921e19a52e7"
+}
+

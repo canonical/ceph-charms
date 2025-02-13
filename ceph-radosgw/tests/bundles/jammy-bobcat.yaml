@@ -1,0 +1,61 @@
+options:
+  source: &source distro
+
+series: jammy
+
+comment:
+- 'machines section to decide order of deployment. database sooner = faster'
+machines:
+  '0':
+  '1':
+    constraints: cores=2 mem=4G root-disk=25G virt-type=virtual-machine
+  '2':
+    constraints: cores=2 mem=4G root-disk=25G virt-type=virtual-machine
+  '3':
+    constraints: cores=2 mem=4G root-disk=25G virt-type=virtual-machine
+  '4':
+  '5':
+  '6':
+
+applications:
+  ceph-radosgw:
+    charm: ch:ceph-radosgw
+    channel: reef/edge
+    num_units: 1
+    options:
+      source: *source
+    to:
+      - '0'
+
+  ceph-osd:
+    charm: ch:ceph-osd
+    num_units: 3
+    storage:
+      osd-devices: 'loop,10G'
+    options:
+      source: *source
+      osd-devices: '/srv/ceph /dev/test-non-existent'
+    to:
+      - '1'
+      - '2'
+      - '3'
+    channel: reef/edge
+
+  ceph-mon:
+    charm: ch:ceph-mon
+    num_units: 3
+    options:
+      monitor-count: 3
+      source: *source
+    to:
+      - '4'
+      - '5'
+      - '6'
+    channel: reef/edge
+
+relations:
+  - - 'ceph-osd:mon'
+    - 'ceph-mon:osd'
+
+  - - 'ceph-radosgw:mon'
+    - 'ceph-mon:radosgw'

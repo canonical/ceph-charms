@@ -1,0 +1,19 @@
+repo: https://github.com/juju/charm-helpers
+destination: hooks/charmhelpers
+include:
+    - core
+    - cli
+    - osplatform
+    - fetch
+    - contrib.python
+    - contrib.storage.linux
+    - contrib.hahelpers:
+        - apache
+        - cluster
+    - payload.execd
+    - contrib.network.ip
+    - contrib.openstack|inc=*
+    - contrib.charmsupport
+    - contrib.hardening|inc=*
+    - contrib.hardware
+    - contrib.openstack.policyd

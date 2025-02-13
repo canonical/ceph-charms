@@ -1,0 +1,3 @@
+[client.{{ ceph_nfs.client_name  }}]
+	key = {{ ceph_client.key }}
+

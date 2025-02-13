@@ -1,0 +1,9 @@
+charm_name: ceph-nfs
+gate_bundles:
+  - jammy-bobcat
+smoke_bundles:
+  - jammy-bobcat
+configure: []
+tests:
+  - zaza.charm_tests.lifecycle.refresh.CharmRefreshAll
+  - tests.nfs_ganesha.NfsGaneshaTest
