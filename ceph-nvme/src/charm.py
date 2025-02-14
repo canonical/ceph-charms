@@ -61,6 +61,8 @@ class CephNVMECharm(ops.CharmBase):
         "mon", "allow *",
         "mgr", "allow r"]
 
+    _stored = ops.framework.StoredState()
+
     def __init__(self, *args):
         super().__init__(*args)
         self.client = ceph_client.CephClientRequires(self, 'ceph-client')
@@ -85,6 +87,7 @@ class CephNVMECharm(ops.CharmBase):
         obs(self.client.on.broker_available, self._on_ceph_relation_joined)
         obs(self.client.on.pools_available, self._on_ceph_relation_changed)
         obs(self.admin_access.on.admin_access_request, self.on_admin_access)
+        self._stored.set_default(installed_services=False)
 
     def on_peers_relation_departed(self, event):
         peers = self._peer_addrs()
@@ -123,7 +126,7 @@ class CephNVMECharm(ops.CharmBase):
         """Create a socket to communicate with the proxy."""
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         sock.bind(('0.0.0.0', 0))
-        sock.settimeout(2)
+        sock.settimeout(30)
         return sock
 
     def _msgloop(self, msg, addr=None, sock=None):
@@ -140,7 +143,8 @@ class CephNVMECharm(ops.CharmBase):
         try:
             return json.loads(sock.recv(4096))
         except TimeoutError:
-            return {'error': 'timed out waiting for a response'}
+            return {'error': {'code': -2,
+                              'message': 'timed out waiting for a response'}}
         finally:
             if orig_sock is None:
                 sock.close()
@@ -156,6 +160,12 @@ class CephNVMECharm(ops.CharmBase):
 
     def _on_ceph_relation_changed(self, event):
         """Handle the Ceph relation."""
+        if not self._stored.installed_services:
+            logger.warning('systemd services still not running')
+            event.defer()
+            self.unit.status = ops.BlockedStatus('systemd services inactive')
+            return
+
         data = self.client.get_relation_data()
         if not data:
             logger.warning('no Ceph relation data found - skipping')
@@ -167,12 +177,20 @@ class CephNVMECharm(ops.CharmBase):
             user=self.app_name, key=data['key'],
             mon_host=','.join(data['mon_hosts']),
             name='ceph.%s' % next(iter(relation)).id)
-        res = self._msgloop(msg)
-        if 'error' in res and res['error']['code'] != -1:
-            # Cluster creation failed and not because it already exists.
-            err = str(res['error'])
-            logging.error('failed to create cluster: %s' % err)
-            event.fail('error creating cluster: %s' % err)
+        res = self._msgloop(msg, addr='127.0.0.1')
+        if 'error' not in res:
+            return
+
+        try:
+            if res['error']['code'] == -1:
+                # Cluster creation failed because it already exists.
+                return
+        except Exception:
+            pass
+
+        err = str(res['error'])
+        logging.error('failed to create cluster: %s' % err)
+        event.defer()
 
     @staticmethod
     def _get_unit_addr(unit, rel_id):
@@ -434,7 +452,7 @@ class CephNVMECharm(ops.CharmBase):
         if num_max <= 0:
             num_max = len(peers)
 
-        tmp = self._msgloop(self.rpc.find(nqn=nqn))
+        tmp = self._msgloop(self.rpc.find(nqn=nqn), addr='127.0.0.1')
         if tmp and 'error' not in tmp:
             event.fail('unit already handles NQN')
             return
@@ -452,7 +470,7 @@ class CephNVMECharm(ops.CharmBase):
         self._event_set_create_results(event, bdev, joined)
 
     def on_list_endpoints_action(self, event):
-        elems = self._msgloop({'method': 'list'})
+        elems = self._msgloop({'method': 'list'}, addr='127.0.0.1')
         event.set_results({'endpoints': elems})
 
     def on_add_host_action(self, event):
@@ -492,7 +510,7 @@ class CephNVMECharm(ops.CharmBase):
 
     def on_list_hosts_action(self, event):
         nqn = event.params.get('nqn')
-        res = self._msgloop(self.rpc.host_list(nqn=nqn))
+        res = self._msgloop(self.rpc.host_list(nqn=nqn), addr='127.0.0.1')
 
         if 'error' in res:
             event.fail('NQN %s not found' % nqn)
@@ -578,10 +596,13 @@ class CephNVMECharm(ops.CharmBase):
     def _on_install(self, event):
         """Handle charm installation."""
         utils.create_dir(PROXY_WORKING_DIR)
-        self._install_systemd_services()
+        if not self._stored.installed_services:
+            self._install_systemd_services()
+            self._stored.installed_services = True
 
     def _on_start(self, event: ops.StartEvent):
         """Handle start event."""
+        self._on_install(event)
         self.unit.status = ops.ActiveStatus('ready')
 
 

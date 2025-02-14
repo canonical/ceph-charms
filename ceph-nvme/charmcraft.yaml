@@ -16,7 +16,7 @@ parts:
       ./spdk/configure --with-rbd --disable-tests --disable-unit-tests \
                        --disable-debug --disable-examples --without-golang \
                        --without-shared --without-iscsi-initiator \
-                       --disable-cet --without-daos
+                       --disable-cet --without-daos --target-arch=x86-64-v2
       make -C spdk -j `(nproc --ignore=4)`
       find ./spdk/build/bin ! -name 'nvmf_tgt' -type f -exec rm -f {} +
       find ./spdk -name '*.o' -type f -delete

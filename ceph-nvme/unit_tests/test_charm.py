@@ -25,13 +25,14 @@ import src.charm as charm
 
 
 class MockSocket:
-    def __init__(self, skip_first=False):
+    def __init__(self, skip_first=False, cached_resp={}):
         self.sendto = mock.MagicMock()
         self.sendto.side_effect = self._sendto
         self.recv = mock.MagicMock()
         self.recv.side_effect = self._recv
         self.response = None
         self.skip_first = skip_first
+        self.cached_resp = cached_resp
 
     def _sendto(self, msg, *args):
         self.response = self._compute_response(msg)
@@ -47,7 +48,10 @@ class MockSocket:
     def _compute_response(self, msg):
         msg = json.loads(msg)
         method = msg['method']
-        if method not in ('create', 'list', 'find', 'host_add', 'host_del'):
+        resp = self.cached_resp.get(method)
+        if resp is not None:
+            return resp
+        elif method not in ('create', 'list', 'find', 'host_add', 'host_del'):
             return b'{}'
 
         ret = {'nqn': 'nqn.1', 'addr': '3.3.3.3', 'port': 1,
@@ -81,7 +85,8 @@ class TestCharm(unittest.TestCase):
             'ceph-mon/0',
             {
                 'key': 'some-key',
-                'mon_hosts': '2.2.2.2'
+                'mon_hosts': '2.2.2.2',
+                'auth': 'some-auth',
             })
 
     def _check_calls(self, call_args_list, expected):
@@ -109,6 +114,21 @@ class TestCharm(unittest.TestCase):
         self.add_peers()
         self.add_ceph_relation()
         return charm, rpc_sock, event
+
+    @mock.patch.object(charm.subprocess, 'check_output')
+    def test_broken_ceph_relation(self, check_output):
+        cached_resp = {'cluster_add': b'{"error": {"code": -2}}'}
+        charm, rpc_sock, event = self._setup_mock_params(
+            check_output, cached_resp=cached_resp)
+
+        charm._stored.installed_services = True
+
+        def _fail(_):
+            raise RuntimeError("cannot call 'fail' on Pool Events")
+
+        event.fail = _fail
+        charm._on_ceph_relation_changed(event)
+        event.defer.assert_called()
 
     @mock.patch.object(charm.subprocess, 'check_output')
     def test_create(self, check_output):
