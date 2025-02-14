@@ -29,11 +29,11 @@ from tenacity import stop_after_attempt, wait_exponential, retry_if_result
 class NfsGaneshaTest(unittest.TestCase):
     mount_dir = '/mnt/test'
     share_protocol = 'nfs'
-    mounts_share = False
-    created_share = None
 
     def setUp(self):
         super(NfsGaneshaTest, self).setUp()
+        self.created_share = None
+        self.mounts_share = False
         ip1 = zaza.model.get_unit_public_address(
             zaza.model.get_unit_from_name('ceph-nfs/0')
         )
@@ -66,6 +66,7 @@ class NfsGaneshaTest(unittest.TestCase):
 
     def _create_share(self, name: str, size: int = 10,
                       access_ip: str = '0.0.0.0') -> Dict[str, str]:
+        logging.info(f"create share {name}, access_ip {access_ip}")
         action = zaza.model.run_action_on_leader(
             'ceph-nfs',
             'create-share',
@@ -77,7 +78,7 @@ class NfsGaneshaTest(unittest.TestCase):
         self.assertEqual(action.status, 'completed')
         self.created_share = name
         results = action.results
-        logging.debug("Action results: {}".format(results))
+        logging.info("create-share action: {}".format(results))
         return results
 
     def _grant_access(self, share_name: str, access_ip: str):
@@ -107,7 +108,7 @@ class NfsGaneshaTest(unittest.TestCase):
                 retry=retry_if_result(lambda res: res.get('Code') != '0')
             )
             def _do_mount():
-                logging.info(f"Mounting CephFS on {unit_name}")
+                logging.info(f"Mounting CephFS on {unit_name}: {cmd}")
                 res = model.run_on_unit(unit_name, cmd)
                 logging.info(f"Mount result: {res}")
                 return res
@@ -154,10 +155,15 @@ class NfsGaneshaTest(unittest.TestCase):
             zaza.model.get_unit_from_name('ceph-osd/1')
         )
         share = self._create_share('test_ganesha_share', access_ip=osd_0_ip)
-        # share = self._create_share('test_ganesha_share')
+        sharelist = zaza.model.run_action_on_leader(
+            'ceph-nfs',
+            'list-shares',
+            action_params={})
+        logging.info("sharelist: {}".format(sharelist.results))
+
         export_path = share['path']
         ip = share['ip']
-        logging.info("Mounting share on ceph-osd units")
+        logging.info("Mounting {} on ceph-osd units".format(export_path))
         self._mount_share('ceph-osd/0', ip, export_path)
         logging.info("writing to the share on ceph-osd/0")
         self._write_testing_file_on_instance('ceph-osd/0')

@@ -16,7 +16,8 @@ local_overlay_enabled: False
 series: noble
 applications:
   ceph-nfs:
-    charm: ../../../ceph-nfs.charm
+    charm: ch:ceph-nfs
+    channel: latest/edge
     num_units: 2
     options:
       source: *source
