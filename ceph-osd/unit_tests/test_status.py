@@ -14,6 +14,7 @@
 
 from unittest import mock
 import test_utils
+import os
 
 from unittest.mock import MagicMock, patch
 
@@ -133,3 +134,17 @@ class ServiceStatusTestCase(test_utils.CharmTestCase):
         hooks.assess_status()
         self.status_set.assert_called_with(
             'blocked', 'Invalid configuration: fake-config is invalid')
+
+    @patch.object(hooks, 'get_bdev_enable_discard')
+    def test_assess_status_update_status(self, mock_update):
+        self.relation_ids.return_value = []
+        os.environ['JUJU_HOOK_NAME'] = 'update-status'
+        hooks.assess_status()
+        mock_update.assert_not_called()
+
+    @patch.object(hooks, 'get_bdev_enable_discard')
+    def test_assess_status_config_changed(self, mock_config_changed):
+        self.relation_ids.return_value = []
+        os.environ['JUJU_HOOK_NAME'] = 'config-changed'
+        hooks.assess_status()
+        mock_config_changed.assert_called()

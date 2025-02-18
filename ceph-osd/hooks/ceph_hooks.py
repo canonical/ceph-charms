@@ -52,6 +52,7 @@ from charmhelpers.core.hookenv import (
     storage_get,
     storage_list,
     application_version_set,
+    hook_name,
 )
 from charmhelpers.core.host import (
     add_to_updatedb_prunepath,
@@ -1034,6 +1035,9 @@ def assess_status():
         if pristine:
             status_set('active',
                        'Unit is ready ({} OSD)'.format(len(running_osds)))
+
+    if hook_name() == 'update-status':
+        return
 
     try:
         get_bdev_enable_discard()
