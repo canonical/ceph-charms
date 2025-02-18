@@ -14,31 +14,8 @@
 
 from unittest import mock
 import test_utils
+
 import os
-from charmhelpers.core import hookenv
-from charmhelpers.core.hookenv import (
-    log,
-    DEBUG,
-    ERROR,
-    INFO,
-    WARNING,
-    config,
-    relation_ids,
-    related_units,
-    relation_get,
-    relation_set,
-    relations_of_type,
-    Hooks,
-    local_unit,
-    UnregisteredHookError,
-    service_name,
-    status_get,
-    status_set,
-    storage_get,
-    storage_list,
-    application_version_set,
-    hook_name,
-)
 from unittest.mock import MagicMock, patch
 
 with patch('charmhelpers.contrib.hardening.harden.harden') as mock_dec:
