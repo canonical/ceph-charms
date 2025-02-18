@@ -773,8 +773,8 @@ class ServiceTest(unittest.TestCase):
         """
         try:
             zaza_model.run_action_on_units([self.TESTED_UNIT, ], 'start',
-                                            action_params={'osds': 'all'},
-                                            raise_on_failure=True)
+                                           action_params={'osds': 'all'},
+                                           raise_on_failure=True)
         except Exception as e:
             print(f"Error running action on {self.TESTED_UNIT}: {e}")
 
