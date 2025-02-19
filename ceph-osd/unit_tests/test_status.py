@@ -15,6 +15,7 @@
 from unittest import mock
 import test_utils
 
+import os
 from unittest.mock import MagicMock, patch
 
 with patch('charmhelpers.contrib.hardening.harden.harden') as mock_dec:
@@ -133,3 +134,21 @@ class ServiceStatusTestCase(test_utils.CharmTestCase):
         hooks.assess_status()
         self.status_set.assert_called_with(
             'blocked', 'Invalid configuration: fake-config is invalid')
+
+    @patch.object(hooks, 'get_bdev_enable_discard')
+    def test_assess_status_update_status(self, mock_get_bdev_enable_discard):
+        self.relation_ids.return_value = ['mon:1']
+        os.environ['JUJU_HOOK_NAME'] = 'update-status'
+        hooks.assess_status()
+        mock_get_bdev_enable_discard.assert_not_called()
+
+    @patch.object(hooks, 'get_bdev_enable_discard')
+    @patch.object(hooks.ch_context, 'CephBlueStoreCompressionContext',
+                  lambda: MagicMock())
+    def test_assess_status_config_changed(self, mock_get_bdev_enable_discard):
+        os.environ['JUJU_HOOK_NAME'] = 'config-changed'
+        self.relation_ids.return_value = ['mon:1']
+        self.get_conf.return_value = 'monitor-bootstrap-key'
+        mock_get_bdev_enable_discard.side_effect = ValueError('Mocked error')
+        hooks.assess_status()
+        mock_get_bdev_enable_discard.assert_called()

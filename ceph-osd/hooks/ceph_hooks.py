@@ -1036,19 +1036,17 @@ def assess_status():
             status_set('active',
                        'Unit is ready ({} OSD)'.format(len(running_osds)))
 
-    if hook_name() == 'update-status':
-        return False
+    if hook_name() != 'update-status':
+        try:
+            get_bdev_enable_discard()
+        except ValueError as ex:
+            status_set('blocked', str(ex))
 
-    try:
-        get_bdev_enable_discard()
-    except ValueError as ex:
-        status_set('blocked', str(ex))
-
-    try:
-        bluestore_compression = ch_context.CephBlueStoreCompressionContext()
-        bluestore_compression.validate()
-    except ValueError as e:
-        status_set('blocked', 'Invalid configuration: {}'.format(str(e)))
+        try:
+            bluestore_comp = ch_context.CephBlueStoreCompressionContext()
+            bluestore_comp.validate()
+        except ValueError as e:
+            status_set('blocked', 'Invalid configuration: {}'.format(str(e)))
 
 
 @hooks.hook('update-status')
