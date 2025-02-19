@@ -772,11 +772,15 @@ class ServiceTest(unittest.TestCase):
         This ensures that the environment is ready for the next tests.
         """
         try:
+            action_params = {'osds': 'all'}
+            print(f"Running {self.TESTED_UNIT} with params: {action_params}")
             zaza_model.run_action_on_units([self.TESTED_UNIT, ], 'start',
-                                           action_params={'osds': 'all'},
+                                           action_params=action_params,
                                            raise_on_failure=True)
         except Exception as e:
             print(f"Error running action on {self.TESTED_UNIT}: {e}")
+            available_osds = zaza_model.get_units('ceph-osd')
+            print(f"Available OSDs: {available_osds}")
 
     @property
     def available_services(self):
