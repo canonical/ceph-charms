@@ -1037,7 +1037,7 @@ def assess_status():
                        'Unit is ready ({} OSD)'.format(len(running_osds)))
 
     if hook_name() == 'update-status':
-        return
+        return True
 
     try:
         get_bdev_enable_discard()
