@@ -1042,11 +1042,11 @@ def assess_status():
         except ValueError as ex:
             status_set('blocked', str(ex))
 
-        try:
-            bluestore_comp = ch_context.CephBlueStoreCompressionContext()
-            bluestore_comp.validate()
-        except ValueError as e:
-            status_set('blocked', 'Invalid configuration: {}'.format(str(e)))
+    try:
+        bluestore_comp = ch_context.CephBlueStoreCompressionContext()
+        bluestore_comp.validate()
+    except ValueError as e:
+        status_set('blocked', 'Invalid configuration: {}'.format(str(e)))
 
 
 @hooks.hook('update-status')
