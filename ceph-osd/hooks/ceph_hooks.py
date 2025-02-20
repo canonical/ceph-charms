@@ -784,7 +784,7 @@ def get_devices():
 
 def get_bdev_enable_discard():
     if hook_name() == 'update-status':
-        return
+        return False
     bdev_enable_discard = config('bdev-enable-discard').lower()
     if bdev_enable_discard in ['enable', 'enabled']:
         return True
@@ -1044,8 +1044,8 @@ def assess_status():
         status_set('blocked', str(ex))
 
     try:
-        bluestore_comp = ch_context.CephBlueStoreCompressionContext()
-        bluestore_comp.validate()
+        bluestore_compression = ch_context.CephBlueStoreCompressionContext()
+        bluestore_compression.validate()
     except ValueError as e:
         status_set('blocked', 'Invalid configuration: {}'.format(str(e)))
 
