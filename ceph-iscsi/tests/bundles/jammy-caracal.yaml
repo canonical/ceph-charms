@@ -34,7 +34,8 @@ applications:
       - '14'
       - '15'
   ceph-iscsi:
-    charm: ../../ceph-iscsi.charm
+    charm: ch:ceph-iscsi
+    channel: latest/edge
     num_units: 4
     options:
       gateway-metadata-pool: iscsi-foo-metadata
