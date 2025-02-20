@@ -1045,12 +1045,11 @@ def assess_status():
                                        'disabled']:
             status_set('blocked', (("Invalid value for configuration "
                        "bdev-enable-discard: %s") % bdev_enable_discard))
-        return
-
-    try:
-        get_bdev_enable_discard()
-    except ValueError as ex:
-        status_set('blocked', str(ex))
+    else:
+        try:
+            get_bdev_enable_discard()
+        except ValueError as ex:
+            status_set('blocked', str(ex))
 
     try:
         bluestore_compression = ch_context.CephBlueStoreCompressionContext()
