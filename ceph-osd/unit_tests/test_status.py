@@ -143,7 +143,7 @@ class ServiceStatusTestCase(test_utils.CharmTestCase):
         os.environ['JUJU_HOOK_NAME'] = 'update-status'
         self.get_conf.return_value = 'monitor-bootstrap-key'
         hooks.assess_status()
-        mock_should_enable_discard.assert_not_called()
+        mock_should_enable_discard.assert_called()
 
     @patch.object(hooks, 'should_enable_discard')
     @patch.object(hooks.ch_context, 'CephBlueStoreCompressionContext',

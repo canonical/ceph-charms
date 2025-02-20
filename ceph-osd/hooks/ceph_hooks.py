@@ -52,7 +52,6 @@ from charmhelpers.core.hookenv import (
     storage_get,
     storage_list,
     application_version_set,
-    hook_name,
 )
 from charmhelpers.core.host import (
     add_to_updatedb_prunepath,
@@ -783,8 +782,6 @@ def get_devices():
 
 
 def get_bdev_enable_discard():
-    if hook_name() == 'update-status':
-        return False
     bdev_enable_discard = config('bdev-enable-discard').lower()
     if bdev_enable_discard in ['enable', 'enabled']:
         return True
