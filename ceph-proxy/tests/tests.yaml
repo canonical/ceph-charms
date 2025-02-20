@@ -1,0 +1,20 @@
+charm_name: ceph-proxy
+
+configure:
+  - tests.target.setup_ceph_proxy
+
+tests:
+  - zaza.charm_tests.lifecycle.refresh.CharmRefreshAll
+  - tests.target.CephProxyTest
+  - tests.target.CephFSWithCephProxyTests
+
+target_deploy_status:
+  ceph-proxy:
+    workload-status: blocked
+    workload-status-message-prefix: "Ensure FSID and admin-key are set"
+  ceph-radosgw:
+    workload-status: waiting
+    workload-status-message-prefix: "Incomplete relations: mon"
+  ceph-fs:
+    workload-status: waiting
+    workload-status-message-prefix: "'ceph-mds' incomplete"

@@ -1,0 +1,17 @@
+charm_name: ceph-rbd-mirror
+configure:
+  - tests.target.setup_rbd_mirror
+tests:
+- zaza.charm_tests.lifecycle.refresh.CharmRefreshAll
+- tests.target.CephRBDMirrorTest
+- tests.target.CephRBDMirrorControlledFailoverTest
+- tests.target.CephRBDMirrorDisasterFailoverTest
+
+target_deploy_status:
+  ceph-rbd-mirror:
+    workload-status: waiting
+    workload-status-message: 'Waiting for pools to be created'
+
+  ceph-rbd-mirror-b:
+    workload-status: waiting
+    workload-status-message: 'Waiting for pools to be created'
