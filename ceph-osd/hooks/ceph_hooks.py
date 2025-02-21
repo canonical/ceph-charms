@@ -52,6 +52,7 @@ from charmhelpers.core.hookenv import (
     storage_get,
     storage_list,
     application_version_set,
+    hook_name,
 )
 from charmhelpers.core.host import (
     add_to_updatedb_prunepath,
@@ -1035,10 +1036,23 @@ def assess_status():
             status_set('active',
                        'Unit is ready ({} OSD)'.format(len(running_osds)))
 
-    try:
-        get_bdev_enable_discard()
-    except ValueError as ex:
-        status_set('blocked', str(ex))
+    if hook_name() == 'update-status':
+        devices = get_devices()
+        for device in devices:
+            print("device is: ", device)
+        bdev_enable_discard = config('bdev-enable-discard').lower()
+        if bdev_enable_discard not in ['enable',
+                                       'enabled',
+                                       'auto',
+                                       'disable',
+                                       'disabled']:
+            status_set('blocked', (("Invalid value for configuration "
+                       "bdev-enable-discard: %s") % bdev_enable_discard))
+    else:
+        try:
+            get_bdev_enable_discard()
+        except ValueError as ex:
+            status_set('blocked', str(ex))
 
     try:
         bluestore_compression = ch_context.CephBlueStoreCompressionContext()
