@@ -1037,9 +1037,7 @@ def assess_status():
                        'Unit is ready ({} OSD)'.format(len(running_osds)))
 
     if hook_name() == 'update-status':
-        devices = get_devices()
-        for device in devices:
-            print("Device name is ", device)
+        get_devices()
         bdev_enable_discard = config('bdev-enable-discard').lower()
         if bdev_enable_discard not in ['enable',
                                        'enabled',
