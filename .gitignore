@@ -10,3 +10,4 @@ bin
 func-results.json
 .stestr
 __pycache__
+*/build/*
