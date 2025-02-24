@@ -1,0 +1,16 @@
+charm_name: ceph-fs
+
+gate_bundles:
+  - focal-yoga
+
+smoke_bundles:
+  - focal-yoga
+
+dev_bundles:
+  - focal-yoga
+
+tests:
+  - zaza.charm_tests.lifecycle.refresh.CharmRefreshAll
+  - tests.target.CephFSTests
+  - tests.target.CharmOperationTest
+  - tests.target.CephKeyRotationTests

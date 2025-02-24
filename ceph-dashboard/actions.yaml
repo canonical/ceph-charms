@@ -1,0 +1,21 @@
+# Copyright 2021 Canonical
+# See LICENSE file for licensing details.
+
+add-user:
+  description: add a dashboard user
+  params:
+    username:
+      description: Name of user to create
+      type: string
+      default: ""
+    role:
+      description: Role to give user
+      type: string
+      default: ""
+delete-user:
+  description: delete a dashboard user
+  params:
+    username:
+      description: Name of user to delete
+      type: string
+      default: ""

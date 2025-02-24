@@ -1,0 +1,8 @@
+.stestr.conf
+.gitmodules
+.gitreview
+.gitignore
+ceph-iscsi.charm
+.zuul.yaml
+.stestr
+unit_tests
