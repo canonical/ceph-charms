@@ -9,6 +9,8 @@ parts:
     - setuptools
     build-packages:
     - git
+    - cargo
+    - rustc
 
   update-certificates:
     # Ensure that certificates in the base image are up-to-date.

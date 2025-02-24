@@ -6,9 +6,12 @@ dnspython
 netaddr
 netifaces
 pyyaml
+cosl==0.0.55
+
 # the build process expects charms.ceph and charms.ceph_metrics be at lib/ inside the charm directory.
 ./lib/charms.ceph_metrics
 ./lib/charms.ceph
+
 git+https://opendev.org/openstack/charm-ops-openstack#egg=ops_openstack
 git+https://opendev.org/openstack/charm-ops-interface-tls-certificates#egg=interface_tls_certificates
 git+https://github.com/openstack-charmers/ops-interface-ceph-iscsi-admin-access#egg=interface_ceph_iscsi_admin_access

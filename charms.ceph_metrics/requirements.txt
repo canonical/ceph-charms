@@ -1,7 +1,7 @@
 # Requirements for ceph_metrics dependencies
 ops >= 1.2.0
 tenacity
+cosl==0.0.55
+
 # the build process expects charms.ceph and charms.ceph_metrics be at lib/ inside the charm directory.
 ../charms.ceph # charms.ceph from local repository
-
-git+https://github.com/canonical/cos-lib
