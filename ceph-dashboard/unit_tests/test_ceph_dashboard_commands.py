@@ -8,9 +8,28 @@ import subprocess
 import tempfile
 import os
 
-from ceph_dashboard_commands import validate_ssl_keypair, _run_cmd
-
 from unittest.mock import patch, MagicMock
+
+from ceph_dashboard_commands import (
+    validate_ssl_keypair,
+    _run_cmd,
+    ceph_mgr_instances,
+)
+
+
+TEST_MGR_DUMP = """
+{
+    "active_name": "foomgr",
+    "active_addrs": {},
+    "available": true,
+    "standbys": [
+        {
+            "name": "barmgr",
+            "mgr_features": 4540701547738038271,
+            "available_modules": []
+        }]
+}
+"""
 
 
 class TestCephDashboardCommand(unittest.TestCase):
@@ -149,6 +168,13 @@ class TestSSLValidation(unittest.TestCase):
         """Test validation with empty inputs"""
         is_valid, message = validate_ssl_keypair(b"", b"")
         self.assertFalse(is_valid)
+
+    @patch("ceph_dashboard_commands._run_cmd")
+    def test_ceph_mgr_instances(self, run_cmd):
+        """Test retrieving ceph mgr instances"""
+        run_cmd.return_value = TEST_MGR_DUMP
+        mgrs = ceph_mgr_instances()
+        self.assertEqual(mgrs, ["foomgr", "barmgr"])
 
 
 if __name__ == "__main__":

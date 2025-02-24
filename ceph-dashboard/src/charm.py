@@ -425,17 +425,7 @@ class CephDashboardCharm(ops_openstack.core.OSBaseCharm):
         # NOTE: Clearing up of SSL key/cert is done centrally so that it can
         # be performed with consistency for all units at once.
         if self.unit.is_leader():
-            # Disable ssl
-            cmds.ceph_config_set("config/mgr/mgr/dashboard/ssl", "false")
-
-            config_keys = cmds.ceph_config_list()
-            for config in config_keys:
-                # clear all certificates.
-                if re.match("mgr/dashboard.*/crt", config):
-                    cmds.ceph_config_reset(config)
-                # clear all keys.
-                if re.match("mgr/dashboard.*/key", config):
-                    cmds.ceph_config_reset(config)
+            cmds.clean_ssl_conf()
 
     def is_ceph_dashboard_ssl_key_cert_same(
             self, key: str, cert: str, check_host: bool = False
@@ -575,30 +565,19 @@ class CephDashboardCharm(ops_openstack.core.OSBaseCharm):
             return
         self.TLS_KEY_PATH.write_bytes(key)
         self.TLS_CERT_PATH.write_bytes(cert)
+
         if ca_cert:
             ca_cert_path.write_bytes(ca_cert)
             subprocess.check_call(['update-ca-certificates'])
 
-        hostname = socket.gethostname()
-        ceph_utils.dashboard_set_ssl_certificate(
-            self.TLS_CERT_PATH,
-            hostname=hostname)
-        ceph_utils.dashboard_set_ssl_certificate_key(
+        if not self.unit.is_leader():
+            logging.debug("Unit not leader, skipping SSL config")
+            return
+        cmds.set_ssl_material(
             self.TLS_KEY_PATH,
-            hostname=hostname)
-        if self.unit.is_leader():
-            ceph_utils.mgr_config_set(
-                'mgr/dashboard/standby_behaviour',
-                'redirect')
-            ceph_utils.mgr_config_set(
-                'mgr/dashboard/ssl',
-                'true')
-            # Set the ssl artifacte without the hostname which appears to
-            # be required even though they aren't used.
-            ceph_utils.dashboard_set_ssl_certificate(
-                self.TLS_CERT_PATH)
-            ceph_utils.dashboard_set_ssl_certificate_key(
-                self.TLS_KEY_PATH)
+            self.TLS_CERT_PATH,
+        )
+
         self.kick_dashboard()
 
     def _configure_saml(self) -> None:

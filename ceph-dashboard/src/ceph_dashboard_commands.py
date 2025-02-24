@@ -6,6 +6,7 @@
 
 import json
 import os
+import re
 import socket
 import tempfile
 from typing import List, Tuple
@@ -14,6 +15,7 @@ from functools import partial
 import subprocess
 import logging
 
+import charms_ceph.utils as ceph_utils
 from charm_option import CharmCephOption
 
 logger = logging.getLogger(__name__)
@@ -220,3 +222,54 @@ def validate_ssl_keypair(cert: bytes, key: bytes) -> Tuple[bool, str]:
             os.unlink(key_path)
         except Exception:
             pass
+
+
+def clean_ssl_conf() -> None:
+    logging.debug("Cleaning SSL configuration")
+    # Disable ssl
+    ceph_config_set("config/mgr/mgr/dashboard/ssl", "false")
+
+    config_keys = ceph_config_list()
+    for config in config_keys:
+        # clear all certificates.
+        if re.match("mgr/dashboard.*/crt", config):
+            logging.debug("Removing crt %s", config)
+            ceph_config_reset(config)
+        # clear all keys.
+        if re.match("mgr/dashboard.*/key", config):
+            logging.debug("Removing key %s", config)
+            ceph_config_reset(config)
+
+
+def ceph_mgr_instances() -> list:
+    """Get ceph mgr instance names"""
+    cmd = ["ceph", "mgr", "dump"]
+    dump = json.loads(_run_cmd(cmd))
+    active_mgr = dump.get("active_name")
+    standby_mgrs = [s.get("name") for s in dump.get("standbys", [])]
+    return [active_mgr] + standby_mgrs
+
+
+def set_ssl_material(key_path, cert_path) -> None:
+    for instance in ceph_mgr_instances():
+        logging.debug(f"Setting SSL material for {instance}")
+        ceph_utils.dashboard_set_ssl_certificate(
+            cert_path,
+            hostname=instance)
+        ceph_utils.dashboard_set_ssl_certificate_key(
+            key_path,
+            hostname=instance)
+    logging.debug("Setting standby_behaviour and ssl")
+    ceph_utils.mgr_config_set(
+        'mgr/dashboard/standby_behaviour',
+        'redirect')
+    ceph_utils.mgr_config_set(
+        'mgr/dashboard/ssl',
+        'true')
+    # Set the ssl artifacte without the hostname which appears to
+    # be required even though they aren't used.
+    logging.debug("Setting SSL cert w/o hostname")
+    ceph_utils.dashboard_set_ssl_certificate(cert_path)
+    logging.debug("Setting SSL key w/o hostname")
+    ceph_utils.dashboard_set_ssl_certificate_key(key_path)
+    logging.debug("Done setting SSL material")
