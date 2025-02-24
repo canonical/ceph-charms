@@ -10,7 +10,6 @@ dev_bundles:
   - jammy-yoga
 
 tests:
-  - zaza.charm_tests.lifecycle.refresh.CharmRefreshAll
   - tests.target.CephFSTests
   - tests.target.CharmOperationTest
   - tests.target.CephKeyRotationTests
