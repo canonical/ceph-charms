@@ -1,5 +1,5 @@
 options:
-  source: &source cloud:focal-yoga
+  source: &source ppa:lmlogiudice/ceph-1728-jammy
 
 machines:
   '0':
@@ -15,7 +15,7 @@ machines:
   '7':
 
 local_overlay_enabled: False
-series: focal
+series: jammy
 applications:
   ceph-nfs:
     charm: ch:ceph-nfs

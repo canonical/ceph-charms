@@ -1,13 +1,13 @@
 charm_name: ceph-fs
 
 gate_bundles:
-  - focal-yoga
+  - jammy-yoga
 
 smoke_bundles:
-  - focal-yoga
+  - jammy-yoga
 
 dev_bundles:
-  - focal-yoga
+  - jammy-yoga
 
 tests:
   - zaza.charm_tests.lifecycle.refresh.CharmRefreshAll

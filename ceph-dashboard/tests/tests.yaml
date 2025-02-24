@@ -1,10 +1,10 @@
 charm_name: ceph-dasboard
 gate_bundles:
-  - focal-yoga
+  - jammy-yoga
 smoke_bundles:
-  - focal-yoga
+  - jammy-yoga
 dev_bundles:
-  - focal-yoga
+  - jammy-yoga
 configure:
   - zaza.openstack.charm_tests.vault.setup.auto_initialize_no_validation
   - tests.target.check_dashboard_cert
@@ -18,9 +18,6 @@ target_deploy_status:
   vault:
     workload-status: blocked
     workload-status-message-prefix: Vault needs to be initialized
-  grafana:
-    workload-status: active
-    workload-status-message-prefix: Started
   prometheus2:
     workload-status: active
     workload-status-message-prefix: Ready
