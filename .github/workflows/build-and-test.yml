@@ -96,6 +96,7 @@ jobs:
         id: builder
         run: |
           sudo snap install charmcraft --classic
+          # expects the local libraries to be already available in $charm/lib as it was done for unit tests.
           tox -c ${{ matrix.part }} -e build
 
       - name: Upload built charm
