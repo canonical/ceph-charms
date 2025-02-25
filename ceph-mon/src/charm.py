@@ -21,7 +21,7 @@ from charms_ceph.broker import (
 )
 import ceph_hooks as hooks
 import ceph_client
-import ceph_metrics
+from ceph_metrics import ceph_metrics
 
 import ops_actions
 

@@ -83,7 +83,9 @@ jobs:
         run: tox -c ${{ matrix.part }} -e pep8
 
       - name: Run unit tests
-        run: tox -c ${{ matrix.part }} -e py3
+        run: |
+          ./charm_utils.sh copy_libs ${{ matrix.part }}
+          tox -c ${{ matrix.part }} -e py3
 
       - name: Setup LXD
         uses: canonical/setup-lxd@v0.1.1
@@ -94,6 +96,7 @@ jobs:
         id: builder
         run: |
           sudo snap install charmcraft --classic
+          # expects the local libraries to be already available in $charm/lib as it was done for unit tests.
           tox -c ${{ matrix.part }} -e build
 
       - name: Upload built charm

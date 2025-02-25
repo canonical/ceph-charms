@@ -12,7 +12,7 @@ import unittest
 
 from ops.testing import Harness
 
-import ceph_metrics  # noqa: avoid circ. import
+from ceph_metrics import ceph_metrics  # noqa: avoid circ. import
 import charm
 
 
@@ -56,16 +56,16 @@ class TestCephMetrics(CephMetricsTestBase):
             "metrics-endpoint",
         )
 
-    @patch("ceph_metrics.mgr_config_set_rbd_stats_pools", lambda: None)
-    @patch("ceph_metrics.ceph_utils.is_bootstrapped", return_value=True)
-    @patch("ceph_metrics.ceph_utils.is_mgr_module_enabled", return_value=False)
-    @patch("ceph_metrics.ceph_utils.mgr_enable_module")
-    @patch("ceph_metrics.ceph_utils.mgr_disable_module")
+    @patch("ceph_metrics.ceph_metrics.ceph_utils.is_bootstrapped",
+           return_value=True)
+    @patch("ceph_metrics.ceph_metrics.ceph_utils.mgr_config_set")
+    @patch("ceph_metrics.ceph_metrics.ceph_utils.mgr_enable_module")
+    @patch("ceph_metrics.ceph_metrics.ceph_utils.mgr_disable_module")
     def test_add_remove_rel(
         self,
         mgr_disable_module,
         mgr_enable_module,
-        _is_mgr_module_enable,
+        _mgr_config_set,
         _is_bootstrapped,
     ):
         rel_id = self.harness.add_relation("metrics-endpoint", "prometheus")
@@ -106,8 +106,10 @@ class TestCephMetrics(CephMetricsTestBase):
         )
         return json.loads(app_rel_data["alert_rules"])
 
-    @patch("ceph_metrics.ceph_utils.is_bootstrapped", return_value=True)
-    @patch("ceph_metrics.CephMetricsEndpointProvider._set_alert_rules")
+    @patch("ceph_metrics.ceph_metrics.ceph_utils.is_bootstrapped",
+           return_value=True)
+    @patch("ceph_metrics.ceph_metrics.CephMetricsEndpointProvider"
+           "._set_alert_rules")
     def test_update_alert_rules_empty(
         self,
         set_alert_rules,
@@ -120,7 +122,8 @@ class TestCephMetrics(CephMetricsTestBase):
         self.harness.charm.metrics_endpoint.update_alert_rules()
         set_alert_rules.assert_called_with({})
 
-    @patch("ceph_metrics.ceph_utils.is_bootstrapped", return_value=True)
+    @patch("ceph_metrics.ceph_metrics.ceph_utils.is_bootstrapped",
+           return_value=True)
     def test_update_alert_rules_invalid(self, _is_bootstrapped):
         rel_id = self.harness.add_relation("metrics-endpoint", "prometheus")
         self.harness.add_relation_unit(rel_id, "prometheus/0")
@@ -130,7 +133,8 @@ class TestCephMetrics(CephMetricsTestBase):
             self.harness.charm.metrics_endpoint.have_alert_rule_errors()
         )
 
-    @patch("ceph_metrics.ceph_utils.is_bootstrapped", return_value=True)
+    @patch("ceph_metrics.ceph_metrics.ceph_utils.is_bootstrapped",
+           return_value=True)
     def test_update_alert_rules(self, _is_bootstrapped):
         rel_id = self.harness.add_relation("metrics-endpoint", "prometheus")
         self.harness.add_relation_unit(rel_id, "prometheus/0")
@@ -155,16 +159,16 @@ class TestCephCOSAgentProvider(CephMetricsTestBase):
             "cos-agent",
         )
 
-    @patch("ceph_metrics.mgr_config_set_rbd_stats_pools", lambda: None)
-    @patch("ceph_metrics.ceph_utils.is_bootstrapped", return_value=True)
-    @patch("ceph_metrics.ceph_utils.is_mgr_module_enabled", return_value=False)
-    @patch("ceph_metrics.ceph_utils.mgr_enable_module")
-    @patch("ceph_metrics.ceph_utils.mgr_disable_module")
+    @patch("ceph_metrics.ceph_metrics.ceph_utils.is_bootstrapped",
+           return_value=True)
+    @patch("ceph_metrics.ceph_metrics.ceph_utils.mgr_config_set")
+    @patch("ceph_metrics.ceph_metrics.ceph_utils.mgr_enable_module")
+    @patch("ceph_metrics.ceph_metrics.ceph_utils.mgr_disable_module")
     def test_add_remove_rel(
         self,
         mgr_disable_module,
         mgr_enable_module,
-        _is_mgr_module_enable,
+        _mgr_config_set,
         _is_bootstrapped,
     ):
         rel_id = self.harness.add_relation("cos-agent", "grafana-agent")

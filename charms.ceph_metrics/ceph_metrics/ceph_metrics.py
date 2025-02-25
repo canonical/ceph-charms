@@ -1,28 +1,27 @@
-# Copyright 2022 Canonical Ltd.
-# See LICENSE file for licensing details.
-
 """Provide ceph metrics to prometheus
 
 Configure prometheus scrape jobs via the metrics-endpoint relation.
 """
+
+# Copyright 2022 Canonical Ltd.
+# See LICENSE file for licensing details.
+
 import json
 import logging
 import os.path
 import pathlib
 import socket
 
-from typing import Optional, Union, List, TYPE_CHECKING
+from typing import Optional, Union, List
 
 import ops.model
+import tenacity
 
-if TYPE_CHECKING:
-    import charm
+from . import prometheus_scrape
+from . import cos_agent
 
-from charms.prometheus_k8s.v0 import prometheus_scrape
-from charms.grafana_agent.v0 import cos_agent
 from charms_ceph import utils as ceph_utils
 from ops.framework import BoundEvent
-from utils import mgr_config_set_rbd_stats_pools
 
 
 logger = logging.getLogger(__name__)
@@ -36,6 +35,22 @@ DEFAULT_CEPH_METRICS_ENDPOINT = {
     "port": 9283,
 }
 DEFAULT_ALERT_RULES_RELATIVE_PATH = "files/prometheus_alert_rules"
+
+
+@tenacity.retry(
+    wait=tenacity.wait_exponential(multiplier=1, max=10),
+    reraise=True,
+    stop=tenacity.stop_after_attempt(30))
+def mgr_config_set_rbd_stats_pools(charm):
+    """Update ceph mgr config with the value from rbd-status-pools config
+    """
+    if charm.unit.is_leader() and ceph_utils.is_bootstrapped():
+        rbd_stats_pools = charm.model.config.get('rbd-stats-pools')
+        if rbd_stats_pools:
+            ceph_utils.mgr_config_set(
+                'mgr/prometheus/rbd_stats_pools',
+                rbd_stats_pools
+            )
 
 
 class CephMetricsEndpointProvider(prometheus_scrape.MetricsEndpointProvider):
@@ -66,6 +81,7 @@ class CephMetricsEndpointProvider(prometheus_scrape.MetricsEndpointProvider):
         )
         charm._stored.set_default(alert_rule_errors=None)
 
+    
     def _on_relation_changed(self, event):
         """Enable prometheus on relation change"""
         if not self._charm.unit.is_leader():
@@ -79,7 +95,7 @@ class CephMetricsEndpointProvider(prometheus_scrape.MetricsEndpointProvider):
         logger.debug(
             "is_leader and is_bootstrapped, running rel changed: %s", event
         )
-        mgr_config_set_rbd_stats_pools()
+        mgr_config_set_rbd_stats_pools(self._charm)
         ceph_utils.mgr_enable_module("prometheus")
         logger.debug("module_enabled")
         self.update_alert_rules()
@@ -175,7 +191,7 @@ class CephCOSAgentProvider(cos_agent.COSAgentProvider):
             return
         logger.debug("refreshing cos_agent relation")
         if self._charm.unit.is_leader():
-            mgr_config_set_rbd_stats_pools()
+            mgr_config_set_rbd_stats_pools(self._charm)
             ceph_utils.mgr_enable_module("prometheus")
         super()._on_refresh(event)
 
