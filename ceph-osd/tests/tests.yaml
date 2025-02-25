@@ -1,0 +1,16 @@
+charm_name: ceph-osd
+
+gate_bundles:
+  - jammy-yoga
+
+smoke_bundles:
+  - jammy-yoga
+
+dev_bundles:
+  - jammy-yoga
+
+tests:
+  - tests.target.CephLowLevelTest
+  - tests.target.CephTest
+  - tests.target.SecurityTest
+  - tests.target.ServiceTest

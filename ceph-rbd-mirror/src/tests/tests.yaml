@@ -1,0 +1,26 @@
+charm_name: ceph-rbd-mirror
+
+gate_bundles:
+  - jammy-yoga
+
+smoke_bundles:
+  - jammy-yoga
+
+dev_bundles:
+  - jammy-yoga
+
+configure:
+  - tests.target.setup_rbd_mirror
+tests:
+- tests.target.CephRBDMirrorTest
+- tests.target.CephRBDMirrorControlledFailoverTest
+- tests.target.CephRBDMirrorDisasterFailoverTest
+
+target_deploy_status:
+  ceph-rbd-mirror:
+    workload-status: waiting
+    workload-status-message: 'Waiting for pools to be created'
+
+  ceph-rbd-mirror-b:
+    workload-status: waiting
+    workload-status-message: 'Waiting for pools to be created'

@@ -1,0 +1,24 @@
+charm_name: ceph-proxy
+
+gate_bundles:
+  - jammy-yoga
+
+smoke_bundles:
+  - jammy-yoga
+
+dev_bundles:
+  - jammy-yoga
+
+configure:
+  - tests.target.setup_ceph_proxy
+
+tests:
+  - tests.target.CephProxyTest
+
+target_deploy_status:
+  ceph-proxy:
+    workload-status: blocked
+    workload-status-message-prefix: "Ensure FSID and admin-key are set"
+  ceph-radosgw:
+    workload-status: waiting
+    workload-status-message-prefix: "Incomplete relations: mon"

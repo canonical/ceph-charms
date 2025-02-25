@@ -1,0 +1,80 @@
+# Copyright 2022 Canonical
+# See LICENSE file for licensing details.
+
+create-share:
+  description: Create a new CephFS Backed NFS export
+  params:
+    allowed-ips:
+      description: |
+        Comma separated list of IP Addresses to grant Read/Write access to.
+        The default allows read/write access to any address that cana access
+        this application.
+      type: string
+      default: "0.0.0.0/0"
+    size:
+      description: |
+        Size in gigabytes of the share. When unset, the share will not be
+        restricted in size.
+      type: integer
+      default:
+    name:
+      description: |
+        Name of the share that will be exported.
+      type: string
+      default:
+grant-access:
+  description: |
+    Grant the specified client access to a share.
+  params:
+    name:
+      description: Name of the share
+      type: string
+      default:
+    client:
+      description: IP address or network to change access for
+      type: string
+      default:
+resize-share:
+  description: |
+    Resize a specified share.
+  params:
+    name:
+      description: Name of the share
+      type: string
+      default:
+    size:
+      description: What size (GB) should the share be
+      type: integer
+      default:
+
+revoke-access:
+  description: |
+    Revoke the specified client's access to a share.
+  params:
+    name:
+      description: Name of the share
+      type: string
+      default:
+    client:
+      description: IP address or network to change access for
+      type: string
+      default:
+
+delete-share:
+  description: |
+    Delete a CephFS Backed NFS export. Note that this does not delete
+    the backing CephFS share.
+  params:
+    name:
+      description: |
+        Name of the share that will be deleted. If this share doesn't
+        exist then this action will have no effect.
+      type: string
+      default:
+    purge:
+      type: boolean
+      default: False
+      description: Delete the backing CephFS share as well.
+list-shares:
+  description: List all shares that this application is managing
+# TODO: Update, delete share

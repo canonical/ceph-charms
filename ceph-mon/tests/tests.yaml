@@ -1,0 +1,19 @@
+charm_name: ceph-mon
+
+gate_bundles:
+  - jammy-yoga
+
+smoke_bundles:
+  - jammy-yoga
+
+dev_bundles:
+  - jammy-yoga
+
+tests:
+  - tests.target.CephLowLevelTest
+  - tests.target.CephTest
+  - tests.target.CephPrometheusTest
+  - tests.target.CephAuthTest
+  - tests.target.CephMonActionsTest
+  - tests.target.CephMonKeyRotationTests
+  - tests.target.CephMonJujuPersistent
