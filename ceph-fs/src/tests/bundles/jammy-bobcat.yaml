@@ -1,5 +1,5 @@
 variables:
-  openstack-origin: &openstack-origin distro
+  openstack-origin: &openstack-origin ppa:lmlogiudice/ceph-1728-jammy
 
 series: &series jammy
 

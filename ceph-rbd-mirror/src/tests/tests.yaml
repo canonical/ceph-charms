@@ -1,4 +1,8 @@
 charm_name: ceph-rbd-mirror
+
+dev_bundles:
+  - jammy-bobcat
+
 configure:
   - tests.target.setup_rbd_mirror
 tests:

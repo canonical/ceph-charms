@@ -1,7 +1,7 @@
 series: &series jammy
 
 variables:
-  openstack-origin: &openstack-origin distro
+  openstack-origin: &openstack-origin ppa:lmlogiudice/ceph-1728-jammy
 
 machines:
   '0':
@@ -20,6 +20,7 @@ applications:
     channel: reef/edge
     num_units: 3
     options:
+      source: *openstack-origin
       monitor-count: 3
     to:
       - '0'
@@ -30,6 +31,8 @@ applications:
     charm: ch:ceph-osd
     num_units: 3
     channel: reef/edge
+    options:
+      source: *openstack-origin
     storage:
       osd-devices: 'loop,10G'
     to:

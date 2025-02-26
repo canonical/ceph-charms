@@ -3,6 +3,9 @@ gate_bundles:
   - jammy-bobcat
 smoke_bundles:
   - jammy-bobcat
+dev_bundles:
+  - jammy-bobcat
+
 configure:
   - zaza.openstack.charm_tests.vault.setup.auto_initialize_no_validation
   - tests.target.check_dashboard_cert

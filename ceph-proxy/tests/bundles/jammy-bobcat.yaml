@@ -1,5 +1,8 @@
 series: jammy
 
+variables:
+  openstack-origin: &openstack-origin ppa:lmlogiudice/ceph-1728-jammy
+
 machines:
   '0':
     constraints: cores=2 mem=4G root-disk=25G virt-type=virtual-machine
@@ -16,6 +19,8 @@ applications:
   ceph-osd:
     charm: ch:ceph-osd
     num_units: 3
+    options:
+      source: *openstack-origin
     storage:
       osd-devices: 'loop,10G'
     to:
@@ -28,6 +33,7 @@ applications:
     charm: ch:ceph-mon
     num_units: 3
     options:
+      source: *openstack-origin
       expected-osd-count: 3
     channel: reef/edge
     to:
@@ -40,19 +46,23 @@ applications:
     channel: reef/edge
     num_units: 1
     options:
-      source: distro
+      source: *openstack-origin
     to:
       - '6'
 
   ceph-radosgw:
     charm: ch:ceph-radosgw
     num_units: 1
+    options:
+      source: *openstack-origin
     channel: reef/edge
 
   ceph-fs:
     charm: ch:ceph-fs
     channel: reef/edge
     num_units: 1
+    options:
+      source: *openstack-origin
     to:
       - '2'
 

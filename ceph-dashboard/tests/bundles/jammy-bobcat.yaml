@@ -1,8 +1,8 @@
 local_overlay_enabled: False
 series: jammy
 variables:
-  openstack-origin: &openstack-origin distro
-  source: &source distro
+  openstack-origin: &openstack-origin ppa:lmlogiudice/ceph-1728-jammy
+  source: &source ppa:lmlogiudice/ceph-1728-jammy
 
 machines:
   '0':

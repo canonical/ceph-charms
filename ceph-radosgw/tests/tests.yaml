@@ -1,5 +1,8 @@
 charm_name: ceph-radosgw
 
+dev_bundles:
+  - jammy-bobcat
+
 tests:
     - tests.target.CephRGWTest
     - tests.target.BlueStoreCompressionCharmOperation
