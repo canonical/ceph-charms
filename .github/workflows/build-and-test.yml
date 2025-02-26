@@ -23,8 +23,6 @@ jobs:
         id: changed-files
         if: ${{ github.event_name != 'workflow_dispatch' }}
         uses: tj-actions/changed-files@v35
-        with:
-          since_last_remote_commit: false
 
       - name: Determine charms to build/test
         id: determine-parts
@@ -101,7 +99,7 @@ jobs:
       - name: Upload built charm
         uses: actions/upload-artifact@v4
         with:
-          name: charm-${{ matrix.part }}
+          name: charm-artifact-${{ matrix.part }}
           path: "./${{ matrix.part }}/*.charm"
 
   functional-test:
@@ -119,7 +117,8 @@ jobs:
       - name: Download charm
         uses: actions/download-artifact@v4
         with:
-          name: charm-${{ matrix.part }}
+          pattern: charm-artifact-*
+          merge-multiple: true
           path: ~/artifacts/
 
       - name: Checkout code
@@ -142,26 +141,20 @@ jobs:
             lxd init --minimal
           fi
 
-      - name: Install dependencies
+      - name: Install and configure tests
         run: |
-          sudo apt -y install tox
-          if [ ! -d "$HOME/.local/share/juju" ]; then
-            sudo snap install juju --channel=3.6/stable
-            mkdir -p ~/.local/share/juju
-            juju bootstrap localhost localhost
-          fi
-
-          sudo snap install --classic juju-crashdump
+          date
+          ~/actionutils.sh setup_functest
+          ~/actionutils.sh cacheimgs "ubuntu@22.04"
 
       - name: Run the tests
         run: |
           date
-          ~/actionutils.sh cacheimgs "ubuntu:22.04"
           mv ~/artifacts/*.charm ./
           if [[ -f "./${{ matrix.part }}/src/tox.ini" ]]; then
-            tox -c ${{ matrix.part }}/src -e func-target -- jammy-bobcat
+            tox -c ${{ matrix.part }}/src -e func-dev
           else
-            tox -c ${{ matrix.part }} -e func-target -- jammy-bobcat
+            tox -c ${{ matrix.part }} -e func-dev
           fi
 
       - name: Generate crash dumps
