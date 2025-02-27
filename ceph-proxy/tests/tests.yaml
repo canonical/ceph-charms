@@ -1,5 +1,8 @@
 charm_name: ceph-proxy
 
+dev_bundles:
+  - jammy-bobcat
+
 configure:
   - tests.target.setup_ceph_proxy
 

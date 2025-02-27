@@ -3,6 +3,9 @@ gate_bundles:
   - jammy-bobcat
 smoke_bundles:
   - jammy-bobcat
+dev_bundles:
+  - jammy-bobcat
+
 configure: []
 tests:
   - zaza.charm_tests.lifecycle.refresh.CharmRefreshAll
