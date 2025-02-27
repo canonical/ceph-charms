@@ -6,6 +6,7 @@ dnspython
 netaddr
 netifaces
 pyyaml
+pydantic<2
 cosl==0.0.55
 
 # the build process expects charms.ceph and charms.ceph_metrics be at lib/ inside the charm directory.
