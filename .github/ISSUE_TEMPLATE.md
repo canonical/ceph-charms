@@ -1,8 +1,8 @@
 # Issue report
 
-## What version of Charm MicroCeph are you using ?
+## What version of Charmed Ceph are you using ?
 
-Use this section to describe the channel/revision which produces the unexpected behaviour.
+Use this section to describe the charms with channel/revision which produces the unexpected behaviour.
 This information can be fetched from juju.
 
 ## What are the steps to reproduce this issue ?
