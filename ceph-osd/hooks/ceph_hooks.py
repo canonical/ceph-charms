@@ -1039,7 +1039,7 @@ def assess_status():
     if hook_name() == 'update-status':
         devices = get_devices()
         for device in devices:
-            print("device is: ", device)
+            print("device is : ", device)
         bdev_enable_discard = config('bdev-enable-discard').lower()
         if bdev_enable_discard not in ['enable',
                                        'enabled',
