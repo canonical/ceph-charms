@@ -773,7 +773,7 @@ class ServiceTest(unittest.TestCase):
         """
         zaza_model.run_action_on_units([self.TESTED_UNIT, ], 'start',
                                        action_params={'osds': 'all'},
-                                       raise_on_failure=False)
+                                       raise_on_failure=True)
 
     @property
     def available_services(self):
