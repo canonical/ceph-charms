@@ -1,0 +1,16 @@
+charm_name: ceph-nfs
+gate_bundles:
+  - jammy-caracal
+smoke_bundles:
+  - jammy-caracal
+dev_bundles:
+  - jammy-caracal
+
+configure: []
+tests:
+  - zaza.charm_tests.lifecycle.refresh.CharmRefreshAll
+  - tests.nfs_ganesha.NfsGaneshaTest
+target_deploy_status:
+  ubuntu:
+    workload-status: active
+    workload-status-message-prefix: ''

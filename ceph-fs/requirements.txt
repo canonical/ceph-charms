@@ -1,0 +1,10 @@
+# NOTE: newer versions of cryptography require a Rust compiler to build,
+# see
+# * https://github.com/openstack-charmers/zaza/issues/421
+# * https://mail.python.org/pipermail/cryptography-dev/2021-January/001003.html
+#
+cryptography<3.4
+
+git+https://github.com/juju/charm-tools.git
+
+simplejson

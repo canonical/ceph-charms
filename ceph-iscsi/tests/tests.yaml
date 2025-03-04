@@ -1,0 +1,20 @@
+charm_name: ceph-iscsi
+gate_bundles:
+  - jammy-caracal
+smoke_bundles:
+  - jammy-caracal
+dev_bundles:
+  - jammy-caracal
+configure:
+  - zaza.openstack.charm_tests.vault.setup.auto_initialize_no_validation
+tests:
+  - zaza.charm_tests.lifecycle.refresh.CharmRefreshAll
+  - tests.target.SimpleISCSITest
+  - zaza.openstack.charm_tests.ceph.tests.BlueStoreCompressionCharmOperation
+target_deploy_status:
+  ubuntu:
+    workload-status: active
+    workload-status-message-prefix: ''
+  vault:
+    workload-status: blocked
+    workload-status-message-prefix: Vault needs to be initialized

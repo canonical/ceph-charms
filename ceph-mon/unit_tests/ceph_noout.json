@@ -1,0 +1,206 @@
+{
+    "health": {
+        "health": {
+            "health_services": [
+                {
+                    "mons": [
+                        {
+                            "name": "juju-c62a41-21-lxd-0",
+                            "kb_total": 334602320,
+                            "kb_used": 2127960,
+                            "kb_avail": 315454468,
+                            "avail_percent": 94,
+                            "last_updated": "2018-11-08 09:47:09.932189",
+                            "store_stats": {
+                                "bytes_total": 34880542,
+                                "bytes_sst": 0,
+                                "bytes_log": 1647123,
+                                "bytes_misc": 33233419,
+                                "last_updated": "0.000000"
+                            },
+                            "health": "HEALTH_WARN"
+                        },
+                        {
+                            "name": "juju-c62a41-24-lxd-0",
+                            "kb_total": 334602320,
+                            "kb_used": 2128116,
+                            "kb_avail": 315454312,
+                            "avail_percent": 94,
+                            "last_updated": "2018-11-08 09:47:16.418007",
+                            "store_stats": {
+                                "bytes_total": 36811676,
+                                "bytes_sst": 0,
+                                "bytes_log": 3574345,
+                                "bytes_misc": 33237331,
+                                "last_updated": "0.000000"
+                            },
+                            "health": "HEALTH_OK"
+                        },
+                        {
+                            "name": "juju-c62a41-25-lxd-0",
+                            "kb_total": 334602320,
+                            "kb_used": 2128860,
+                            "kb_avail": 315453568,
+                            "avail_percent": 94,
+                            "last_updated": "2018-11-08 09:47:21.198816",
+                            "store_stats": {
+                                "bytes_total": 37388424,
+                                "bytes_sst": 0,
+                                "bytes_log": 4151569,
+                                "bytes_misc": 33236855,
+                                "last_updated": "0.000000"
+                            },
+                            "health": "HEALTH_OK"
+                        }
+                    ]
+                }
+            ]
+        },
+        "timechecks": {
+            "epoch": 14,
+            "round": 4480,
+            "round_status": "finished",
+            "mons": [
+                {
+                    "name": "juju-c62a41-21-lxd-0",
+                    "skew": 0.000000,
+                    "latency": 0.000000,
+                    "health": "HEALTH_OK"
+                },
+                {
+                    "name": "juju-c62a41-24-lxd-0",
+                    "skew": 0.000282,
+                    "latency": 0.000989,
+                    "health": "HEALTH_OK"
+                },
+                {
+                    "name": "juju-c62a41-25-lxd-0",
+                    "skew": -0.001223,
+                    "latency": 0.000776,
+                    "health": "HEALTH_OK"
+                }
+            ]
+        },
+        "summary": [
+            {
+                "severity": "HEALTH_WARN",
+                "summary": "noout flag(s) set"
+            },
+            {
+                "severity": "HEALTH_WARN",
+                "summary": "19 pgs backfill_wait"
+            },
+            {
+                "severity": "HEALTH_WARN",
+                "summary": "4 pgs backfilling"
+            },
+            {
+                "severity": "HEALTH_WARN",
+                "summary": "1 pgs peering"
+            },
+            {
+                "severity": "HEALTH_WARN",
+                "summary": "24 pgs stuck unclean"
+            },
+            {
+                "severity": "HEALTH_WARN",
+                "summary": "recovery 17386\/112794 objects misplaced (15.414%)"
+            },
+            {
+                "severity": "HEALTH_WARN",
+                "summary": "pool pool1 has many more objects per pg than average (too few pgs?)"
+            },
+            {
+                "severity": "HEALTH_WARN",
+                "summary": "nodeep-scrub flag(s) set"
+            }
+        ],
+        "overall_status": "HEALTH_WARN",
+        "detail": []
+    },
+    "fsid": "66af7af5-2f60-4e0e-94dc-49f49bd37284",
+    "election_epoch": 14,
+    "quorum": [
+        0,
+        1,
+        2
+    ],
+    "quorum_names": [
+        "juju-c62a41-21-lxd-0",
+        "juju-c62a41-24-lxd-0",
+        "juju-c62a41-25-lxd-0"
+    ],
+    "monmap": {
+        "epoch": 2,
+        "fsid": "66af7af5-2f60-4e0e-94dc-49f49bd37284",
+        "modified": "2018-10-31 15:37:56.902830",
+        "created": "2018-10-31 15:37:40.288870",
+        "mons": [
+            {
+                "rank": 0,
+                "name": "juju-c62a41-21-lxd-0",
+                "addr": "100.84.195.4:6789\/0"
+            },
+            {
+                "rank": 1,
+                "name": "juju-c62a41-24-lxd-0",
+                "addr": "100.84.196.4:6789\/0"
+            },
+            {
+                "rank": 2,
+                "name": "juju-c62a41-25-lxd-0",
+                "addr": "100.84.196.5:6789\/0"
+            }
+        ]
+    },
+    "osdmap": {
+        "osdmap": {
+            "epoch": 316,
+            "num_osds": 48,
+            "num_up_osds": 48,
+            "num_in_osds": 48,
+            "full": false,
+            "nearfull": false,
+            "num_remapped_pgs": 22
+        }
+    },
+    "pgmap": {
+        "pgs_by_state": [
+            {
+                "state_name": "active+clean",
+                "count": 3448
+            },
+            {
+                "state_name": "active+remapped+wait_backfill",
+                "count": 19
+            },
+            {
+                "state_name": "active+remapped+backfilling",
+                "count": 4
+            },
+            {
+                "state_name": "peering",
+                "count": 1
+            }
+        ],
+        "version": 141480,
+        "num_pgs": 3472,
+        "data_bytes": 157009583781,
+        "bytes_used": 487185850368,
+        "bytes_avail": 75282911256576,
+        "bytes_total": 75770097106944,
+        "misplaced_objects": 17386,
+        "misplaced_total": 112794,
+        "misplaced_ratio": 0.154139,
+        "recovering_objects_per_sec": 436,
+        "recovering_bytes_per_sec": 1832614589,
+        "recovering_keys_per_sec": 0,
+        "num_objects_recovered": 446,
+        "num_bytes_recovered": 1870659584,
+        "num_keys_recovered": 0
+    },
+    "fsmap": {
+        "epoch": 1,
+        "by_rank": []
+    }
+}
