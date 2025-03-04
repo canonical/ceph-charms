@@ -337,11 +337,20 @@ def should_enable_discard(devices):
 
 
 def is_sata30orless(device):
+    db = unitdata.kv()
+    key = '%s_is_sata30orless' % str(device)
+    if db.get(key) is not None:
+        value = db.get(key)
+        log('is_sata30orless: Using cached value %s' % value, level='DEBUG')
+        return value
+
     result = subprocess.check_output(["/usr/sbin/smartctl", "-i", device])
     print(result)
     for line in str(result).split("\\n"):
         if re.match(r"SATA Version is: *SATA (1\.|2\.|3\.0)", str(line)):
+            db.set(key, True)
             return True
+    db.set(key, False)
     return False
 
 
