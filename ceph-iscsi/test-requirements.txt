@@ -1,0 +1,10 @@
+coverage>=3.6
+mock>=1.2
+flake8
+stestr>=2.2.0
+requests>=2.18.4
+psutil
+git+https://github.com/openstack-charmers/zaza.git#egg=zaza
+git+https://github.com/openstack-charmers/zaza-openstack-tests.git#egg=zaza.openstack
+pyudev  # for ceph-* charm unit tests (not mocked?)
+protobuf<3.21.0  # https://github.com/juju/python-libjuju/issues/914

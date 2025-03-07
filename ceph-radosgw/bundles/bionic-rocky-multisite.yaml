@@ -1,0 +1,73 @@
+options:
+  source: &source cloud:bionic-rocky
+series: bionic
+applications:
+  east-ceph-radosgw:
+    charm: cs:~openstack-charmers-next/ceph-radosgw-multisite
+    num_units: 1
+    options:
+      source: *source
+      realm: testrealm
+      zonegroup: testzonegroup
+      zone: east-1
+      region: east-1
+  east-ceph-osd:
+    charm: cs:~openstack-charmers-next/ceph-osd
+    num_units: 3
+    storage:
+      osd-devices: 'cinder,10G'
+    options:
+      source: *source
+  east-ceph-mon:
+    charm: cs:~openstack-charmers-next/ceph-mon
+    num_units: 3
+    options:
+      source: *source
+  west-ceph-radosgw:
+    charm: cs:~openstack-charmers-next/ceph-radosgw-multisite
+    num_units: 1
+    options:
+      source: *source
+      realm: testrealm
+      zonegroup: testzonegroup
+      zone: west-1
+      region: west-1
+  west-ceph-osd:
+    charm: cs:~openstack-charmers-next/ceph-osd
+    num_units: 3
+    storage:
+      osd-devices: 'cinder,10G'
+    options:
+      source: *source
+  west-ceph-mon:
+    charm: cs:~openstack-charmers-next/ceph-mon
+    num_units: 3
+    options:
+      source: *source
+  percona-cluster:
+    charm: cs:~openstack-charmers-next/percona-cluster
+    num_units: 1
+  keystone:
+    expose: True
+    charm: cs:~openstack-charmers-next/keystone
+    num_units: 1
+    options:
+      openstack-origin: *source
+      region: "east-1 west-1"
+relations:
+- - keystone:shared-db
+  - percona-cluster:shared-db
+- - east-ceph-osd:mon
+  - east-ceph-mon:osd
+- - east-ceph-radosgw:mon
+  - east-ceph-mon:radosgw
+- - east-ceph-radosgw:identity-service
+  - keystone:identity-service
+- - west-ceph-osd:mon
+  - west-ceph-mon:osd
+- - west-ceph-radosgw:mon
+  - west-ceph-mon:radosgw
+- - west-ceph-radosgw:identity-service
+  - keystone:identity-service
+- - west-ceph-radosgw:master
+  - east-ceph-radosgw:slave

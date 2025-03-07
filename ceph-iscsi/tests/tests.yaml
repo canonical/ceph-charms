@@ -1,0 +1,17 @@
+charm_name: ceph-iscsi
+
+gate_bundles:
+  - jammy-caracal
+
+smoke_bundles:
+  - jammy-caracal
+
+dev_bundles:
+  - jammy-caracal
+
+configure:
+  - tests.target.basic_guest_setup
+tests:
+  - zaza.charm_tests.lifecycle.refresh.CharmRefreshAll
+  - tests.target.CephISCSIGatewayTest
+
