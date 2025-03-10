@@ -1,9 +1,0 @@
-/var/log/{{ logrotate_logs_location }}/*.log {
-    {{ logrotate_interval }}
-    {{ logrotate_count }}
-    compress
-    delaycompress
-    missingok
-    notifempty
-    copytruncate
-}

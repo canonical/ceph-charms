@@ -1,4 +1,0 @@
-- project:
-    templates:
-      - openstack-python3-charm-yoga-jobs
-      - openstack-cover-jobs

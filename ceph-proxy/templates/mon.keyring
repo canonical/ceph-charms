@@ -1,3 +1,0 @@
-[{{ admin_user }}]
-  key = {{admin_key}}
-

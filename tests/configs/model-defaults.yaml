@@ -1,4 +1,0 @@
-test-mode: true
-automatically-retry-hooks: true
-logging-config: "<root>=DEBUG"
-enable-os-upgrade: false
