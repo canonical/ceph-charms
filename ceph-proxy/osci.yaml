@@ -1,0 +1,42 @@
+- project:
+    templates:
+      - charm-unit-jobs-py38
+      - charm-unit-jobs-py39
+      - charm-unit-jobs-py310
+      - charm-functional-jobs
+    check:
+      jobs:
+      - jammy-yoga-ec
+      - lunar-antelope-ec:
+          voting: false
+      - mantic-bobcat-ec:
+          voting: false
+    vars:
+      needs_charm_build: true
+      charm_build_name: ceph-proxy
+      build_type: charmcraft
+      charmcraft_channel: 2.x/stable
+- job:
+    name: jammy-yoga-ec
+    parent: func-target
+    dependencies:
+      - osci-lint
+      - charm-build
+      - name: tox-py310
+        soft: true
+    vars:
+      tox_extra_args: '-- erasure-coded:jammy-yoga-ec'
+- job:
+    name: lunar-antelope-ec
+    parent: func-target
+    dependencies:
+      - jammy-yoga-ec
+    vars:
+      tox_extra_args: -- erasure-coded:lunar-antelope-ec
+- job:
+    name: mantic-bobcat-ec
+    parent: func-target
+    dependencies:
+      - jammy-yoga-ec
+    vars:
+      tox_extra_args: -- erasure-coded:mantic-bobcat-ec

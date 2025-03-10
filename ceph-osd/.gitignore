@@ -1,0 +1,14 @@
+.coverage
+.project
+.tox
+.testrepository
+.stestr
+bin
+*.sw[nop]
+*.charm
+*.pyc
+.unit-state.db
+.idea
+func-results.json
+*__pycache__
+.settings

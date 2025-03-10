@@ -1,0 +1,68 @@
+# Copyright 2021 OpenStack Charmers
+# See LICENSE file for licensing details.
+#
+# TEMPLATE-TODO: change this example to suit your needs.
+# If you don't need a config, you can remove the file entirely.
+# It ties in to the example _on_config_changed handler in src/charm.py
+#
+# Learn more about config at: https://juju.is/docs/sdk/config
+
+options:
+  source:
+    type: string
+    default: caracal
+    description: |
+      Optional configuration to support use of additional sources such as:
+        - ppa:myteam/ppa
+        - cloud:trusty-proposed/kilo
+        - http://my.archive.com/ubuntu main
+      The last option should be used in conjunction with the key configuration
+      option.
+      Note that a minimum ceph version of 0.48.2 is required for use with this
+      charm which is NOT provided by the packages in the main Ubuntu archive
+      for precise but is provided in the Ubuntu cloud archive.
+  key:
+    type: string
+    default:
+    description: |
+      Key ID to import to the apt keyring to support use with arbitary source
+      configuration from outside of Launchpad archives or PPA's.
+  ceph-osd-replication-count:
+    type: int
+    default: 3
+    description: |
+      This value dictates the number of replicas ceph must make of any
+      object it stores within the images rbd pool. Of course, this only
+      applies if using Ceph as a backend store. Note that once the images
+      rbd pool has been created, changing this value will not have any
+      effect (although it can be changed in ceph by manually configuring
+      your ceph cluster).
+  ceph-pool-weight:
+    type: int
+    default: 5
+    description: |
+      Defines a relative weighting of the pool as a percentage of the total
+      amount of data in the Ceph cluster. This effectively weights the number
+      of placement groups for the pool created to be appropriately portioned
+      to the amount of data expected. For example, if the compute images
+      for the OpenStack compute instances are expected to take up 20% of the
+      overall configuration then this value would be specified as 20. Note -
+      it is important to choose an appropriate value for the pool weight as
+      this directly affects the number of placement groups which will be
+      created for the pool. The number of placement groups for a pool can
+      only be increased, never decreased - so it is important to identify the
+      percent of data that will likely reside in the pool.
+  rbd-pool-name:
+    default:
+    type: string
+    description: |
+      Optionally specify an existing pool that Ganesha should store recovery
+      data into. Defaults to the application's name.
+  vip:
+    type: string
+    default:
+    description: |
+      Virtual IP(s) to use to front API services in HA configuration.
+      .
+      If multiple networks are being used, a VIP should be provided for each
+      network, separated by spaces.

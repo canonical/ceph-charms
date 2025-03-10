@@ -1,0 +1,17 @@
+charm_name: ceph-radosgw
+
+gate_bundles:
+  - jammy-caracal
+
+smoke_bundles:
+  - jammy-caracal
+
+dev_bundles:
+  - jammy-caracal
+
+tests:
+  - zaza.charm_tests.lifecycle.refresh.CharmRefreshAll
+  - tests.target.CephRGWTest
+  - tests.target.BlueStoreCompressionCharmOperation
+  - tests.target.CephKeyRotationTests
+

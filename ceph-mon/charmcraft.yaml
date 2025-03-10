@@ -1,0 +1,34 @@
+type: charm
+
+parts:
+  charm:
+    after:
+    - update-certificates
+    charm-python-packages:
+      # Use the updated version of setuptools (needed by jinja2).
+    - setuptools
+    build-packages:
+    - git
+
+  update-certificates:
+    # Ensure that certificates in the base image are up-to-date.
+    plugin: nil
+    override-build: |
+      apt update
+      apt install -y ca-certificates
+      update-ca-certificates
+
+base: ubuntu@22.04
+platforms:
+  amd64:
+    build-on: amd64
+    build-for: amd64
+  arm64:
+    build-on: arm64
+    build-for: arm64
+  ppc64el:
+    build-on: ppc64el
+    build-for: ppc64el
+  s390x:
+    build-on: s390x
+    build-for: s390x
