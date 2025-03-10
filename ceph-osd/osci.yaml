@@ -1,0 +1,13 @@
+- project:
+    templates:
+      - charm-unit-jobs-py38
+      - charm-unit-jobs-py310
+      - charm-yoga-functional-jobs
+    check:
+      jobs:
+        - jammy-antelope
+        - lunar-antelope
+    vars:
+      needs_charm_build: true
+      charm_build_name: ceph-osd
+      build_type: charmcraft

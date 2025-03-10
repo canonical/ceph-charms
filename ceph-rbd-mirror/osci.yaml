@@ -1,0 +1,10 @@
+- project:
+    templates:
+      - charm-unit-jobs-py38
+      - charm-unit-jobs-py310
+      - charm-functional-jobs
+    vars:
+      needs_charm_build: true
+      charm_build_name: ceph-rbd-mirror
+      build_type: charmcraft
+      charmcraft_channel: 2.1/stable

@@ -1,0 +1,3 @@
+[client.ceph-iscsi]
+	key = {{ ceph_client.key }}
+

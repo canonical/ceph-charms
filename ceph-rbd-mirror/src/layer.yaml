@@ -1,0 +1,17 @@
+includes:
+  - layer:leadership
+  - layer:ceph
+  - interface:ceph-rbd-mirror
+  - interface:nrpe-external-master
+options:
+  basic:
+    use_venv: True
+repo: https://github.com/openstack/charm-ceph-rbd-mirror
+config:
+  deletes:
+    - debug
+    - ssl_ca
+    - ssl_cert
+    - ssl_key
+    - use-internal-endpoints
+    - verbose

@@ -1,0 +1,25 @@
+charm_name: ceph-proxy
+
+gate_bundles:
+  - focal-yoga
+
+smoke_bundles:
+  - focal-yoga
+
+dev_bundles:
+  - focal-yoga
+
+configure:
+  - tests.target.setup_ceph_proxy
+
+tests:
+  - zaza.charm_tests.lifecycle.refresh.CharmRefreshAll
+  - tests.target.CephProxyTest
+
+target_deploy_status:
+  ceph-proxy:
+    workload-status: blocked
+    workload-status-message-prefix: "Ensure FSID and admin-key are set"
+  ceph-radosgw:
+    workload-status: waiting
+    workload-status-message-prefix: "Incomplete relations: mon"

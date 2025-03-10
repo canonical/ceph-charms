@@ -1,0 +1,17 @@
+charm_name: ceph-radosgw
+
+gate_bundles:
+  - focal-yoga
+
+smoke_bundles:
+  - focal-yoga
+
+dev_bundles:
+  - focal-yoga
+
+tests:
+  - zaza.charm_tests.lifecycle.refresh.CharmRefreshAll
+  - tests.target.CephRGWTest
+  - tests.target.BlueStoreCompressionCharmOperation
+  - tests.target.CephKeyRotationTests
+

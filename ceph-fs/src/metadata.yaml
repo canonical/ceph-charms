@@ -1,0 +1,23 @@
+name: ceph-fs
+summary: Highly scalable distributed storage
+maintainer: OpenStack Charmers <openstack-charmers@lists.ubuntu.com>
+description: |
+  Ceph is a distributed storage and network file system designed to provide
+  excellent performance, reliability, and scalability.
+docs: https://discourse.charmhub.io/t/ceph-fs-docs-index/11223
+tags:
+- openstack
+- storage
+- file-servers
+- misc
+series:
+- focal
+- jammy
+- kinetic
+- lunar
+subordinate: false
+requires:
+  ceph-mds:
+    interface: ceph-mds
+extra-bindings:
+  public:

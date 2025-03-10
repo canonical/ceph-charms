@@ -1,0 +1,147 @@
+{
+    "fsid": "b03a2900-e297-11e8-a7db-00163ed10659",
+    "health": {
+        "checks": {
+            "OSD_DOWN": {
+                "severity": "HEALTH_WARN",
+                "summary": {
+                    "message": "3 osds down"
+                }
+            },
+            "OSD_HOST_DOWN": {
+                "severity": "HEALTH_WARN",
+                "summary": {
+                    "message": "1 host (3 osds) down"
+                }
+            },
+            "OBJECT_MISPLACED": {
+                "severity": "HEALTH_WARN",
+                "summary": {
+                    "message": "9883/43779 objects misplaced (22.575%)"
+                }
+            },
+            "PG_DEGRADED": {
+                "severity": "HEALTH_WARN",
+                "summary": {
+                    "message": "Degraded data redundancy: 14001/43779 objects degraded (31.981%), 32 pgs degraded"
+                }
+            },
+            "POOL_APP_NOT_ENABLED": {
+                "severity": "HEALTH_WARN",
+                "summary": {
+                    "message": "application not enabled on 1 pool(s)"
+                }
+            },
+            "TOO_FEW_PGS": {
+                "severity": "HEALTH_WARN",
+                "summary": {
+                    "message": "too few PGs per OSD (7 < min 30)"
+                }
+            }
+        },
+        "status": "HEALTH_WARN"
+    },
+    "election_epoch": 5,
+    "quorum": [
+        0
+    ],
+    "quorum_names": [
+        "juju-460e0f-11"
+    ],
+    "monmap": {
+        "epoch": 1,
+        "fsid": "b03a2900-e297-11e8-a7db-00163ed10659",
+        "modified": "2018-11-07 14:17:12.324408",
+        "created": "2018-11-07 14:17:12.324408",
+        "features": {
+            "persistent": [
+                "kraken",
+                "luminous"
+            ],
+            "optional": []
+        },
+        "mons": [
+            {
+                "rank": 0,
+                "name": "juju-460e0f-11",
+                "addr": "192.168.100.81:6789/0",
+                "public_addr": "192.168.100.81:6789/0"
+            }
+        ]
+    },
+    "osdmap": {
+        "osdmap": {
+            "epoch": 72,
+            "num_osds": 9,
+            "num_up_osds": 6,
+            "num_in_osds": 9,
+            "full": false,
+            "nearfull": false,
+            "num_remapped_pgs": 16
+        }
+    },
+    "pgmap": {
+        "pgs_by_state": [
+            {
+                "state_name": "active+undersized+degraded",
+                "count": 16
+            },
+            {
+                "state_name": "active+undersized+degraded+remapped+backfill_wait",
+                "count": 14
+            },
+            {
+                "state_name": "active+undersized+degraded+remapped+backfilling",
+                "count": 2
+            }
+        ],
+        "num_pgs": 32,
+        "num_pools": 1,
+        "num_objects": 14593,
+        "data_bytes": 61169729807,
+        "bytes_used": 14540595200,
+        "bytes_avail": 14889525248,
+        "bytes_total": 29430120448,
+        "degraded_objects": 14001,
+        "degraded_total": 43779,
+        "degraded_ratio": 0.319811,
+        "misplaced_objects": 9883,
+        "misplaced_total": 43779,
+        "misplaced_ratio": 0.225748
+    },
+    "fsmap": {
+        "epoch": 1,
+        "by_rank": []
+    },
+    "mgrmap": {
+        "epoch": 5,
+        "active_gid": 14097,
+        "active_name": "juju-460e0f-11",
+        "active_addr": "192.168.100.81:6800/204",
+        "available": true,
+        "standbys": [],
+        "modules": [
+            "balancer",
+            "restful",
+            "status"
+        ],
+        "available_modules": [
+            "balancer",
+            "dashboard",
+            "influx",
+            "localpool",
+            "prometheus",
+            "restful",
+            "selftest",
+            "status",
+            "zabbix"
+        ],
+        "services": {}
+    },
+    "servicemap": {
+        "epoch": 1,
+        "modified": "0.000000",
+        "services": {}
+    }
+}
+
