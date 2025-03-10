@@ -356,6 +356,8 @@ def main():
             charm_devices.remove(action_osd.device)
             if action_osd.alias:
                 aliases.pop(action_osd.alias)
+            key = '%s_is_sata30orless' % str(action_osd.device)
+            kv().unset(key)
             report.update(action_osd.report)
         except RemoveException as e:
             errors.append(str(e))
