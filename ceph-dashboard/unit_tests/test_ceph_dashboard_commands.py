@@ -8,7 +8,26 @@ import subprocess
 import tempfile
 import os
 
-from ceph_dashboard_commands import validate_ssl_keypair
+from ceph_dashboard_commands import validate_ssl_keypair, _run_cmd
+
+from unittest.mock import patch, MagicMock
+
+
+class TestCephDashboardCommand(unittest.TestCase):
+    @patch('ceph_dashboard_commands.subprocess.run')
+    def test_run_cmd(self, mock_run):
+        # Mock the Popen object and its methods
+        process_mock = MagicMock()
+        process_mock.stdout = 'output line 1\noutput line 2\n'
+        process_mock.stderr = ''
+        process_mock.returncode = 0
+        mock_run.return_value = process_mock
+
+        # Execute the function
+        result = _run_cmd(['echo', 'test'])
+
+        # Verify the result
+        self.assertEqual(result, 'output line 1\noutput line 2\n')
 
 
 class TestSSLValidation(unittest.TestCase):

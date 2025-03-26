@@ -24,9 +24,10 @@ def _run_cmd(cmd: List[str]):
 
     `cmd` The command to run
     """
-    return subprocess.check_output(
-        cmd, stderr=subprocess.STDOUT
-    ).decode('UTF-8')
+    proc = subprocess.run(
+        cmd, capture_output=True, check=True, encoding="UTF-8",
+    )
+    return proc.stdout + proc.stderr
 
 
 def exec_option_ceph_cmd(option: CharmCephOption, value: str) -> None:
