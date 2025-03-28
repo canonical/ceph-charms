@@ -483,7 +483,10 @@ class CephNFSCharm(
         event.set_results({
             "exports": [
                 {
-                    "id": export.export_id, "name": export.name
+                    "id": export.export_id,
+                    "name": export.name,
+                    "read-only-clients": export.clients_by_mode['r'],
+                    "read-write-clients": export.clients_by_mode['rw']
                 } for export in exports
             ]
         })

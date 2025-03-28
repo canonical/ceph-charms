@@ -41,6 +41,8 @@ class ExportTest(unittest.TestCase):
         self.assertEqual(export.clients,
                          [{'Access_Type': 'rw', 'Clients': '0.0.0.0'}])
         self.assertEqual(export.name, 'test_ganesha_share')
+        self.assertEqual(export.clients_by_mode,
+                         {'r': [], 'rw': ['0.0.0.0']})
 
     def test_add_client(self):
         export = ganesha.Export.from_export(EXAMPLE_EXPORT)
@@ -118,3 +120,16 @@ class TestGaneshaNFS(unittest.TestCase):
                                                'test-resize-share',
                                                str(5 * 1024 * 1024 * 1024),
                                                '--no_shrink')
+
+    @unittest.mock.patch.object(ganesha.GaneshaNFS, '_rados_get')
+    def test_list_shares(self, mock_rados_get):
+        mock_rados_get.side_effect = ['%url rados://mypool/test_ganesha_share',
+                                      EXAMPLE_EXPORT]
+        inst = ganesha.GaneshaNFS('ceph-client', 'mypool')
+        exports = inst.list_shares()
+        mock_rados_get.assert_any_call('ganesha-export-index')
+        mock_rados_get.assert_any_call('test_ganesha_share')
+        for export in exports:
+            self.assertEqual('test_ganesha_share', export.name)
+            self.assertEqual(export.clients_by_mode['r'], [])
+            self.assertEqual(['0.0.0.0'], export.clients_by_mode['rw'])

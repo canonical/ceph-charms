@@ -197,5 +197,7 @@ class NfsGaneshaTest(unittest.TestCase):
         logging.debug("Action results: {}".format(results))
         logging.debug("exports: {}".format(results['exports']))
         exports = yaml.safe_load(results['exports'])
-        self.assertIn('test_ganesha_list_share',
-                      [export['name'] for export in exports])
+        for export in exports:
+            self.assertEqual('test_ganesha_list_share', export['name'])
+            self.assertEqual(export['read-only-clients'], [])
+            self.assertEqual(['0.0.0.0'], export['read-write-clients'])
