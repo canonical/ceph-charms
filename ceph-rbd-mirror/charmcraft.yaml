@@ -2,6 +2,7 @@ type: charm
 
 parts:
   charm:
+    after: [git-info]
     source: src/
     plugin: reactive
     build-snaps:
@@ -13,6 +14,17 @@ parts:
     build-environment:
       - CHARM_INTERFACES_DIR: /root/project/interfaces/
       - CHARM_LAYERS_DIR: /root/project/layers/
+
+  git-info:
+    plugin: nil
+    build-packages: [git]
+    override-build: |
+      craftctl default
+      if git -C $CRAFT_PROJECT_DIR rev-parse --git-dir > /dev/null 2>&1; then
+        echo "commit: $(git -C $CRAFT_PROJECT_DIR rev-parse HEAD)" > $CRAFT_PART_INSTALL/git-info.txt
+        echo "branch: $(git -C $CRAFT_PROJECT_DIR symbolic-ref -q --short HEAD || echo DETACHED)" >> $CRAFT_PART_INSTALL/git-info.txt
+        echo "commit_date: $(git -C $CRAFT_PROJECT_DIR show -s --format=%cI HEAD)" >> $CRAFT_PART_INSTALL/git-info.txt
+      fi
 
 base: ubuntu@22.04
 platforms:
