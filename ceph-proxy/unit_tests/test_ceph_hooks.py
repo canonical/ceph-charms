@@ -229,3 +229,43 @@ class TestHooks(test_utils.CharmTestCase):
         hooks.config_changed()
         mock_package_install.assert_called_with()
         mock_emit_cephconf.assert_called_with()
+
+    @mock.patch('ceph_hooks.is_leader')
+    @mock.patch('ceph_hooks.process_requests')
+    @mock.patch('ceph_hooks.ceph')
+    @mock.patch('ceph_hooks.ready')
+    def test_client_relation_changed(self, mock_ready, mock_ceph,
+                                     mock_process_requests, mock_is_leader):
+        self.remote_unit.return_value = 'client/0'
+        mock_process_requests.return_value = 'test-response'
+
+        mock_ready.return_value = False
+        hooks.client_relation_changed()
+        mock_process_requests.assert_not_called()
+        self.relation_set.assert_not_called()
+
+        mock_ready.return_value = True
+
+        self.relation_get.return_value = {}
+        hooks.client_relation_changed()
+        mock_process_requests.assert_not_called()
+        self.relation_set.assert_not_called()
+
+        self.relation_get.return_value = {
+            'broker_req': 'test-request',
+            'application-name': 'test-app'
+        }
+        mock_is_leader.return_value = False
+        hooks.client_relation_changed()
+        mock_process_requests.assert_not_called()
+        self.relation_set.assert_not_called()
+
+        mock_is_leader.return_value = True
+        hooks.client_relation_changed()
+        mock_ceph.get_named_key.assert_called_with('test-app')
+        mock_process_requests.assert_called_with('test-request')
+        expected_data = {
+            'broker_rsp': 'test-response',
+            'broker-rsp-client-0': 'test-response'
+        }
+        self.relation_set.assert_called_with(relation_settings=expected_data)

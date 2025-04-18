@@ -291,6 +291,11 @@ def client_relation_changed():
             if not is_leader():
                 log("Not leader - ignoring broker request", level=DEBUG)
             else:
+                # client.nova-compute is created when joined
+                # client.nova-compute-ceph-auth-c91ce26f need to be created
+                # in changed hook otherwise the key will not be created
+                ceph.get_named_key(settings["application-name"])
+
                 rsp = process_requests(settings['broker_req'])
                 unit_id = remote_unit().replace('/', '-')
                 unit_response_key = 'broker-rsp-' + unit_id
