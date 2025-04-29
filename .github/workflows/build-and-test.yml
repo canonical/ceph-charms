@@ -1,0 +1,103 @@
+name: Build/Test
+
+on:
+  workflow_call:
+  workflow_dispatch:
+    inputs:
+      part:
+        description: 'Name of the charm to build/test manually. Defaults to all charms'
+        required: false
+        default: ''
+
+jobs:
+  modifiedparts:
+    runs-on: ubuntu-latest
+    outputs:
+      parts: ${{ steps.determine-parts.outputs.parts }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # For non-manual triggered runs
+      - name: Get modified files
+        id: changed-files
+        if: ${{ github.event_name != 'workflow_dispatch' }}
+        uses: tj-actions/changed-files@823fcebdb31bb35fdf2229d9f769b400309430d0 # v46.0.3
+
+      - name: Determine charms to build/test
+        id: determine-parts
+        env:
+          INPUT_PART: ${{ inputs.part }}
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+          ALL_MOD_FILES: ${{ steps.changed-files.outputs.all_modified_files }}
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
+            if [ -n "$INPUT_PART" ]; then
+              # Manual run with a specified charm
+              components=($INPUT_PART)
+            else
+              # Manual run, no charm specified -> run all
+              components=($(find . -maxdepth 1 -type d ! -path '.' -exec bash -c '[[ -f "$0/charmcraft.yaml" ]] && basename "$0"' {} \; | sort))
+            fi
+          else
+            # Automatic run: use changed-files to determine modified charms
+            echo "Modified files to eval: ${ALL_MOD_FILES}"
+            components=()
+            # Retrieve components with a 'tox.ini' file.
+            for file in ${ALL_MOD_FILES} ; do
+              component=$(echo "$file" | cut -d "/" -f1)
+              if [[ -f "./$component/charmcraft.yaml" ]]; then
+                # This is a charm.
+                components+=("$component")
+              elif [[ -f "./$component/tox.ini" ]]; then
+                # Assume this is a library.
+                # TODO: Add dependent charms here.
+                :
+              fi
+            done
+            # Remove dups
+            components=($(echo "${components[@]}" | tr ' ' '\n' | sort -u))
+          fi
+          json_output=$(jq --compact-output --null-input '$ARGS.positional' --args -- "${components[@]}")
+          echo "Modified parts: $json_output"
+          echo "parts=$json_output" >> $GITHUB_OUTPUT
+
+  build:
+    needs: modifiedparts
+    name: Build the charm
+    runs-on: ubuntu-latest
+    if: ${{ needs.modifiedparts.outputs.parts != '[]' }}
+    strategy:
+      matrix:
+        part: ${{ fromJson(needs.modifiedparts.outputs.parts) }}
+      fail-fast: false
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get -qq install libxslt-dev libxml2-dev python3-lxml tox
+
+      - name: Run linters
+        run: tox -c ${{ matrix.part }} -e pep8
+
+      - name: Run unit tests
+        run: tox -c ${{ matrix.part }} -e py3
+
+      - name: Setup LXD
+        uses: canonical/setup-lxd@v0.1.1
+        with:
+          channel: 5.21/stable
+
+      - name: Build charm(s)
+        id: builder
+        run: |
+          sudo snap install charmcraft --classic
+          tox -c ${{ matrix.part }} -e build
+
+      - name: Upload built charm
+        uses: actions/upload-artifact@v4
+        with:
+          name: charm-artifact-${{ matrix.part }}
+          path: "./${{ matrix.part }}/*.charm"
