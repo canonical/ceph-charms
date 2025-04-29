@@ -1,0 +1,175 @@
+- project:
+    templates:
+      - charm-unit-jobs
+    check:
+      jobs:
+        - vault-impish-xena_rgw:
+            voting: false
+        - vault-impish-xena-namespaced:
+            voting: false
+        - vault-hirsute-wallaby_rgw
+        - vault-hirsute-wallaby-namespaced
+        - vault-focal-xena_rgw:
+            voting: false
+        - vault-focal-xena-namespaced:
+            voting: false
+        - vault-focal-wallaby_rgw
+        - vault-focal-wallaby-namespaced
+        - vault-focal-victoria_rgw
+        - vault-focal-victoria-namespaced
+        - vault-focal-ussuri-ec
+        - vault-focal-ussuri_rgw
+        - vault-focal-ussuri-namespaced
+        - vault-bionic-ussuri
+        - vault-bionic-ussuri-namespaced
+        - vault-bionic-train
+        - vault-bionic-train-namespaced
+        - vault-bionic-stein
+        - vault-bionic-stein-namespaced
+        - vault-bionic-queens
+        - vault-bionic-queens-namespaced
+        - xenial-mitaka_rgw
+        - xenial-mitaka-namespaced
+
+- job:
+    name: vault-bionic-ussuri
+    parent: func-target
+    dependencies:
+      - osci-lint
+      - tox-py35
+      - tox-py36
+      - tox-py37
+      - tox-py38
+    vars:
+      tox_extra_args: vault:bionic-ussuri
+- job:
+    name: vault-impish-xena_rgw
+    parent: func-target
+    dependencies: &smoke-jobs
+      - vault-bionic-ussuri
+    vars:
+      tox_extra_args: vault:impish-xena
+- job:
+    name: vault-impish-xena-namespaced
+    parent: func-target
+    dependencies: *smoke-jobs
+    vars:
+      tox_extra_args: vault:impish-xena-namespaced
+- job:
+    name: vault-hirsute-wallaby_rgw
+    parent: func-target
+    dependencies: *smoke-jobs
+    vars:
+      tox_extra_args: vault:hirsute-wallaby
+- job:
+    name: vault-hirsute-wallaby-namespaced
+    parent: func-target
+    dependencies: *smoke-jobs
+    vars:
+      tox_extra_args: vault:hirsute-wallaby-namespaced
+- job:
+    name: vault-focal-xena_rgw
+    parent: func-target
+    dependencies: *smoke-jobs
+    vars:
+      tox_extra_args: vault:focal-xena
+- job:
+    name: vault-focal-xena-namespaced
+    parent: func-target
+    dependencies: *smoke-jobs
+    vars:
+      tox_extra_args: vault:focal-xena-namespaced
+- job:
+    name: vault-focal-wallaby_rgw
+    parent: func-target
+    dependencies: *smoke-jobs
+    vars:
+      tox_extra_args: vault:focal-wallaby
+- job:
+    name: vault-focal-wallaby-namespaced
+    parent: func-target
+    dependencies: *smoke-jobs
+    vars:
+      tox_extra_args: vault:focal-wallaby-namespaced
+- job:
+    name: vault-focal-victoria_rgw
+    parent: func-target
+    dependencies: *smoke-jobs
+    vars:
+      tox_extra_args: vault:focal-victoria
+- job:
+    name: vault-focal-victoria-namespaced
+    parent: func-target
+    dependencies: *smoke-jobs
+    vars:
+      tox_extra_args: vault:focal-victoria-namespaced
+- job:
+    name: vault-focal-ussuri-ec
+    parent: func-target
+    dependencies: *smoke-jobs
+    vars:
+      tox_extra_args: vault:focal-ussuri-ec
+- job:
+    name: vault-focal-ussuri_rgw
+    parent: func-target
+    dependencies: *smoke-jobs
+    vars:
+      tox_extra_args: vault:focal-ussuri
+- job:
+    name: vault-focal-ussuri-namespaced
+    parent: func-target
+    dependencies: *smoke-jobs
+    vars:
+      tox_extra_args: vault:focal-ussuri-namespaced
+- job:
+    name: vault-bionic-ussuri-namespaced
+    parent: func-target
+    dependencies: *smoke-jobs
+    vars:
+      tox_extra_args: vault:bionic-ussuri-namespaced
+- job:
+    name: vault-bionic-train
+    parent: func-target
+    dependencies: *smoke-jobs
+    vars:
+      tox_extra_args: vault:bionic-train
+- job:
+    name: vault-bionic-train-namespaced
+    parent: func-target
+    dependencies: *smoke-jobs
+    vars:
+      tox_extra_args: vault:bionic-train-namespaced
+- job:
+    name: vault-bionic-stein
+    parent: func-target
+    dependencies: *smoke-jobs
+    vars:
+      tox_extra_args: vault:bionic-stein
+- job:
+    name: vault-bionic-stein-namespaced
+    parent: func-target
+    dependencies: *smoke-jobs
+    vars:
+      tox_extra_args: vault:bionic-stein-namespaced
+- job:
+    name: vault-bionic-queens
+    parent: func-target
+    dependencies: *smoke-jobs
+    vars:
+      tox_extra_args: vault:bionic-queens
+- job:
+    name: vault-bionic-queens-namespaced
+    parent: func-target
+    dependencies: *smoke-jobs
+    vars:
+      tox_extra_args: vault:bionic-queens-namespaced
+- job:
+    name: xenial-mitaka_rgw
+    parent: xenial-mitaka
+    dependencies: *smoke-jobs
+- job:
+    name: xenial-mitaka-namespaced
+    parent: func-target
+    dependencies: *smoke-jobs
+    vars:
+      tox_extra_args: xenial-mitaka-namespaced

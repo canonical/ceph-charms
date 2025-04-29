@@ -1,0 +1,12 @@
+pause:
+  description: Pause the ceph-radosgw unit.
+resume:
+  descrpition: Resume the ceph-radosgw unit.
+promote:
+  description: Promote the zone associated with the local units to master/default (multi-site).
+readonly:
+  description: Mark the zone associated with the local units as read only (multi-site).
+readwrite:
+  description: Mark the zone associated with the local units as read/write (multi-site).
+tidydefaults:
+  description: Delete default zone and zonegroup configuration (multi-site).

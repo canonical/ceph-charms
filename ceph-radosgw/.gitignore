@@ -1,0 +1,12 @@
+bin
+.coverage
+.testrepository
+.tox
+tags
+*.sw[nop]
+*.pyc
+.idea
+.unit-state.db
+func-results.json
+.stestr/
+**/__pycache__

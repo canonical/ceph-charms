@@ -1,0 +1,52 @@
+name: ceph-radosgw
+summary: Highly scalable distributed storage - RADOS HTTP Gateway
+maintainer: OpenStack Charmers <openstack-charmers@lists.ubuntu.com>
+description: |
+  Ceph is a distributed storage and network file system designed to provide
+  excellent performance, reliability, and scalability.
+  .
+  This charm provides the RADOS HTTP gateway supporting S3 and Swift protocols
+  for object storage.
+tags:
+- openstack
+- storage
+- file-servers
+- misc
+series:
+- xenial
+- bionic
+- focal
+- groovy
+- hirsute
+- impish
+extra-bindings:
+  public:
+  admin:
+  internal:
+requires:
+  mon:
+    interface: ceph-radosgw
+  identity-service:
+    interface: keystone
+  ha:
+    interface: hacluster
+    scope: container
+  certificates:
+    interface: tls-certificates
+  slave:
+    interface: radosgw-multisite
+provides:
+  nrpe-external-master:
+    interface: nrpe-external-master
+    scope: container
+  gateway:
+    interface: http
+  master:
+    interface: radosgw-multisite
+  object-store:
+    interface: swift-proxy
+  radosgw-user:
+    interface: radosgw-user
+peers:
+  cluster:
+    interface: swift-ha

@@ -1,0 +1,67 @@
+charm_name: ceph-radosgw
+
+gate_bundles:
+  - vault: focal-xena
+  - vault: focal-xena-namespaced
+  - vault: focal-wallaby
+  - vault: focal-wallaby-namespaced
+  - vault: focal-victoria
+  - vault: focal-victoria-namespaced
+  - vault: focal-ussuri-ec
+  - vault: focal-ussuri
+  - vault: focal-ussuri-namespaced
+  - vault: bionic-ussuri
+  - vault: bionic-ussuri-namespaced
+  - vault: bionic-train
+  - vault: bionic-train-namespaced
+  - vault: bionic-stein
+  - vault: bionic-stein-namespaced
+  - vault: bionic-queens
+  - vault: bionic-queens-namespaced
+  - xenial-mitaka
+  - xenial-mitaka-namespaced
+
+smoke_bundles:
+  - vault: focal-ussuri
+
+dev_bundles:
+  - trusty-mitaka
+  - xenial-ocata
+  - xenial-pike
+  - vault: xenial-queens
+  - bionic-queens-multisite
+  - bionic-rocky-multisite
+  - vault: bionic-rocky
+  - vault: bionic-rocky-namespaced
+  - vault: groovy-victoria
+  - vault: groovy-victoria-namespaced
+  - vault: hirsute-wallaby
+  - vault: hirsute-wallaby-namespaced
+  - vault: impish-xena
+  - vault: impish-xena-namespaced
+
+target_deploy_status:
+  vault:
+    workload-status: blocked
+    workload-status-message: Vault needs to be initialized
+
+configure:
+  - vault:
+    - zaza.openstack.charm_tests.vault.setup.auto_initialize
+
+tests:
+  - zaza.openstack.charm_tests.ceph.tests.CephRGWTest
+  - vault:
+    - zaza.openstack.charm_tests.ceph.tests.CephRGWTest
+    - zaza.openstack.charm_tests.swift.tests.S3APITest
+    - zaza.openstack.charm_tests.ceph.tests.CheckPoolTypes
+    - zaza.openstack.charm_tests.ceph.tests.BlueStoreCompressionCharmOperation
+
+tests_options:
+  force_deploy:
+    - hirsute-wallaby
+    - hirsute-wallaby-namespaced
+    - groovy-victoria
+    - groovy-victoria-namespaced
+    - impish-xena
+    - impish-xena-namespaced

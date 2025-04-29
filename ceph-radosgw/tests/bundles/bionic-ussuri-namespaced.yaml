@@ -1,0 +1,52 @@
+options:
+  source: &source cloud:bionic-ussuri
+series: bionic
+applications:
+  ceph-radosgw:
+    charm: ceph-radosgw
+    series: bionic
+    num_units: 1
+    options:
+      source: *source
+      namespace-tenants: True
+  ceph-osd:
+    charm: cs:~openstack-charmers/ceph-osd
+    num_units: 3
+    constraints: "mem=2048"
+    storage:
+      osd-devices: 'cinder,10G'
+    options:
+      source: *source
+      osd-devices: '/srv/ceph /dev/test-non-existent'
+  ceph-mon:
+    charm: cs:~openstack-charmers/ceph-mon
+    num_units: 3
+    options:
+      source: *source
+  percona-cluster:
+    charm: cs:~openstack-charmers/percona-cluster
+    num_units: 1
+  keystone:
+    expose: True
+    charm: cs:~openstack-charmers/keystone
+    num_units: 1
+    options:
+      openstack-origin: *source
+  vault:
+    charm: cs:~openstack-charmers/vault
+    num_units: 1
+relations:
+- - keystone:shared-db
+  - percona-cluster:shared-db
+- - ceph-osd:mon
+  - ceph-mon:osd
+- - ceph-radosgw:mon
+  - ceph-mon:radosgw
+- - ceph-radosgw:identity-service
+  - keystone:identity-service
+- - vault:shared-db
+  - percona-cluster:shared-db
+- - keystone:certificates
+  - vault:certificates
+- - ceph-radosgw:certificates
+  - vault:certificates
