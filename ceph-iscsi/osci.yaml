@@ -1,0 +1,29 @@
+- project:
+    templates:
+      - charm-unit-jobs
+    check:
+      jobs:
+      - ceph-iscsi-focal-octopus
+      - ceph-iscsi-focal-octopus-ec
+    vars:
+      needs_charm_build: true
+      charm_build_name: ceph-iscsi
+      build_type: charmcraft
+- job:
+    name: ceph-iscsi-focal-octopus
+    parent: func-target
+    dependencies:
+      - osci-lint
+      - tox-py35
+      - tox-py36
+      - tox-py37
+      - tox-py38
+    vars:
+      tox_extra_args: focal
+- job:
+    name: ceph-iscsi-focal-octopus-ec
+    parent: func-target
+    dependencies: &smoke-jobs
+      - ceph-iscsi-focal-octopus
+    vars:
+      tox_extra_args: focal-ec

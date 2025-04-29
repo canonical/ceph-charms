@@ -1,0 +1,90 @@
+local_overlay_enabled: False
+series: focal
+machines:
+  '0':
+  '1':
+  '2':
+  '3':
+  '4':
+  '5':
+  '6':
+  '7':
+  '8':
+    constraints: mem=3072M
+  '9':
+    constraints: mem=3072M
+  '10':
+    constraints: mem=3072M
+  '11':
+  '12':
+  '13':
+  '14':
+  '15':
+  '16':
+  '17':
+applications:
+  ubuntu:
+    charm: cs:ubuntu
+    num_units: 3
+    to:
+      - '7'
+      - '14'
+      - '15'
+  ceph-iscsi:
+    charm: ../../ceph-iscsi.charm
+    num_units: 4
+    options:
+      gateway-metadata-pool: iscsi-foo-metadata
+    to:
+      - '0'
+      - '1'
+      - '16'
+      - '17'
+  ceph-osd:
+    charm: cs:~openstack-charmers/ceph-osd
+    num_units: 6
+    storage:
+      osd-devices: 'cinder,10G'
+    options:
+      osd-devices: '/dev/test-non-existent'
+    to:
+      - '0'
+      - '1'
+      - '2'
+      - '11'
+      - '12'
+      - '13'
+  ceph-mon:
+    charm: cs:~openstack-charmers/ceph-mon
+    num_units: 3
+    options:
+      monitor-count: '3'
+    to:
+      - '3'
+      - '4'
+      - '5'
+  vault:
+    num_units: 1
+    charm: cs:~openstack-charmers/vault
+    to:
+      - '6'
+  mysql-innodb-cluster:
+    charm: cs:~openstack-charmers/mysql-innodb-cluster
+    num_units: 3
+    to:
+      - '8'
+      - '9'
+      - '10'
+  vault-mysql-router:
+    charm: cs:~openstack-charmers/mysql-router
+relations:
+  - - 'ceph-mon:client'
+    - 'ceph-iscsi:ceph-client'
+  - - 'vault:certificates'
+    - 'ceph-iscsi:certificates'
+  - - 'ceph-osd:mon'
+    - 'ceph-mon:osd'
+  - - 'vault:shared-db'
+    - 'vault-mysql-router:shared-db'
+  - - 'vault-mysql-router:db-router'
+    - 'mysql-innodb-cluster:db-router'
