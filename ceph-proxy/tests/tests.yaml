@@ -1,0 +1,71 @@
+charm_name: ceph-proxy
+
+configure:
+  - zaza.openstack.configure.ceph_proxy.setup_ceph_proxy
+  - erasure-coded:
+    - zaza.openstack.configure.ceph_proxy.setup_ceph_proxy
+
+tests:
+  - zaza.openstack.charm_tests.ceph.tests.CephProxyTest
+  - erasure-coded:
+    - zaza.openstack.charm_tests.ceph.tests.CephProxyTest
+    - zaza.openstack.charm_tests.ceph.tests.CheckPoolTypes
+
+gate_bundles:
+  - xenial-mitaka # jewel
+  - bionic-queens # luminous
+  - bionic-stein
+  - bionic-train
+  - bionic-ussuri
+  - focal-ussuri
+  - erasure-coded: focal-ussuri-ec
+  - focal-victoria
+  - erasure-coded: focal-victoria-ec
+  - focal-wallaby
+  - erasure-coded: focal-wallaby-ec
+  - groovy-victoria
+  - erasure-coded: groovy-victoria-ec
+
+dev_bundles:
+  # Icehouse
+  - trusty-icehouse
+  # Jewel
+  - trusty-mitaka
+  - xenial-ocata
+  # Pike
+  - xenial-pike
+  - xenial-queens # luminous
+  - bionic-rocky  # mimic
+  - hirsute-wallaby
+  - erasure-coded: hirsute-wallaby-ec
+
+smoke_bundles:
+  - focal-ussuri
+
+target_deploy_status:
+  ceph-proxy:
+    workload-status: blocked
+    workload-status-message: Ensure FSID and admin-key are set
+  ceph-radosgw:
+    workload-status: waiting
+    workload-status-message: "Incomplete relations: mon"
+  cinder-ceph:
+    workload-status: waiting
+    workload-status-message: "Incomplete relations: ceph"
+  keystone:
+    workload-status: active
+    workload-status-message: "Unit is ready"
+  nova-compute:
+    workload-status: waiting
+    workload-status-message: "Incomplete relations: storage-backend"
+  cinder-ceph:
+    workload-status: waiting
+    workload-status-message: "Ceph broker request incomplete"
+  glance:
+    workload-status: waiting
+    workload-status-message: "Incomplete relations: storage-backend"
+
+tests_options:
+  force_deploy:
+    - hirsute-wallaby
+    - hirsute-wallaby-ec
