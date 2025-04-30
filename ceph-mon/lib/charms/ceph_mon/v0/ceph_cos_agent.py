@@ -24,7 +24,7 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 2
+LIBPATCH = 3
 
 logger = logging.getLogger(__name__)
 
@@ -65,8 +65,7 @@ class CephCOSAgentProvider(cos_agent.COSAgentProvider):
 
             logger.debug("refreshing cos_agent relation")
             ceph_utils.mgr_enable_module("prometheus")
-
-        self.mgr_config_set_rbd_stats_pools()
+            self.mgr_config_set_rbd_stats_pools()
 
     def _on_relation_departed(self, event):
         """Disable prometheus on depart of relation"""
@@ -139,4 +138,10 @@ class CephCOSAgentProvider(cos_agent.COSAgentProvider):
             ceph_utils.mgr_config_set(
                 'mgr/prometheus/rbd_stats_pools',
                 rbd_stats_pools
+            )
+        enable_perf_metrics = self._charm.model.config.get('enable-perf-metrics', False)
+        if enable_perf_metrics :
+            ceph_utils.mgr_config_set(
+                'mgr/prometheus/exclude_perf_counters',
+                False
             )

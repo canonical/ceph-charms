@@ -359,3 +359,7 @@ options:
           - "*" to enable for all RBD pools
           - "" to disable statistics
         For more information: https://docs.ceph.com/en/latest/mgr/prometheus/#rbd-io-statistics
+  enable-perf-metrics:
+    type: boolean
+    default: False
+    description: Include Ceph performance metrics in the prometheus endpoint.
