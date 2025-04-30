@@ -186,3 +186,78 @@ jobs:
           for model in $models; do
             juju destroy-model --no-prompt --force --destroy-storage $model
           done
+
+  cos-integration-test:
+    needs:
+      - modifiedparts
+      - build
+    name: COS Integration test 
+    runs-on: [self-hosted, linux, amd64, X64, large, noble]
+    if: ${{ contains(needs.modifiedparts.outputs.parts, 'ceph-mon') }}
+    steps:
+      - name: Download charm
+        uses: actions/download-artifact@v4
+        with:
+          name: charm-artifact-ceph-mon
+          pattern: charm-artifact-*
+          merge-multiple: true
+          path: ~/artifacts/
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup LXD
+        uses: canonical/setup-lxd@v0.1.1
+        with:
+          # pin lxd to LTS release.
+          channel: 5.21/stable
+
+      - name: Install dependencies
+        run: ./ceph-mon/tests/workflow_assets/ci_helpers.sh install_deps
+
+      - name: Cleanup Docker
+        run: ./ceph-mon/tests/workflow_assets/ci_helpers.sh cleanup_docker
+
+      - name: Bootstrap K8s
+        run: ./ceph-mon/tests/workflow_assets/ci_helpers.sh bootstrap_k8s
+
+      - name: Bootstrap k8s controller
+        run: ./ceph-mon/tests/workflow_assets/ci_helpers.sh bootstrap_k8s_controller
+
+      - name: Deploy cos lite
+        run: ./ceph-mon/tests/workflow_assets/ci_helpers.sh deploy_cos
+
+      - name: Verify cos services
+        run: ./ceph-mon/tests/workflow_assets/ci_helpers.sh check_http_endpoints_up
+      
+      - name: Deploy Ceph cluster over LXD
+        run: ./ceph-mon/tests/workflow_assets/ci_helpers.sh deploy_ceph
+
+      - name: Deploy and Integrate grafana-agent
+        run: ./ceph-mon/tests/workflow_assets/ci_helpers.sh wait_grafana_agent
+
+      - name: Test Metrics and Dashboards
+        run: ./ceph-mon/tests/workflow_assets/ci_helpers.sh verify_o11y_services
+          
+      - name: Show Juju status
+        run: |
+          set -eux
+          juju status
+
+      - name: Collect logs
+        if: failure()
+        run: ./tests/scripts/ci_helpers.sh collect_microceph_logs || true
+
+      - name: Upload logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: microceph_juju_storage_cluster_test_logs
+          path: logs
+          retention-days: 30
+
+      - name: Setup tmate session
+        if: ${{ failure() && runner.debug }}
+        uses: canonical/action-tmate@main

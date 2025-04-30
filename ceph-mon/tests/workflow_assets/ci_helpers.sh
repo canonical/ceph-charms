@@ -4,9 +4,9 @@ function install_deps() {
   date
   sudo apt-get -qq install jq
   sudo snap install juju
+  sudo snap install microk8s --channel 1.32-strict/stable
   mkdir -p ~/.local/share/juju
   juju bootstrap localhost lxd
-  juju add-model microceph-test
   date
 }
 
@@ -41,25 +41,26 @@ function deploy_cos() {
   juju wait-for application prometheus --query='name=="prometheus" && (status=="active" || status=="idle")' --timeout=10m
   juju wait-for application grafana --query='name=="grafana" && (status=="active" || status=="idle")' --timeout=10m
   juju wait-for application loki --query='name=="loki" && (status=="active" || status=="idle")' --timeout=10m
+
+  juju status
 }
 
 function deploy_ceph() {
   date
-  mv ~/artifacts/microceph.charm ./microceph.charm
+  mv ~/artifacts/ceph-mon.charm ./ceph-mon.charm
   juju switch lxd
-  juju deploy ./github/bundles/ceph_cos.yaml
+  juju add-model ceph-cos-test || true
+  juju deploy ./ceph-mon/tests/workflow_assets/ceph-cos.yaml
   juju wait-for application ceph-mon --query='name=="ceph-mon" && (status=="active" || status=="idle")' --timeout=10m
   juju wait-for application ceph-osd --query='name=="ceph-osd" && (status=="active" || status=="idle")' --timeout=10m
   juju status
   date
 }
 
-function deploy_grafana_agent() {
+function wait_grafana_agent() {
   set -eux
   date
   juju switch lxd
-  juju deploy grafana-agent --base ubuntu@24.04
-  juju integrate grafana-agent microceph
 
   # wait for grafana-agent to be ready for integration
   juju wait-for application grafana-agent --query='name=="grafana-agent" && (status=="blocked" || status=="idle")' --timeout=20m
@@ -128,13 +129,13 @@ function verify_o11y_services() {
   grafana_pass=$(echo $get_admin_action | jq '."grafana/0".results."admin-password"' | tr -d "\"")
 
   # check if expected dashboards are populated in grafana
-  expected_dashboard_count=$(wc -l < ./tests/scripts/assets/expected_dashboard.txt)
+  expected_dashboard_count=$(wc -l < ./ceph-mon/tests/workflow_assets/expected_dashboard.txt)
   for i in $(seq 1 20); do
     curl http://admin:${grafana_pass}@${graf_addr}:3000/api/search| jq '.[].title' | jq -s 'sort' > dashboards.json
     cat ./dashboards.json 
 
     # compare the dashboard outputs
-    match_count=$(grep -F -c -f ./tests/scripts/assets/expected_dashboard.txt dashboards.json || true) 
+    match_count=$(grep -F -c -f ./ceph-mon/tests/workflow_assets/expected_dashboard.txt dashboards.json || true) 
     if [[ $match_count -eq $expected_dashboard_count ]]; then
       echo "Dashboards match expectations"
       break 
@@ -143,7 +144,7 @@ function verify_o11y_services() {
     sleep 1m
   done
   
-  match_count=$(grep -F -c -f ./tests/scripts/assets/expected_dashboard.txt dashboards.json || true) 
+  match_count=$(grep -F -c -f ./ceph-mon/tests/workflow_assets/expected_dashboard.txt dashboards.json || true) 
   if [[ $match_count -ne $expected_dashboard_count ]]; then
     echo "Required dashboards still not present."
     cat ./dashboards.json
