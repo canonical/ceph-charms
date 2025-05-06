@@ -1,4 +1,4 @@
-from mock import patch
+from unittest.mock import patch
 from ceph_hooks import check_for_upgrade
 from test_utils import CharmTestCase
 

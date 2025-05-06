@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import mock
+from unittest import mock
 
 import charm.openstack.ceph_rbd_mirror as crm
 import reactive.ceph_rbd_mirror_handlers as handlers

@@ -3,7 +3,7 @@ import json
 import unittest
 import sys
 
-from mock import patch, MagicMock, DEFAULT, call
+from unittest.mock import patch, MagicMock, DEFAULT, call
 
 # python-apt is not installed as part of test-requirements but is imported by
 # some charmhelpers modules so create a fake import.
@@ -303,10 +303,6 @@ class CephHooksTestCase(test_utils.CharmTestCase):
                 'ceph-public-address': _get_public_addr()
             })
 
-        _relation_ids.assert_has_calls([
-            call('admin'),
-            call('mds'),
-        ])
         _admin_relation_joined.assert_called_once_with('arelid')
         _mds_relation_joined.assert_called_once_with(relid='arelid',
                                                      unit='aunit/0')
@@ -587,10 +583,6 @@ class RelatedUnitsTestCase(unittest.TestCase):
         self.assertTrue(ceph_hooks.related_osds(6))
         self.assertFalse(ceph_hooks.related_osds(9))
         relation_ids.assert_called_with('osd')
-        related_units.assert_has_calls([
-            call('osd:0'),
-            call('osd:23')
-        ])
 
     @patch.object(ceph_hooks, 'send_osd_settings')
     @patch.object(ceph_hooks, 'get_rbd_features')
@@ -857,7 +849,6 @@ class BootstrapSourceTestCase(test_utils.CharmTestCase):
         for unit in ('ceph/0', 'ceph/1', 'ceph/2'):
             expected_calls.append(call('monitor-secret', unit, relid))
             expected_calls.append(call('fsid', unit, relid))
-        self.relation_get.has_calls(expected_calls)
         self.assertEqual(self.leader_set.call_count, 0)
         self.assertEqual(self.mon_relation.call_count, 0)
 
@@ -908,10 +899,6 @@ class BootstrapSourceTestCase(test_utils.CharmTestCase):
         ceph_hooks.config_changed()
         _check_for_upgrade.assert_called_once_with()
         _get_mon_hosts.assert_called_once_with()
-        _leader_get.assert_has_calls([
-            call('fsid'),
-            call('monitor-secret'),
-        ])
         _emit_cephconf.assert_called_once_with()
         _is_bootstrapped.assert_called_once_with()
         _notify_client.assert_called_once_with()

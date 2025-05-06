@@ -14,7 +14,7 @@
 """Tests for the list_inconsistent_objs action."""
 
 from actions import list_inconsistent_objs as action
-from mock import mock
+from unittest import mock
 from test_utils import CharmTestCase
 
 

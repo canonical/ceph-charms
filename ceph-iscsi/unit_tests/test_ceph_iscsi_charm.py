@@ -23,7 +23,7 @@ from pathlib import Path
 sys.path.append('lib')  # noqa
 sys.path.append('src')  # noqa
 
-from mock import call, patch, MagicMock, ANY, Mock
+from unittest.mock import call, patch, MagicMock, ANY, Mock
 
 from ops.testing import Harness, _TestingModelBackend
 from ops.model import (
@@ -174,7 +174,8 @@ class TestCephISCSIGatewayCharmBase(CharmTestCase):
                 return network_data
 
         self.harness._backend = _TestingOPSModelBackend(
-            self.harness._unit_name, self.harness._meta)
+            self.harness._unit_name, self.harness._meta,
+            {'options': {'gateway-metadata-pool': {'type': 'string'}}})
         self.harness._model = model.Model(
             self.harness._meta,
             self.harness._backend)
@@ -195,14 +196,6 @@ class TestCephISCSIGatewayCharmBase(CharmTestCase):
         self.harness.add_relation_unit(
             rel_id,
             'ceph-iscsi/1')
-        self.harness.update_relation_data(
-            rel_id,
-            'ceph-iscsi/1',
-            {
-                'ingress-address': '10.0.0.2',
-                'gateway_ready': 'True',
-                'gateway_fqdn': 'ceph-iscsi-1.example'
-            })
         return rel_id
 
     def complete_cluster_relation(self, rel_id):
@@ -231,7 +224,8 @@ class TestCephISCSIGatewayCharmBase(CharmTestCase):
     @patch('socket.getfqdn')
     def test_on_create_target_action(self, _getfqdn):
         _getfqdn.return_value = 'ceph-iscsi-0.example'
-        self.add_base_cluster_relation()
+        cluster_rel_id = self.add_base_cluster_relation()
+        self.complete_cluster_relation(cluster_rel_id)
         self.harness.begin()
         action_event = MagicMock()
         action_event.params = {
@@ -276,7 +270,8 @@ class TestCephISCSIGatewayCharmBase(CharmTestCase):
     @patch('socket.getfqdn')
     def test_on_create_target_action_ec(self, _getfqdn):
         _getfqdn.return_value = 'ceph-iscsi-0.example'
-        self.add_base_cluster_relation()
+        cluster_rel_id = self.add_base_cluster_relation()
+        self.complete_cluster_relation(cluster_rel_id)
         self.harness.begin()
         action_event = MagicMock()
         action_event.params = {
@@ -404,7 +399,7 @@ class TestCephISCSIGatewayCharmBase(CharmTestCase):
             rel_id,
             'ceph-iscsi',
             {'admin_password': 'existing password',
-             'gateway_ready': False})
+             'gateway_ready': 'False'})
         self.harness.begin()
         self.harness.charm.ceph_client._stored.pools_available = True
         with patch.object(Path, 'mkdir') as mock_mkdir:

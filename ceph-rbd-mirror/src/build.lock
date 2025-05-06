@@ -2,14 +2,6 @@
   "locks": [
     {
       "type": "layer",
-      "item": "layer:leadership",
-      "url": "https://git.launchpad.net/layer-leadership",
-      "vcs": null,
-      "branch": "refs/heads/master",
-      "commit": "cc5bd3f49b2fa5e6c3ab2336763c313ec8bf083f"
-    },
-    {
-      "type": "layer",
       "item": "layer:options",
       "url": "https://github.com/juju-solutions/layer-options.git",
       "vcs": null,
@@ -42,7 +34,7 @@
     },
     {
       "type": "layer",
-      "item": "ceph-rbd-mirror",
+      "item": "ceph-fs",
       "url": null,
       "vcs": null,
       "branch": "refs/heads/21.10-updates\nrefs/heads/master",
@@ -58,19 +50,11 @@
     },
     {
       "type": "layer",
-      "item": "interface:ceph-rbd-mirror",
-      "url": "https://github.com/openstack/charm-interface-ceph-rbd-mirror.git",
+      "item": "interface:ceph-mds",
+      "url": "https://opendev.org/openstack/charm-interface-ceph-client.git",
       "vcs": null,
-      "branch": "refs/heads/master",
-      "commit": "1bb6e20b349e4573ba47863003382fa5375ce6e9"
-    },
-    {
-      "type": "layer",
-      "item": "interface:nrpe-external-master",
-      "url": "https://github.com/canonical/nrpe-external-master-interface",
-      "vcs": null,
-      "branch": "refs/heads/master",
-      "commit": "95d744d1dbc4d86fb0462283c9371619bf5bbc24"
+      "branch": "3ca251fb01a7cd51d2a0ee2b9b66647c8ffe891f",
+      "commit": "3ca251fb01a7cd51d2a0ee2b9b66647c8ffe891f"
     },
     {
       "type": "python_module",
@@ -83,6 +67,12 @@
       "package": "psutil",
       "vcs": null,
       "version": "5.8.0"
+    },
+    {
+      "type": "python_module",
+      "package": "dnspython",
+      "vcs": null,
+      "version": "1.15.0"
     },
     {
       "type": "python_module",
@@ -104,15 +94,15 @@
     },
     {
       "type": "python_module",
-      "package": "dnspython",
-      "vcs": null,
-      "version": "1.16.0"
-    },
-    {
-      "type": "python_module",
       "package": "PyYAML",
       "vcs": null,
       "version": "5.2"
+    },
+    {
+      "type": "python_module",
+      "package": "dnspython3",
+      "vcs": null,
+      "version": "1.15.0"
     },
     {
       "type": "python_module",
@@ -154,6 +144,12 @@
     },
     {
       "type": "python_module",
+      "package": "ceph_api",
+      "vcs": null,
+      "version": "0.4.0"
+    },
+    {
+      "type": "python_module",
       "package": "six",
       "vcs": null,
       "version": "1.16.0"
@@ -191,6 +187,12 @@
       "package": "pyaml",
       "vcs": null,
       "version": "21.10.1"
+    },
+    {
+      "type": "python_module",
+      "package": "pyxattr",
+      "vcs": null,
+      "version": "0.7.2"
     }
   ]
 }

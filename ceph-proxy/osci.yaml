@@ -1,50 +1,42 @@
 - project:
     templates:
-      - charm-unit-jobs
+      - charm-unit-jobs-py38
+      - charm-unit-jobs-py39
+      - charm-unit-jobs-py310
+      - charm-functional-jobs
     check:
       jobs:
-      - bionic-queens # luminous
-      - bionic-stein
-      - bionic-train
-      - bionic-ussuri
-      - focal-ussuri
-      - focal-ussuri-ec
-      - focal-victoria
-      - focal-victoria-ec
-      - focal-wallaby
-      - focal-wallaby-ec
-      - groovy-victoria
-      - groovy-victoria-ec
-      - hirsute-wallaby
-      - hirsute-wallaby-ec
-- job:
-    name: focal-ussuri-ec
-    parent: func-target
-    dependencies: &smoke-jobs
-      - bionic-ussuri
+      - jammy-yoga-ec
+      - lunar-antelope-ec:
+          voting: false
+      - mantic-bobcat-ec:
+          voting: false
     vars:
-      tox_extra_args: erasure-coded:focal-ussuri-ec
+      needs_charm_build: true
+      charm_build_name: ceph-proxy
+      build_type: charmcraft
+      charmcraft_channel: 2.x/stable
 - job:
-    name: focal-victoria-ec
+    name: jammy-yoga-ec
     parent: func-target
-    dependencies: *smoke-jobs
+    dependencies:
+      - osci-lint
+      - charm-build
+      - name: tox-py310
+        soft: true
     vars:
-      tox_extra_args: erasure-coded:focal-victoria-ec
+      tox_extra_args: '-- erasure-coded:jammy-yoga-ec'
 - job:
-    name: focal-wallaby-ec
+    name: lunar-antelope-ec
     parent: func-target
-    dependencies: *smoke-jobs
+    dependencies:
+      - jammy-yoga-ec
     vars:
-      tox_extra_args: erasure-coded:focal-wallaby-ec
+      tox_extra_args: -- erasure-coded:lunar-antelope-ec
 - job:
-    name: groovy-victoria-ec
+    name: mantic-bobcat-ec
     parent: func-target
-    dependencies: *smoke-jobs
+    dependencies:
+      - jammy-yoga-ec
     vars:
-      tox_extra_args: erasure-coded:groovy-victoria-ec
-- job:
-    name: hirsute-wallaby-ec
-    parent: func-target
-    dependencies: *smoke-jobs
-    vars:
-      tox_extra_args: erasure-coded:hirsute-wallaby-ec
+      tox_extra_args: -- erasure-coded:mantic-bobcat-ec

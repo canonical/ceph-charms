@@ -16,7 +16,7 @@ import unittest
 import os
 import sys
 
-from mock import patch
+from unittest.mock import patch
 
 # import the module we want to test
 os.sys.path.insert(1, os.path.join(sys.path[0], 'files/nagios'))

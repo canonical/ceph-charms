@@ -9,7 +9,7 @@ sys.path.append('src')  # noqa
 import interface_ceph_iscsi_peer
 
 from unittest import mock
-from mock import PropertyMock
+from unittest.mock import PropertyMock
 
 from ops import framework
 from ops.testing import Harness

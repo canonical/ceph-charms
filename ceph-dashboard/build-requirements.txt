@@ -1,2 +1,1 @@
 cffi==1.14.6; python_version < '3.6'  # cffi 1.15.0 drops support for py35.
-git+https://github.com/canonical/charmcraft.git@0.10.2#egg=charmcraft

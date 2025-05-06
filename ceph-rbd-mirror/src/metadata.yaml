@@ -15,12 +15,8 @@ tags:
 - file-servers
 - misc
 series:
-- xenial
 - bionic
 - focal
-- groovy
-- hirsute
-- impish
 extra-bindings:
   public:
   cluster:

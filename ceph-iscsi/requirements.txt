@@ -1,6 +1,6 @@
 # requirements
-git+https://github.com/juju/charm-helpers.git#egg=charmhelpers
-git+https://github.com/canonical/operator.git#egg=ops
+ops <= 1.6.0
+git+https://github.com/juju/charm-helpers@stable/ussuri#egg=charmhelpers
 git+https://opendev.org/openstack/charm-ops-interface-ceph-client#egg=interface_ceph_client
 git+https://opendev.org/openstack/charm-ops-openstack#egg=ops_openstack
 git+https://opendev.org/openstack/charm-ops-interface-tls-certificates#egg=interface_tls_certificates

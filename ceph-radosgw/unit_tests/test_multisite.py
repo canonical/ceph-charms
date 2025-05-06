@@ -14,7 +14,7 @@
 
 import inspect
 import os
-import mock
+from unittest import mock
 
 import multisite
 

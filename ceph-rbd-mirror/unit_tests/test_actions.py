@@ -14,7 +14,7 @@
 
 import collections
 import json
-import mock
+from unittest import mock
 import sys
 
 sys.modules['charms.layer'] = mock.MagicMock()
@@ -73,7 +73,7 @@ class TestCephRBDMirrorActions(test_utils.PatchHelper):
         # the order the pools has in the output string is undefined
         self.action_set.assert_called_once_with(
             {'output': mock.ANY})
-        self.assertEquals(
+        self.assertEqual(
             sorted(self.action_set.call_args[0][0]['output'].split('\n')),
             ['apool: Promoted 0 mirrored images',
              'bpool: Promoted 0 mirrored images'])
@@ -171,7 +171,7 @@ class TestCephRBDMirrorActions(test_utils.PatchHelper):
             mock.call('i-really-mean-it'),
             mock.call('pools'),
         ])
-        self.assertEquals(
+        self.assertEqual(
             sorted(self.action_set.call_args[0][0]['output'].split('\n')),
             ['apool/imagea: resync flagged for imagea'])
 

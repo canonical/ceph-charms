@@ -12,7 +12,7 @@
 # limitations under the License.
 import json
 import sys
-from mock import mock
+from unittest import mock
 
 from test_utils import CharmTestCase
 

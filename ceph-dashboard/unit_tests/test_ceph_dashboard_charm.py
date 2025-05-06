@@ -22,7 +22,7 @@ import sys
 sys.path.append('lib')  # noqa
 sys.path.append('src')  # noqa
 
-from mock import ANY, call, patch, MagicMock
+from unittest.mock import ANY, call, patch, MagicMock
 
 from ops.testing import Harness, _TestingModelBackend
 from ops.model import (

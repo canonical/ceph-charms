@@ -17,7 +17,7 @@ import os
 import unittest
 import yaml
 
-from mock import patch
+from unittest.mock import patch
 
 
 def load_config():
