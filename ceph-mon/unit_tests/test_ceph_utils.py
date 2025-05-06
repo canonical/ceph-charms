@@ -242,9 +242,6 @@ class CephUtilsTestCase(test_utils.CharmTestCase):
         check_call.side_effect = utils.subprocess.CalledProcessError(
             0, mock.MagicMock()
         )
-        expected_call = mock.call(
-            ['ceph', 'osd', 'require-osd-release', release]
-        )
 
         with self.assertRaises(utils.OsdPostUpgradeError):
             utils._set_require_osd_release(release)
