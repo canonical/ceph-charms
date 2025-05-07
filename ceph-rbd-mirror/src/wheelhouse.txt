@@ -2,3 +2,5 @@ git+https://github.com/juju/charm-helpers.git#egg=charmhelpers
 psutil
 poetry-core
 git+https://github.com/openstack/charms.openstack.git#egg=charms.openstack
+# https://github.com/di/calver/pull/21
+calver==2025.3.31
