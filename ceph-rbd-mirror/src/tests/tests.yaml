@@ -1,0 +1,39 @@
+charm_name: ceph-rbd-mirror
+smoke_bundles:
+- bionic-train
+gate_bundles:
+- bionic-train
+- bionic-train-image-mirroring
+- bionic-stein
+- bionic-queens
+comment: |
+  The e2e bundles are useful for development but adds no additional value to
+  the functional tests.
+dev_bundles:
+- hirsute-wallaby
+- hirsute-wallaby-image-mirroring
+- groovy-victoria
+- groovy-victoria-image-mirroring
+- focal-wallaby
+- focal-wallaby-image-mirroring
+- focal-victoria
+- focal-victoria-image-mirroring
+- bionic-queens-e2e
+- bionic-queens-e2e-lxd
+- bionic-rocky
+- bionic-ussuri
+# This is a dev bundle because we hit https://bugs.launchpad.net/charm-ceph-rbd-mirror/+bug/1892201.
+- bionic-ussuri-image-mirroring
+- focal-ussuri
+- focal-ussuri-image-mirroring
+- xenial-queens
+- xenial-pike
+configure:
+- zaza.openstack.charm_tests.glance.setup.add_lts_image
+tests:
+- zaza.openstack.charm_tests.ceph.rbd_mirror.tests.CephRBDMirrorTest
+- zaza.openstack.charm_tests.ceph.rbd_mirror.tests.CephRBDMirrorControlledFailoverTest
+- zaza.openstack.charm_tests.ceph.rbd_mirror.tests.CephRBDMirrorDisasterFailoverTest
+tests_options:
+  force_deploy:
+    - hirsute-wallaby

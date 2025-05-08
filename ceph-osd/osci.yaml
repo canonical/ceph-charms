@@ -1,0 +1,8 @@
+- project:
+    templates:
+      - charm-unit-jobs-py38
+      - charm-focal-ussuri-functional-jobs
+    vars:
+      needs_charm_build: true
+      charm_build_name: ceph-osd
+      build_type: charmcraft

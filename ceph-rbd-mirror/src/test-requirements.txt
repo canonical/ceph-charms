@@ -1,0 +1,12 @@
+# This file is managed centrally by release-tools and should not be modified
+# within individual charm repos.  See the 'global' dir contents for available
+# choices of *requirements.txt files for OpenStack Charms:
+#     https://github.com/openstack-charmers/release-tools
+#
+
+# Need tox to be available from tox... inception yes, but its a workaround for now
+tox
+
+# Functional Test Requirements (let Zaza's dependencies solve all dependencies here!)
+git+https://github.com/openstack-charmers/zaza.git@stable/ussuri#egg=zaza
+git+https://github.com/openstack-charmers/zaza-openstack-tests.git@stable/ussuri#egg=zaza.openstack

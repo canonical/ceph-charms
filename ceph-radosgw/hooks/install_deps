@@ -1,0 +1,17 @@
+#!/bin/bash -e
+# Install required dependencies for charm runtime
+
+declare -a DEPS=('apt' 'netaddr' 'netifaces' 'yaml' 'jinja2' 'dnspython' 'pyudev')
+
+check_and_install() {
+    pkg="${1}-${2}"
+    if ! dpkg -s ${pkg} 2>&1 > /dev/null; then
+        apt-get -y install ${pkg}
+    fi
+}
+
+PYTHON="python3"
+
+for dep in ${DEPS[@]}; do
+    check_and_install ${PYTHON} ${dep}
+done

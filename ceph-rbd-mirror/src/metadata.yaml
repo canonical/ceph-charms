@@ -1,0 +1,32 @@
+name: ceph-rbd-mirror
+summary: Highly scalable distributed storage - Ceph RBD Mirroring
+maintainer: OpenStack Charmers <openstack-charmers@lists.ubuntu.com>
+description: |
+  RBD images can be asynchronously mirrored between two Ceph clusters. This
+  capability uses the RBD journaling image feature to ensure crash-consistent
+  replication between clusters. The charm automatically creates pools used for
+  RBD images on the remote cluster and configures mirroring.  Pools tagged with
+  the ``rbd`` application are selected.
+
+  NOTE: The charm requires Ceph Luminous or later.
+tags:
+- openstack
+- storage
+- file-servers
+- misc
+series:
+- bionic
+- focal
+extra-bindings:
+  public:
+  cluster:
+subordinate: false
+provides:
+  nrpe-external-master:
+    interface: nrpe-external-master
+    scope: container
+requires:
+  ceph-local:
+    interface: ceph-rbd-mirror
+  ceph-remote:
+    interface: ceph-rbd-mirror

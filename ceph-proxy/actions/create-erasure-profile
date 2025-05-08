@@ -1,0 +1,101 @@
+#!/usr/bin/env python3
+import os
+from subprocess import CalledProcessError
+import sys
+
+_path = os.path.dirname(os.path.realpath(__file__))
+_hooks = os.path.abspath(os.path.join(_path, '../hooks'))
+_root = os.path.abspath(os.path.join(_path, '..'))
+
+
+def _add_path(path):
+    if path not in sys.path:
+        sys.path.insert(1, path)
+
+_add_path(_hooks)
+_add_path(_root)
+
+
+from charmhelpers.contrib.storage.linux.ceph import create_erasure_profile
+from charmhelpers.core.hookenv import action_get, config, log, action_fail
+
+
+def make_erasure_profile():
+    name = action_get("name")
+    plugin = action_get("plugin")
+    failure_domain = action_get("failure-domain")
+    user = config('admin-user')
+    # jerasure requires k+m
+    # isa requires k+m
+    # local requires k+m+l
+    # shec requires k+m+c
+
+    if plugin == "jerasure":
+        k = action_get("data-chunks")
+        m = action_get("coding-chunks")
+        try:
+            create_erasure_profile(service=user,
+                                   erasure_plugin_name=plugin,
+                                   profile_name=name,
+                                   data_chunks=k,
+                                   coding_chunks=m,
+                                   failure_domain=failure_domain)
+        except CalledProcessError as e:
+            log(str(e))
+            action_fail("Create erasure profile failed with "
+                        "message: {}".format(e.message))
+    elif plugin == "isa":
+        k = action_get("data-chunks")
+        m = action_get("coding-chunks")
+        try:
+            create_erasure_profile(service=user,
+                                   erasure_plugin_name=plugin,
+                                   profile_name=name,
+                                   data_chunks=k,
+                                   coding_chunks=m,
+                                   failure_domain=failure_domain)
+        except CalledProcessError as e:
+            log(str(e))
+            action_fail("Create erasure profile failed with "
+                        "message: {}".format(e.message))
+    elif plugin == "local":
+        k = action_get("data-chunks")
+        m = action_get("coding-chunks")
+        l = action_get("locality-chunks")
+        try:
+            create_erasure_profile(service=user,
+                                   erasure_plugin_name=plugin,
+                                   profile_name=name,
+                                   data_chunks=k,
+                                   coding_chunks=m,
+                                   locality=l,
+                                   failure_domain=failure_domain)
+        except CalledProcessError as e:
+            log(str(e))
+            action_fail("Create erasure profile failed with "
+                        "message: {}".format(e.message))
+    elif plugin == "shec":
+        k = action_get("data-chunks")
+        m = action_get("coding-chunks")
+        c = action_get("durability-estimator")
+        try:
+            create_erasure_profile(service=user,
+                                   erasure_plugin_name=plugin,
+                                   profile_name=name,
+                                   data_chunks=k,
+                                   coding_chunks=m,
+                                   durability_estimator=c,
+                                   failure_domain=failure_domain)
+        except CalledProcessError as e:
+            log(str(e))
+            action_fail("Create erasure profile failed with "
+                        "message: {}".format(e.message))
+    else:
+        # Unknown erasure plugin
+        action_fail("Unknown erasure-plugin type of {}. "
+                    "Only jerasure, isa, local or shec is "
+                    "allowed".format(plugin))
+
+
+if __name__ == '__main__':
+    make_erasure_profile()

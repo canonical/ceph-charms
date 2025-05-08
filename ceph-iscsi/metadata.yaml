@@ -1,0 +1,31 @@
+name: ceph-iscsi
+summary: Gateway for provisioning iscsi devices backed by ceph.
+maintainer: OpenStack Charmers <openstack-charmers@lists.ubuntu.com>
+description: |
+  The iSCSI gateway is integrating Ceph Storage with the iSCSI standard to
+  provide a Highly Available (HA) iSCSI target that exports RADOS Block Device
+  (RBD) images as SCSI disks.
+tags:
+  - openstack
+  - storage
+  - misc
+series:
+  - focal
+  - groovy
+  - hirsute
+  - impish
+subordinate: false
+min-juju-version: 2.7.6
+extra-bindings:
+  public:
+requires:
+  ceph-client:
+    interface: ceph-client
+  certificates:
+    interface: tls-certificates
+provides:
+  admin-access:
+    interface: ceph-iscsi-admin-access
+peers:
+  cluster:
+    interface: ceph-iscsi-peer

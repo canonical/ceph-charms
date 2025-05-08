@@ -1,0 +1,70 @@
+- project:
+    templates:
+      - charm-unit-jobs-py38
+    check:
+      jobs:
+        - vault-bionic-train_rgw
+        - vault-bionic-train-namespaced
+        - vault-bionic-ussuri_rgw
+        - vault-bionic-ussuri-namespaced
+        - vault-focal-ussuri-ec
+        - vault-focal-ussuri_rgw
+        - vault-focal-ussuri-namespaced
+    vars:
+      needs_charm_build: true
+      charm_build_name: ceph-radosgw
+      build_type: charmcraft
+
+- job:
+    name: vault-bionic-train_rgw
+    parent: func-target
+    dependencies:
+      - charm-build
+      - osci-lint
+      - tox-py38
+    vars:
+      tox_extra_args: vault:bionic-train
+- job:
+    name: vault-bionic-train-namespaced
+    parent: func-target
+    dependencies:
+      - vault-bionic-train_rgw
+    vars:
+      tox_extra_args: vault:bionic-train-namespaced
+- job:
+    name: vault-bionic-ussuri_rgw
+    parent: func-target
+    dependencies:
+      - charm-build
+      - osci-lint
+      - tox-py38
+    vars:
+      tox_extra_args: vault:bionic-ussuri
+- job:
+    name: vault-bionic-ussuri-namespaced
+    parent: func-target
+    dependencies:
+      - vault-bionic-ussuri_rgw
+    vars:
+      tox_extra_args: vault:bionic-ussuri-namespaced
+- job:
+    name: vault-focal-ussuri-ec
+    parent: func-target
+    dependencies:
+      - vault-bionic-ussuri_rgw
+    vars:
+      tox_extra_args: vault:focal-ussuri-ec
+- job:
+    name: vault-focal-ussuri_rgw
+    parent: func-target
+    dependencies:
+      - vault-bionic-ussuri_rgw
+    vars:
+      tox_extra_args: vault:focal-ussuri
+- job:
+    name: vault-focal-ussuri-namespaced
+    parent: func-target
+    dependencies:
+      - vault-bionic-ussuri_rgw
+    vars:
+      tox_extra_args: vault:focal-ussuri-namespaced

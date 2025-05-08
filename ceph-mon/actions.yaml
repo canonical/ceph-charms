@@ -1,0 +1,407 @@
+pause-health:
+  description: "Pause ceph health operations across the entire ceph cluster"
+resume-health:
+  description: "Resume ceph health operations across the entire ceph cluster"
+get-health:
+  description: "Output the current cluster health reported by `ceph health`"
+create-cache-tier:
+  description: "Create a new cache tier"
+  params:
+    backer-pool:
+      type: string
+      description: "The name of the pool that will back the cache tier. Also known as the cold pool"
+    cache-pool:
+      type: string
+      description: "The name of the pool that will be the cache pool. Also known as the hot pool"
+    cache-mode:
+      type: string
+      default: writeback
+      enum:
+        - writeback
+        - readonly
+      description: "The mode of the caching tier.  Please refer to the Ceph docs for more information"
+  required:
+    - backer-pool
+    - cache-pool
+  additionalProperties: false
+remove-cache-tier:
+  description: "Remove an existing cache tier"
+  params:
+    backer-pool:
+      type: string
+      description: "The name of the pool that backs the cache tier. Also known as the cold pool"
+    cache-pool:
+      type: string
+      description: "The name of the pool that is the cache pool. Also known as the hot pool"
+  required:
+    - backer-pool
+    - cache-pool
+  additionalProperties: false
+create-pool:
+  description: "Creates a pool"
+  params:
+    name:
+      type: string
+      description: "The name of the pool"
+    app-name:
+      type: string
+      description: "App name to set on the newly created pool."
+    profile-name:
+      type: string
+      description: "The crush profile to use for this pool.  The ruleset must exist first."
+    pool-type:
+      type: string
+      default: replicated
+      enum:
+        - replicated
+        - erasure
+        - erasure-coded
+      description: "The pool type which may either be replicated to recover from lost OSDs by keeping multiple copies of the objects or erasure to get a kind of generalized RAID5 capability."
+    replicas:
+      type: integer
+      default: 3
+      description: "For the replicated pool this is the number of replicas to store of each object."
+    erasure-profile-name:
+      type: string
+      default: default
+      description: "The name of the erasure coding profile to use for this pool. Note this profile must exist before calling create-pool"
+    percent-data:
+      type: integer
+      default: 10
+      description: "The percentage of data that is expected to be contained in the pool for the specific OSD set. Default value is to assume 10% of the data is for this pool, which is a relatively low % of the data but allows for the pg_num to be increased."
+    allow-ec-overwrites:
+      type: boolean
+      description: "Permit overwrites for erasure coded pool types."
+  required:
+    - name
+  additionalProperties: false
+create-crush-rule:
+  description: "Create a new replicated CRUSH rule to use on a pool."
+  params:
+    name:
+      type: string
+      description: "The name of the rule"
+    failure-domain:
+      type: string
+      default: host
+      enum:
+        - chassis
+        - datacenter
+        - host
+        - osd
+        - pdu
+        - pod
+        - rack
+        - region
+        - room
+        - root
+        - row
+      description: "The failure-domain=host will create a CRUSH ruleset that ensures no two chunks are stored in the same host."
+    device-class:
+      type: string
+      enum:
+        - hdd
+        - ssd
+        - nvme
+      description: "CRUSH device class to use for new rule."
+  required:
+    - name
+  additionalProperties: false
+create-erasure-profile:
+  description: "Create a new erasure code profile to use on a pool."
+  params:
+    name:
+      type: string
+      description: "The name of the profile"
+    failure-domain:
+      type: string
+      enum:
+        - chassis
+        - datacenter
+        - host
+        - osd
+        - pdu
+        - pod
+        - rack
+        - region
+        - room
+        - root
+        - row
+      description: "The failure-domain=host will create a CRUSH ruleset that ensures no two chunks are stored in the same host."
+    plugin:
+      type: string
+      default: jerasure
+      enum:
+        - jerasure
+        - isa
+        - lrc
+        - shec
+        - clay
+      description: "The erasure plugin to use for this profile. See http://docs.ceph.com/docs/master/rados/operations/erasure-code-profile/ for more details"
+    data-chunks:
+      type: integer
+      default: 3
+      description: "The number of data chunks, i.e. the number of chunks in which the original object is divided. For instance if K = 2 a 10KB object will be divided into K objects of 5KB each."
+    coding-chunks:
+      type: integer
+      default: 2
+      description: "The number of coding chunks, i.e. the number of additional chunks computed by the encoding functions. If there are 2 coding chunks, it means 2 OSDs can be out without losing data."
+    locality-chunks:
+      type: integer
+      description: "LRC plugin - Group the coding and data chunks into sets of size locality. For instance, for k=4 and m=2, when locality=3 two groups of three are created. Each set can be recovered without reading chunks from another set."
+    crush-locality:
+      type: string
+      enum:
+        - chassis
+        - datacenter
+        - host
+        - osd
+        - pdu
+        - pod
+        - rack
+        - region
+        - room
+        - root
+        - row
+      description: "LRC plugin - The type of CRUSH bucket in which each set of chunks defined by locality-chunks will be stored."
+    durability-estimator:
+      type: integer
+      description: "SHEC plugin - the number of parity chunks each of which includes each data chunk in its calculation range. The number is used as a durability estimator. For instance, if c=2, 2 OSDs can be down without losing data."
+    helper-chunks:
+      type: integer
+      description: "CLAY plugin - number of OSDs requests to send data during recovery of a single chunk."
+    scalar-mds:
+      type: string
+      enum:
+        - jerasure
+        - isa
+        - shec
+      description: "CLAY plugin - specifies the plugin that is used as a building block in the layered construction."
+    device-class:
+      type: string
+      enum:
+        - hdd
+        - ssd
+        - nvme
+      description: "CRUSH device class to use for erasure profile."
+  required:
+    - name
+  additionalProperties: false
+get-erasure-profile:
+  description: "Display an erasure code profile."
+  params:
+    name:
+      type: string
+      description: "The name of the profile"
+  required:
+    - name
+  additionalProperties: false
+delete-erasure-profile:
+  description: "Deletes an erasure code profile."
+  params:
+    name:
+      type: string
+      description: "The name of the profile"
+  required:
+    - name
+  additionalProperties: false
+list-erasure-profiles:
+  description: "List the names of all erasure code profiles"
+  additionalProperties: false
+list-inconsistent-objs:
+  description: "List the names of the inconsistent objecs per PG"
+  params:
+    format:
+      type: string
+      enum:
+        - json
+        - yaml
+        - text
+      default: text
+      description: "The output format, either json, yaml or text (default)"
+  additionalProperties: false
+list-pools:
+  description: "List your cluster's pools"
+  params:
+    format:
+      type: string
+      default: text
+      enum:
+        - text
+        - text-full
+        - json
+      description: "Specify output format (text|text-full|json). The formats `text-full` and `json` provide the same level of details."
+  additionalProperties: false
+set-pool-max-bytes:
+  description: "Set pool quotas for the maximum number of bytes."
+  params:
+    max:
+      type: integer
+      description: "The name of the pool"
+    name:
+      type: string
+      description: "The name of the pool"
+  required:
+    - name
+    - max
+  additionalProperties: false
+delete-pool:
+  description: "Deletes the named pool"
+  params:
+    name:
+      type: string
+      description: "The name of the pool"
+  required:
+    - name
+  additionalProperties: false
+rename-pool:
+  description: "Rename a pool"
+  params:
+    name:
+      type: string
+      description: "The name of the pool"
+    new-name:
+      type: string
+      description: "The new name of the pool"
+  required:
+    - name
+    - new-name
+  additionalProperties: false
+pool-statistics:
+  description: "Show a pool's utilization statistics"
+  additionalProperties: false
+snapshot-pool:
+  description: "Snapshot a pool"
+  params:
+    name:
+      type: string
+      description: "The name of the pool"
+    snapshot-name:
+      type: string
+      description: "The name of the snapshot"
+  required:
+    - snapshot-name
+    - name
+  additionalProperties: false
+remove-pool-snapshot:
+  description: "Remove a pool snapshot"
+  params:
+    name:
+      type: string
+      description: "The name of the pool"
+    snapshot-name:
+      type: string
+      description: "The name of the snapshot"
+  required:
+    - snapshot-name
+    - name
+  additionalProperties: false
+pool-set:
+  description: "Set a value for the pool"
+  params:
+    name:
+      type: string
+      description: "The pool to set this variable on."
+    key:
+      type: string
+      description: "Any valid Ceph key from http://docs.ceph.com/docs/master/rados/operations/pools/#set-pool-values"
+    value:
+      # LP: #1838650 - unfortunately, Juju appears to consider '3' on the
+      # command line as not being a string, and has to be quoted as "'3'".  So,
+      # we actually let the charm do the verification, and let any value
+      # through here.
+      description: "The value to set"
+  required:
+    - key
+    - value
+    - name
+  additionalProperties: false
+pool-get:
+  description: "Get a value for the pool"
+  params:
+    name:
+      type: string
+      description: "The pool to get this variable from."
+    key:
+      type: string
+      description: "Any valid Ceph key from http://docs.ceph.com/docs/master/rados/operations/pools/#get-pool-values"
+  required:
+    - key
+    - name
+  additionalProperties: false
+crushmap-update:
+  description: "Apply a json crushmap definition.  This will throw away the existing ceph crushmap and apply the new definition.  Use with extreme caution. WARNING - This function is extremely dangerous if misused. It can very easily break your cluster in unexpected ways."
+  params:
+    map:
+      type: string
+      description: "The json crushmap blob"
+  required:
+    - map
+  additionalProperties: false
+show-disk-free:
+  description: "Show disk utilization by host and OSD."
+  params:
+    format:
+      type: string
+      enum:
+        - json
+        - json-pretty
+        - xml
+        - xml-pretty
+        - plain
+      default: plain
+      description: "Output format, either json, json-pretty, xml, xml-pretty, plain; defaults to plain"
+  additionalProperties: false
+copy-pool:
+  description: "Copy contents of a pool to a new pool."
+  params:
+    source:
+      type: string
+      description: "Pool to copy data from."
+    target:
+      type: string
+      description: "Pool to copy data to."
+  required:
+    - source
+    - target
+  additionalProperties: false
+set-noout:
+  description: "Set ceph noout across the cluster."
+unset-noout:
+  description: "Unset ceph noout across the cluster."
+security-checklist:
+  description: Validate the running configuration against the OpenStack security guides checklist
+purge-osd:
+  description: "Removes an OSD from a cluster map, removes its authentication key, removes the OSD from the OSD map. The OSD must have zero weight before running this action, to avoid excessive I/O on the cluster."
+  params:
+    osd:
+      type: integer
+      description: "ID of the OSD to remove, e.g. for osd.53, supply 53."
+    i-really-mean-it:
+      type: boolean
+      description: "This must be toggled to enable actually performing this action."
+  required:
+    - osd
+    - i-really-mean-it
+change-osd-weight:
+  description: "Set the crush weight of an OSD to the new value supplied."
+  params:
+    osd:
+      type: integer
+      description: "ID of the OSD to operate on, e.g. for osd.53, supply 53."
+    weight:
+      type: number
+      description: "The new weight of the OSD, must be a decimal number, e.g. 1.04"
+  required:
+    - osd
+    - weight
+get-quorum-status:
+  description: "Return lists of the known mons, and online mons, to determine if there is quorum."
+  params:
+    format:
+      type: string
+      default: text
+      enum:
+        - text
+        - json
+      description: Specify output format (text|json).

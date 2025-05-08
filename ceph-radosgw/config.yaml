@@ -1,0 +1,518 @@
+options:
+  loglevel:
+    type: int
+    default: 1
+    description: RadosGW debug level. Max is 20.
+  source:
+    type: string
+    default:
+    description: |
+      Optional repository from which to install. May be one of the following:
+      distro (default), ppa:somecustom/ppa, a deb url sources entry,
+      or a supported Ubuntu Cloud Archive e.g.
+      .
+      cloud:<series>-<openstack-release>
+      cloud:<series>-<openstack-release>/updates
+      cloud:<series>-<openstack-release>/staging
+      cloud:<series>-<openstack-release>/proposed
+      .
+      See https://wiki.ubuntu.com/OpenStack/CloudArchive for info on which
+      cloud archives are available and supported.
+      .
+      Note that a minimum ceph version of 0.48.2 is required for use with this
+      charm which is NOT provided by the packages in the main Ubuntu archive
+      for precise but is provided in the Ubuntu cloud archive.
+  key:
+    type: string
+    default:
+    description: |
+      Key ID to import to the apt keyring to support use with arbitary source
+      configuration from outside of Launchpad archives or PPA's.
+  harden:
+    type: string
+    default:
+    description: |
+      Apply system hardening. Supports a space-delimited list of modules
+      to run. Supported modules currently include os, ssh, apache and mysql.
+  config-flags:
+    type: string
+    default:
+    description: |
+      User provided Ceph configuration. Supports a string representation of
+      a python dictionary where each top-level key represents a section in
+      the ceph.conf template. You may only use sections supported in the
+      template.
+      .
+      WARNING: this is not the recommended way to configure the underlying
+      services that this charm installs and is used at the user's own risk.
+      This option is mainly provided as a stop-gap for users that either
+      want to test the effect of modifying some config or who have found
+      a critical bug in the way the charm has configured their services
+      and need it fixed immediately. We ask that whenever this is used,
+      that the user consider opening a bug on this charm at
+      http://bugs.launchpad.net/charms providing an explanation of why the
+      config was needed so that we may consider it for inclusion as a
+      natively supported config in the charm.
+  port:
+    type: int
+    default:
+    description: |
+      The port that the RADOS Gateway will listen on.
+      .
+      The default is 80 when no TLS is configured and 443 when TLS is
+      configured.
+  prefer-ipv6:
+    type: boolean
+    default: False
+    description: |
+      If True enables IPv6 support. The charm will expect network interfaces
+      to be configured with an IPv6 address. If set to False (default) IPv4
+      is expected.
+      .
+      NOTE: these charms do not currently support IPv6 privacy extension. In
+      order for this charm to function correctly, the privacy extension must be
+      disabled and a non-temporary address must be configured/available on
+      your network interface.
+  pool-prefix:
+    type: string
+    default:
+    description: |
+      DEPRECATED, use zone instead - pool name can be inherited from the zone config
+      option. The rados gateway stores objects in many different pools. If you
+      would like to have multiple rados gateways each pointing to a separate
+      set of pools set this prefix. The charm will then set up a new set of pools.
+      If your prefix has a dash in it that will be used to split the prefix into
+      region and zone. Please read the documentation on federated rados gateways
+      for more information on region and zone.
+  restrict-ceph-pools:
+    type: boolean
+    default: False
+    description: |
+      Optionally restrict Ceph key permissions to access pools as required.
+  ceph-osd-replication-count:
+    type: int
+    default: 3
+    description: |
+      This value dictates the number of replicas ceph must make of any object
+      it stores within RGW pools. Note that once the RGW pools have been
+      created, changing this value will not have any effect (although it can be
+      changed in ceph by manually configuring your ceph cluster).
+  rgw-buckets-pool-weight:
+    type: int
+    default: 20
+    description: |
+      Defines a relative weighting of the pool as a percentage of the total
+      amount of data in the Ceph cluster. This effectively weights the number
+      of placement groups for the pool created to be appropriately portioned
+      to the amount of data expected. For example, if the amount of data loaded
+      into the RADOS Gateway/S3 interface is expected to be reserved for or
+      consume 20% of the data in the Ceph cluster, then this value would be
+      specified as 20.
+  rgw-lightweight-pool-pg-num:
+    type: int
+    default: -1
+    description: |
+      When the Rados Gatway is installed it, by default, creates pools with
+      pg_num 8 which, in the majority of cases is suboptimal. A few rgw pools
+      tend to carry more data than others e.g. .rgw.buckets tends to be larger
+      than most. So, for pools with greater requirements than others the charm
+      will apply the optimal value i.e. corresponding to the number of OSDs
+      up+in the cluster at the time the pool is created. For others it will use
+      this value which can be altered depending on how big you cluster is. Note
+      that once a pool has been created, changes to this setting will be
+      ignored. Setting this value to -1, enables the number of placement
+      groups to be calculated based on the Ceph placement group calculator.
+  pool-type:
+    type: string
+    default: replicated
+    description: |
+      Ceph pool type to use for storage - valid values include ‘replicated’
+      and ‘erasure-coded’.
+  ec-profile-name:
+    type: string
+    default:
+    description: |
+      Name for the EC profile to be created for the EC pools. If not defined
+      a profile name will be generated based on the name of the pool used by
+      the application.
+  ec-rbd-metadata-pool:
+    type: string
+    default:
+    description: |
+      Name of the metadata pool to be created (for RBD use-cases). If not
+      defined a metadata pool name will be generated based on the name of
+      the data pool used by the application.  The metadata pool is always
+      replicated, not erasure coded.
+  ec-profile-k:
+    type: int
+    default: 1
+    description: |
+      Number of data chunks that will be used for EC data pool. K+M factors
+      should never be greater than the number of available zones (or hosts)
+      for balancing.
+  ec-profile-m:
+    type: int
+    default: 2
+    description: |
+      Number of coding chunks that will be used for EC data pool. K+M factors
+      should never be greater than the number of available zones (or hosts)
+      for balancing.
+  ec-profile-locality:
+    type: int
+    default:
+    description: |
+      (lrc plugin - l) Group the coding and data chunks into sets of size l.
+      For instance, for k=4 and m=2, when l=3 two groups of three are created.
+      Each set can be recovered without reading chunks from another set. Note
+      that using the lrc plugin does incur more raw storage usage than isa or
+      jerasure in order to reduce the cost of recovery operations.
+  ec-profile-crush-locality:
+    type: string
+    default:
+    description: |
+      (lrc plugin) The type of the crush bucket in which each set of chunks
+      defined by l will be stored. For instance, if it is set to rack, each
+      group of l chunks will be placed in a different rack. It is used to
+      create a CRUSH rule step such as step choose rack. If it is not set,
+      no such grouping is done.
+  ec-profile-durability-estimator:
+    type: int
+    default:
+    description: |
+      (shec plugin - c) The number of parity chunks each of which includes
+      each data chunk in its calculation range. The number is used as a
+      durability estimator. For instance, if c=2, 2 OSDs can be down
+      without losing data.
+  ec-profile-helper-chunks:
+    type: int
+    default:
+    description: |
+      (clay plugin - d) Number of OSDs requested to send data during
+      recovery of a single chunk. d needs to be chosen such that
+      k+1 <= d <= k+m-1. Larger the d, the better the savings.
+  ec-profile-scalar-mds:
+    type: string
+    default:
+    description: |
+      (clay plugin) specifies the plugin that is used as a building
+      block in the layered construction. It can be one of jerasure,
+      isa, shec (defaults to jerasure).
+  ec-profile-plugin:
+    type: string
+    default: jerasure
+    description: |
+      EC plugin to use for this applications pool. The following list of
+      plugins acceptable - jerasure, lrc, isa, shec, clay.
+  ec-profile-technique:
+    type: string
+    default:
+    description: |
+      EC profile technique used for this applications pool - will be
+      validated based on the plugin configured via ec-profile-plugin.
+      Supported techniques are ‘reed_sol_van’, ‘reed_sol_r6_op’,
+      ‘cauchy_orig’, ‘cauchy_good’, ‘liber8tion’ for jerasure,
+      ‘reed_sol_van’, ‘cauchy’ for isa and ‘single’, ‘multiple’
+      for shec.
+  ec-profile-device-class:
+    type: string
+    default:
+    description: |
+      Device class from CRUSH map to use for placement groups for
+      erasure profile - valid values: ssd, hdd or nvme (or leave
+      unset to not use a device class).
+  # Keystone integration
+  operator-roles:
+    type: string
+    default: "Member,member"
+    description: |
+      Comma-separated list of Swift operator roles; used when integrating with
+      OpenStack Keystone.
+  admin-roles:
+    type: string
+    default: "Admin"
+    description: |
+      Comma-separated list of Swift admin roles; used when integrating with
+      OpenStack Keystone. Admin roles can set the user quota amount.
+  region:
+    type: string
+    default: RegionOne
+    description: |
+      OpenStack region that the RADOS gateway supports; used when integrating
+      with OpenStack Keystone.
+  cache-size:
+    type: int
+    default: 500
+    description: Number of keystone tokens to hold in local cache.
+  # HA config
+  use-syslog:
+    type: boolean
+    default: False
+    description: |
+      If set to True, supporting services will log to syslog.
+  dns-ha:
+    type: boolean
+    default: False
+    description: |
+      Use DNS HA with MAAS 2.0. Note if this is set do not set vip
+      settings below.
+  vip:
+    type: string
+    default:
+    description: |
+      Virtual IP(s) to use to front API services in HA configuration.
+      .
+      If multiple networks are being used, a VIP should be provided for each
+      network, separated by spaces.
+  ha-bindiface:
+    type: string
+    default: eth0
+    description: |
+      Default network interface on which HA cluster will bind to communication
+      with the other members of the HA Cluster.
+  ha-mcastport:
+    type: int
+    default: 5414
+    description: |
+      Default multicast port number that will be used to communicate between
+      HA Cluster nodes.
+  # Network config (by default all access is over 'private-address')
+  os-admin-network:
+    type: string
+    default:
+    description: |
+      The IP address and netmask of the OpenStack Admin network (e.g.
+      192.168.0.0/24)
+      .
+      This network will be used for admin endpoints.
+  os-internal-network:
+    type: string
+    default:
+    description: |
+      The IP address and netmask of the OpenStack Internal network (e.g.
+      192.168.0.0/24)
+      .
+      This network will be used for internal endpoints.
+  os-public-network:
+    type: string
+    default:
+    description: |
+      The IP address and netmask of the OpenStack Public network (e.g.
+      192.168.0.0/24)
+      .
+      This network will be used for public endpoints.
+  os-public-hostname:
+    type: string
+    default:
+    description: |
+      The hostname or address of the public endpoints created for ceph-radosgw
+      in the keystone identity provider.
+      .
+      This value will be used for public endpoints. For example, an
+      os-public-hostname set to 'files.example.com' with will create
+      the following public endpoint for the ceph-radosgw:
+      .
+      https://files.example.com:80/swift/v1
+  os-internal-hostname:
+    type: string
+    default:
+    description: |
+      The hostname or address of the internal endpoints created for
+      ceph-radosgw in the keystone identity provider.
+      .
+      This value will be used for internal endpoints. For example, an
+      os-internal-hostname set to 'files.internal.example.com' with will create
+      the following internal endpoint for the ceph-radosgw:
+      .
+      https://files.internal.example.com:80/swift/v1
+  os-admin-hostname:
+    type: string
+    default:
+    description: |
+      The hostname or address of the admin endpoints created for ceph-radosgw
+      in the keystone identity provider.
+      .
+      This value will be used for admin endpoints. For example, an
+      os-admin-hostname set to 'files.admin.example.com' with will create
+      the following admin endpoint for the ceph-radosgw:
+      .
+      https://files.admin.example.com:80/swift/v1
+  # Monitoring config
+  nagios_context:
+    type: string
+    default: "juju"
+    description: |
+      Used by the nrpe-external-master subordinate charm.
+      A string that will be prepended to instance name to set the host name
+      in nagios. So for instance the hostname would be something like:
+      .
+          juju-myservice-0
+      .
+      If you're running multiple environments with the same services in them
+      this allows you to differentiate between them.
+  nagios_servicegroups:
+    type: string
+    default: ""
+    description: |
+      A comma-separated list of nagios servicegroups. If left empty,
+      the nagios_context will be used as the servicegroup
+  # HAProxy Parameters
+  haproxy-server-timeout:
+    type: int
+    default:
+    description: |
+      Server timeout configuration in ms for haproxy, used in HA
+      configurations. If not provided, default value of 90000ms is used.
+  haproxy-client-timeout:
+    type: int
+    default:
+    description: |
+      Client timeout configuration in ms for haproxy, used in HA
+      configurations. If not provided, default value of 90000ms is used.
+  haproxy-queue-timeout:
+    type: int
+    default:
+    description: |
+      Queue timeout configuration in ms for haproxy, used in HA
+      configurations. If not provided, default value of 9000ms is used.
+  haproxy-connect-timeout:
+    type: int
+    default:
+    description: |
+      Connect timeout configuration in ms for haproxy, used in HA
+      configurations. If not provided, default value of 9000ms is used.
+
+  # External SSL Parameters
+  ssl_cert:
+    type: string
+    default:
+    description: |
+      SSL certificate to install and use for API ports. Setting this value
+      and ssl_key will enable reverse proxying, point Glance's entry in the
+      Keystone catalog to use https, and override any certificate and key
+      issued by Keystone (if it is configured to do so).
+  ssl_key:
+    type: string
+    default:
+    description: SSL key to use with certificate specified as ssl_cert.
+  ssl_ca:
+    type: string
+    default:
+    description: |
+      SSL CA to use with the certificate and key provided - this is only
+      required if you are providing a privately signed ssl_cert and ssl_key.
+  # Multi Site Options
+  realm:
+    type: string
+    default:
+    description: |
+      Name of RADOS Gateway Realm to create for multi-site replication. Setting
+      this option will enable support for multi-site replication, at which
+      point the zonegroup and zone options must also be provided.
+  zonegroup:
+    type: string
+    default:
+    description: |
+      Name of RADOS Gateway Zone Group to create for multi-site replication.
+  zone:
+    type: string
+    default: default
+    description: |
+      Name of RADOS Gateway Zone to create for multi-site replication. This
+      option must be specific to the local site e.g. us-west or us-east.
+  namespace-tenants:
+    type: boolean
+    default: False
+    description: |
+      Enable tenant namespacing. If tenant namespacing is enabled, keystone
+      tenants will be implicitly added to a matching tenant in radosgw, in
+      addition to updating the catalog URL to allow radosgw to support
+      publicly-readable containers and temporary URLS. This namespacing
+      also allows multiple tenants to create buckets with the same names,
+      as the bucket names are namespaced into the tenant namespaces in the
+      RADOS gateway.
+
+      This configuration option will not be enabled on a charm upgrade, and
+      cannot be toggled on in an existing installation as it will remove
+      tenant access to existing buckets.
+  bluestore-compression-algorithm:
+    type: string
+    default:
+    description: |
+      Compressor to use (if any) for pools requested by this charm.
+      .
+      NOTE: The ceph-osd charm sets a global default for this value (defaults
+      to 'lz4' unless configured by the end user) which will be used unless
+      specified for individual pools.
+  bluestore-compression-mode:
+    type: string
+    default:
+    description: |
+      Policy for using compression on pools requested by this charm.
+      .
+      'none' means never use compression.
+      'passive' means use compression when clients hint that data is
+      compressible.
+      'aggressive' means use compression unless clients hint that
+      data is not compressible.
+      'force' means use compression under all circumstances even if the clients
+      hint that the data is not compressible.
+  bluestore-compression-required-ratio:
+    type: float
+    default:
+    description: |
+      The ratio of the size of the data chunk after compression relative to the
+      original size must be at least this small in order to store the
+      compressed version on pools requested by this charm.
+  bluestore-compression-min-blob-size:
+    type: int
+    default:
+    description: |
+      Chunks smaller than this are never compressed on pools requested by
+      this charm.
+  bluestore-compression-min-blob-size-hdd:
+    type: int
+    default:
+    description: |
+      Value of bluestore compression min blob size for rotational media on
+      pools requested by this charm.
+  bluestore-compression-min-blob-size-ssd:
+    type: int
+    default:
+    description: |
+      Value of bluestore compression min blob size for solid state media on
+      pools requested by this charm.
+  bluestore-compression-max-blob-size:
+    type: int
+    default:
+    description: |
+      Chunks larger than this are broken into smaller blobs sizing bluestore
+      compression max blob size before being compressed on pools requested by
+      this charm.
+  bluestore-compression-max-blob-size-hdd:
+    type: int
+    default:
+    description: |
+      Value of bluestore compression max blob size for rotational media on
+      pools requested by this charm.
+  bluestore-compression-max-blob-size-ssd:
+    type: int
+    default:
+    description: |
+      Value of bluestore compression max blob size for solid state media on
+      pools requested by this charm.
+  rgw-swift-versioning-enabled:
+    type: boolean
+    default: False
+    description: |
+      If True, swift object versioning will be enabled for radosgw.
+
+      NOTE: X-Versions-Location is the only versioning-related header that
+      radosgw interprets. X-History-Location, supported by native OpenStack
+      Swift, is currently not supported by radosgw.
+  http-frontend:
+    type: string
+    default:
+    description: |
+      Frontend HTTP engine to use for the Ceph RADOS Gateway; For Octopus and
+      later this defaults to 'beast' and for older releases (and on architectures
+      where beast is not supported) 'civetweb'.

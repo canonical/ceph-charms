@@ -1,0 +1,65 @@
+pause:
+  description: |
+    Pause ceph-iscsi services.
+    If the ceph-iscsi deployment is clustered using the hacluster charm, the
+    corresponding hacluster unit on the node must first be paused as well.
+    Not doing so may lead to an interruption of service.
+resume:
+  description: |
+    Resume ceph-iscsi services.
+    If the ceph-iscsi deployment is clustered using the hacluster charm, the
+    corresponding hacluster unit on the node must be resumed as well.
+security-checklist:
+  description: Validate the running configuration against the OpenStack security guides checklist
+add-trusted-ip:
+  description: "Add IP address that is permitted to talk to API"
+  params:
+    ips:
+      type: string
+      default: ''
+      description: "Space seperated list of trusted ips"
+    overwrite:
+      type: boolean
+      default: False
+      description: "If False append IPs to list"
+  required:
+    - ips
+create-target:
+  description: "Create a new cache tier"
+  params:
+    gateway-units:
+      type: string
+      description: "Space seperated list of gateway units eg 'ceph-iscsi/0 ceph-scsi/1'"
+    iqn:
+      type: string
+      description: "iSCSI Qualified Name"
+    image-size:
+      type: string
+      description: "Target size"
+    image-name:
+      type: string
+      default: disk_1
+      description: "Image name "
+    rbd-pool-name:
+      type: string
+      default: iscsi
+      description: "Name of ceph pool to use to back target "
+    ec-rbd-metadata-pool:
+      type: string
+      default: iscsi
+      description: "Name of the metadata pool to use with rbd-pool-name if rbd-pool-name is erasure coded."
+    client-initiatorname:
+      type: string
+      description: "The initiator name of the client that will mount the target"
+    client-username:
+      type: string
+      description: "The CHAPs username to be created for the client"
+    client-password:
+      type: string
+      description: "The CHAPs password to be created for the client"
+  required:
+    - image-size
+    - image-name
+    - client-initiatorname
+    - client-username
+    - client-password

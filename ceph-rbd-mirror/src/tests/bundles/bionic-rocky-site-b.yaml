@@ -1,0 +1,27 @@
+series: bionic
+applications:
+  ceph-mon:
+    charm: cs:~openstack-charmers/ceph-mon
+    num_units: 3
+    options:
+      expected-osd-count: 3
+      source: cloud:bionic-rocky
+  ceph-osd:
+    charm: cs:~openstack-charmers/ceph-osd
+    num_units: 3
+    options:
+      source: cloud:bionic-rocky
+      bluestore: False
+      use-direct-io: False
+      osd-devices: /opt
+  ceph-rbd-mirror:
+    series: bionic
+    charm: ../../../ceph-rbd-mirror
+    num_units: 1
+    options:
+      source: cloud:bionic-rocky
+relations:
+- - ceph-mon:osd
+  - ceph-osd:mon
+- - ceph-mon
+  - ceph-rbd-mirror:ceph-local

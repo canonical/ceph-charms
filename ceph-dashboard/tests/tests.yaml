@@ -1,0 +1,32 @@
+charm_name: ceph-dasboard
+gate_bundles:
+  - focal
+  - hirsute
+smoke_bundles:
+  - focal
+configure:
+  - zaza.openstack.charm_tests.vault.setup.auto_initialize_no_validation
+  - zaza.openstack.charm_tests.ceph.dashboard.setup.check_dashboard_cert
+  - zaza.openstack.charm_tests.ceph.dashboard.setup.set_grafana_url
+tests:
+  - zaza.openstack.charm_tests.ceph.dashboard.tests.CephDashboardTest
+  - zaza.openstack.charm_tests.ceph.tests.CephPrometheusTest
+target_deploy_status:
+  ceph-dashboard:
+    workload-status: blocked
+    workload-status-message-regex: "No certificates found|Charm config option|Unit is ready"
+  vault:
+    workload-status: blocked
+    workload-status-message-prefix: Vault needs to be initialized
+  grafana:
+    workload-status: active
+    workload-status-message-prefix: Started
+  prometheus2:
+    workload-status: active
+    workload-status-message-prefix: Ready
+  telegraf:
+    workload-status: active
+    workload-status-message-prefix: Monitoring
+tests_options:
+  force_deploy:
+    - hirsute

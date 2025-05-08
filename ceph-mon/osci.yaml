@@ -1,0 +1,18 @@
+- project:
+    templates:
+      - charm-unit-jobs-py38
+    check:
+      jobs:
+        - focal-ussuri
+        - focal-ussuri-ec-ceph-mon
+    vars:
+      needs_charm_build: true
+      charm_build_name: ceph-mon
+      build_type: charmcraft
+
+- job:
+    name: focal-ussuri-ec-ceph-mon
+    parent: func-target
+    dependencies: []
+    vars:
+      tox_extra_args: focal-ussuri-ec

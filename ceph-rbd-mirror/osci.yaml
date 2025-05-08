@@ -1,0 +1,30 @@
+- project:
+    templates:
+      - charm-unit-jobs
+    check:
+      jobs:
+      - bionic-train_ceph-rbd-mirror
+      - bionic-stein_ceph-rbd-mirror
+      - bionic-queens_ceph-rbd-mirror
+    vars:
+      needs_charm_build: true
+      charm_build_name: ceph-rbd-mirror
+
+- job:
+    name: bionic-train_ceph-rbd-mirror
+    parent: bionic-train
+    dependencies:
+      - osci-lint
+      - tox-py35
+      - tox-py36
+      - tox-py37
+      - tox-py38
+- job:
+    name: bionic-queens_ceph-rbd-mirror
+    parent: bionic-queens
+    dependencies: &smoke-jobs
+      - bionic-train_ceph-rbd-mirror
+- job:
+    name: bionic-stein_ceph-rbd-mirror
+    parent: bionic-stein
+    dependencies: *smoke-jobs

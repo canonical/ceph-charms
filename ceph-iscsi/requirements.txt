@@ -1,0 +1,7 @@
+# requirements
+ops <= 1.6.0
+git+https://github.com/juju/charm-helpers@stable/ussuri#egg=charmhelpers
+git+https://opendev.org/openstack/charm-ops-interface-ceph-client#egg=interface_ceph_client
+git+https://opendev.org/openstack/charm-ops-openstack#egg=ops_openstack
+git+https://opendev.org/openstack/charm-ops-interface-tls-certificates#egg=interface_tls_certificates
+git+https://github.com/openstack-charmers/ops-interface-ceph-iscsi-admin-access#egg=interface_ceph_iscsi_admin_access

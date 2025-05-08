@@ -1,0 +1,76 @@
+options:
+  loglevel:
+    type: int
+    default: 1
+    description: Mon and OSD debug level. Max is 20.
+  use-syslog:
+    type: boolean
+    default: False
+    description: |
+      Setting this to True will allow supporting services to log to syslog.
+  source:
+    type: string
+    default: ""
+    description: |
+      Repository from which to install. May be one of the following:
+      distro (default), ppa:somecustom/ppa, a deb url sources entry,
+      or a supported Ubuntu Cloud Archive e.g.
+      .
+      cloud:<series>-<openstack-release>
+      cloud:<series>-<openstack-release>/updates
+      cloud:<series>-<openstack-release>/staging
+      cloud:<series>-<openstack-release>/proposed
+      .
+      See https://wiki.ubuntu.com/OpenStack/CloudArchive for info on which
+      cloud archives are available and supported.
+      .
+      NOTE: updating this setting to a source that is known to provide
+      a later version of OpenStack will trigger a software upgrade unless
+      action-managed-upgrade is set to True.
+  key:
+    type: string
+    default: ""
+    description: |
+      Key ID to import to the apt keyring to support use with arbitrary source
+      configuration from outside of Launchpad archives or PPA's.
+  fsid:
+    type: string
+    default: ""
+    description: |
+      fsid of the ceph cluster. To generate a suitable value use `uuid`
+      .
+      This configuration element is mandatory and the service will fail on
+      install if it is not provided.
+  monitor-hosts:
+    type: string
+    default: ""
+    description: |
+      Space-delimited list of existing monitor hosts, in the format
+      {IP / Hostname}:{port} {IP / Hostname}:{port}
+  admin-key:
+    type: string
+    default: ""
+    description: Admin cephx key for existing Ceph cluster
+  auth-supported:
+    type: string
+    default: cephx
+    description: |
+      Which authentication flavour to use.
+      .
+      Valid options are "cephx" and "none". If "none" is specified, keys will
+      still be created and deployed so that it can be enabled later.
+  user-keys:
+    type: string
+    default: ""
+    description: |
+      A space-separated list of <username>:<cephx-base64-key> pairs used to
+      lookup authentication keys for a specific user instead of trying to
+      create a user and a key via ceph-mon.
+  admin-user:
+    type: string
+    default: "client.admin"
+    description: |
+      A configurable admin user name. Used for scenarios where pools are
+      pre-created and the user given to charm-ceph-proxy simply needs to
+      check the existence of a given pool and error out if one does not
+      exist. Can be used in conjunction with user-keys.
