@@ -74,7 +74,7 @@ class CephMonCharm(ops_openstack.core.OSBaseCharm):
         self.install_pkgs()
         rm_packages = ceph.determine_packages_to_remove()
         if rm_packages:
-            apt.remove_package(packages=rm_packages, fatal=True)
+            apt.remove_package(package_names=rm_packages)
         try:
             # we defer and explicitly run `ceph-create-keys` from
             # add_keyring_to_ceph() as part of bootstrap process
