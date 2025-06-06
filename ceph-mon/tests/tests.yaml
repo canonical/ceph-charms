@@ -18,3 +18,8 @@ tests:
   - tests.target.CephMonActionsTest
   - tests.target.CephMonKeyRotationTests
   - tests.target.CephMonJujuPersistent
+
+target_deploy_status:
+  mysql:
+    workload-status: idle
+    workload-status-message: 'Primary'
