@@ -248,3 +248,31 @@ class TestCephRBDMirrorCharm(Helper):
         self.assertEqual('pool', rq0)
         rq1 = crmc.pool_mirroring_mode('pool-rq1', broker_requests)
         self.assertEqual('image', rq1)
+
+    def test_eligible_pools(self):
+        pools = {
+            'rbd-replicated': {
+                'applications': {'rbd': {}},
+                'parameters': {'erasure_code_profile': ''},
+            },
+            'rbd-ec-metadata': {
+                'applications': {'rbd': {}},
+                'parameters': {'erasure_code_profile': ''},
+            },
+            'rbd-ec-data': {
+                'applications': {'rbd'},
+                'parameters': {'erasure_code_profile': 'test_profile'},
+            },
+            'non-rbd-pool': {
+                'applications': {'rgw': {}},
+                'parameters': {},
+            },
+        }
+
+        crmc = ceph_rbd_mirror.CephRBDMirrorCharm()
+        eligible = crmc.eligible_pools(pools)
+        self.assertIsNotNone(eligible)
+        self.assertEqual(eligible, {
+            name: attrs for name, attrs in pools.items()
+            if name in {'rbd-replicated', 'rbd-ec-metadata'}
+        })

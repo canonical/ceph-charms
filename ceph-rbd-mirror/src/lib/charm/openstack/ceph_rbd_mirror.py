@@ -71,8 +71,33 @@ class CephRBDMirrorCharm(charms_openstack.plugins.CephCharm):
                   for mirroring.
         :rtype: dict
         """
-        return {pool: attrs for pool, attrs in pools.items()
-                if 'rbd' in attrs['applications']}
+        eligible = dict()
+
+        # Loop through all pools provided and only enable those pools
+        # which have the rbd application enabled and does not use
+        # erasure coding for the data durability in the pool.
+        for pool, attrs in pools.items():
+            # Skip pools which are not enabled for RBD
+            if 'rbd' not in attrs.get('applications', {}):
+                ch_core.hookenv.log(
+                    "'{}' has been excluded due to not having rbd "
+                    "applications enabled".format(pool)
+                )
+                continue
+
+            # Skip pools which have an active erasure coding profile
+            parameters = attrs.get('parameters', {})
+            erasure_code_profile = parameters.get('erasure_code_profile', '')
+            if erasure_code_profile:
+                ch_core.hookenv.log(
+                    "'{}' has been excluded due to erasure coding being "
+                    "enabled".format(pool)
+                )
+                continue
+
+            eligible[pool] = attrs
+
+        return eligible
 
     def custom_assess_status_check(self):
         """Provide mirrored pool statistics through juju status."""
