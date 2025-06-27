@@ -1,5 +1,5 @@
 options:
-  source: &source ppa:lmlogiudice/ceph-1921-noble
+  source: &source proposed
 
 series: noble
 
