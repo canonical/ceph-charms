@@ -2,7 +2,7 @@ local_overlay_enabled: False
 series: noble
 variables:
   openstack-origin: &openstack-origin distro
-  source: &source distro
+  source: &source ppa:lmlogiudice/ceph-pyo3
 
 machines:
   '0':
@@ -19,7 +19,7 @@ applications:
     storage:
       osd-devices: 'loop,10G'
     options:
-      source: *openstack-origin
+      source: *source
       osd-devices: '/dev/test-non-existent'
     channel: latest/edge
     to:
@@ -30,7 +30,7 @@ applications:
     charm: ch:ceph-mon
     num_units: 3
     options:
-      source: *openstack-origin
+      source: *source
       monitor-count: '3'
     channel: latest/edge
   vault:
