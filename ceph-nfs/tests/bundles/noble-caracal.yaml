@@ -1,5 +1,5 @@
 options:
-  source: &source cloud:caracal-proposed
+  source: &source cloud:caracal/proposed
 
 machines:
   '0':
