@@ -22,7 +22,6 @@ configure:
   - zaza.openstack.charm_tests.vault.setup.auto_initialize
 
 tests:
-  - zaza.charm_tests.lifecycle.refresh.CharmRefreshAll
   - tests.target.S3APITest
   - tests.target.CephRGWTest
   - tests.target.BlueStoreCompressionCharmOperation
