@@ -1,7 +1,7 @@
 options:
   source: &source cloud:jammy-caracal/proposed
 
-series: noble
+series: jammy
 
 comment:
 - 'machines section to decide order of deployment. database sooner = faster'

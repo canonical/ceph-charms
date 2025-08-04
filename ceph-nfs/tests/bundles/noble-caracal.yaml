@@ -13,7 +13,7 @@ machines:
   '5':
 
 local_overlay_enabled: False
-series: noble
+series: jammy
 applications:
   ceph-nfs:
     charm: ch:ceph-nfs

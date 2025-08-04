@@ -1,7 +1,7 @@
 variables:
   openstack-origin: &openstack-origin cloud:jammy-caracal/proposed
 
-series: noble
+series: jammy
 
 machines:
   '0':
