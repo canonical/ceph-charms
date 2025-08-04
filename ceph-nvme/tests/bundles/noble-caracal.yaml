@@ -1,3 +1,6 @@
+variables:
+  openstack-origin: &openstack-origin cloud:caracal-proposed
+
 series: &series noble
 
 machines:
@@ -19,6 +22,7 @@ applications:
     num_units: 3
     channel: latest/edge
     options:
+      source: *openstack-origin
       monitor-count: 3
     to:
       - '0'
@@ -41,6 +45,8 @@ applications:
     channel: latest/edge
     storage:
       osd-devices: 'loop,10G'
+    options:
+      source: *openstack-origin
     to:
       - '5'
       - '6'

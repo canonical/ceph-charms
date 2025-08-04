@@ -1,5 +1,5 @@
 options:
-  source: &source distro
+  source: &source cloud:caracal-proposed
 
 series: noble
 
