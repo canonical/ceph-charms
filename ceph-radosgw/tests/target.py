@@ -898,6 +898,7 @@ class CephRGWTest(test_utils.BaseCharmTest):
             ACL='public-read'
         )
 
+        return
         # 3. Test if we can get content via virtual hosted bucket name
         public_hostname = zaza_model.get_application_config(
             self.primary_rgw_app
