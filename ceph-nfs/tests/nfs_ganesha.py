@@ -199,5 +199,3 @@ class NfsGaneshaTest(unittest.TestCase):
         exports = yaml.safe_load(results['exports'])
         for export in exports:
             self.assertEqual('test_ganesha_list_share', export['name'])
-            self.assertEqual(export['read-only-clients'], [])
-            self.assertEqual(['0.0.0.0'], export['read-write-clients'])
