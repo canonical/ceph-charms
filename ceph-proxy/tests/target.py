@@ -15,10 +15,7 @@
 import unittest
 import logging
 import tenacity
-import json
-import subprocess
 
-import zaza
 import zaza.charm_lifecycle.utils as lifecycle_utils
 import zaza.model as zaza_model
 import zaza.openstack.utilities.ceph as zaza_ceph
@@ -112,4 +109,3 @@ class CephProxyTest(unittest.TestCase):
                        ' configured correctly.'
                        ' Found: {}'.format(expected, output))
                 raise zaza_exceptions.CephPoolNotConfigured(msg)
-
