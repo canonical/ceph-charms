@@ -42,7 +42,7 @@ applications:
       - '5'
 
   ceph-proxy:
-    charm: ../../../ceph-proxy.charm
+    charm: ch:ceph-proxy
     num_units: 1
     options:
       source: distro
