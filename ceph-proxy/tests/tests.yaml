@@ -14,7 +14,6 @@ configure:
 
 tests:
   - tests.target.CephProxyTest
-  - tests.target.CephFSWithCephProxyTests
 
 target_deploy_status:
   ceph-proxy:
@@ -23,6 +22,3 @@ target_deploy_status:
   ceph-radosgw:
     workload-status: waiting
     workload-status-message-prefix: "Incomplete relations: mon"
-  ceph-fs:
-    workload-status: waiting
-    workload-status-message-prefix: "'ceph-mds' incomplete"

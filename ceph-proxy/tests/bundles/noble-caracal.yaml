@@ -56,21 +56,9 @@ applications:
     options:
       source: *openstack-origin
 
-  ceph-fs:
-    charm: ch:ceph-fs
-    channel: latest/edge
-    num_units: 1
-    options:
-      source: *openstack-origin
-    to:
-      - '2'
-
 relations:
   - - 'ceph-osd:mon'
     - 'ceph-mon:osd'
 
   - - 'ceph-proxy:radosgw'
     - 'ceph-radosgw:mon'
-
-  - - 'ceph-proxy:mds'
-    - 'ceph-fs:ceph-mds'
