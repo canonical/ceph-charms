@@ -8,7 +8,9 @@ machines:
   '1':
   '2':
   '3':
+    series: noble
   '4':
+    series: noble
   '5':
     constraints: cores=2 mem=6G root-disk=40G virt-type=virtual-machine
   '6':
@@ -35,6 +37,7 @@ applications:
     options:
       nr-hugepages: 0
       cpuset: "2"
+    series: noble
     to:
       - '3'
       - '4'
