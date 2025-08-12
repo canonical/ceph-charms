@@ -2,7 +2,7 @@ local_overlay_enabled: False
 series: noble
 variables:
   openstack-origin: &openstack-origin distro
-  source: &source ppa:lmlogiudice/ceph-1923-noble
+  source: &source ppa:lmlogiudice/ceph-noble-1923
 
 machines:
   '0':
