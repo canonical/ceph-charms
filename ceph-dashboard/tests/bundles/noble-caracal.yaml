@@ -52,9 +52,10 @@ applications:
     to:
       - '3'
   ceph-dashboard:
-    charm: /home/ubuntu/src/ceph-charms/ceph-dashboard.charm
+    charm: ch:ceph-dashboard
     options:
       public-hostname: 'ceph-dashboard.zaza.local'
+    channel: latest/edge
   prometheus:
     charm: ch:prometheus2
     num_units: 1
