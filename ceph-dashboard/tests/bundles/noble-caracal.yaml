@@ -1,8 +1,8 @@
 local_overlay_enabled: False
 series: noble
 variables:
-  openstack-origin: &openstack-origin distro
-  source: &source ppa:lmlogiudice/ceph-noble-1923
+  openstack-origin: &openstack-origin ppa:lmlogiudice/ceph-noble-1923
+  source: &source ppa:lmlogiudice/ceph-1923-noble
 
 machines:
   '0':
@@ -23,7 +23,7 @@ applications:
     storage:
       osd-devices: 'loop,10G'
     options:
-      source: *source
+      source: *openstack-origin
       osd-devices: '/dev/test-non-existent'
     channel: latest/edge
     to:
@@ -34,7 +34,7 @@ applications:
     charm: ch:ceph-mon
     num_units: 3
     options:
-      source: *source
+      source: *openstack-origin
       monitor-count: '3'
     channel: latest/edge
   vault:
@@ -43,17 +43,16 @@ applications:
     channel: 1.7/stable
     series: jammy
     to:
-      - '3'
+      - '4'
   mysql:
     charm: ch:mysql
     num_units: 1
     channel: 8.0/stable
     series: jammy
     to:
-      - '4'
+      - '3'
   ceph-dashboard:
-    charm: ch:ceph-dashboard
-    channel: latest/edge
+    charm: /home/ubuntu/src/ceph-charms/ceph-dashboard.charm
     options:
       public-hostname: 'ceph-dashboard.zaza.local'
   prometheus:
@@ -74,4 +73,5 @@ relations:
   - - 'ceph-mon:prometheus'
     - 'prometheus:target'
   - - 'ceph-dashboard:prometheus'
-    - 'prometheus:website'  
+    - 'prometheus:website'
+
