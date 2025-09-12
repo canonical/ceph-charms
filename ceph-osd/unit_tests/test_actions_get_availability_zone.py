@@ -14,7 +14,7 @@
 import json
 
 from actions import get_availability_zone
-from lib.charms_ceph.utils import CrushLocation
+from charms_ceph.utils import CrushLocation
 
 from test_utils import CharmTestCase
 
