@@ -350,14 +350,12 @@ class CephDashboardTest(test_utils.BaseCharmTest):
             'ceph-dashboard': {
                 "workload-status": state,
                 "workload-status-message-prefix": message_prefix
+            },
+            'mysql': {
+                'workload-status': 'active',
+                'workload-status-message-prefix': 'Primary'
             }
         }
-        # Telegraf has a non-standard active state message.
-        if self.is_app_deployed('telegraf'):
-            assert_state['telegraf'] = {
-                "workload-status": "active",
-                "workload-status-message-prefix": "Monitoring ceph"
-            }
 
         return assert_state
 
