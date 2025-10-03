@@ -62,50 +62,9 @@ jobs:
           echo "Modified parts: $json_output"
           echo "parts=$json_output" >> $GITHUB_OUTPUT
 
-  build:
-    needs: modifiedparts
-    name: Build the charm
-    runs-on: ubuntu-latest
-    if: ${{ needs.modifiedparts.outputs.parts != '[]' }}
-    strategy:
-      matrix:
-        part: ${{ fromJson(needs.modifiedparts.outputs.parts) }}
-      fail-fast: false
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Install dependencies
-        run: |
-          sudo apt-get -qq install libxslt-dev libxml2-dev python3-lxml tox
-
-      - name: Run linters
-        run: tox -c ${{ matrix.part }} -e pep8
-
-      - name: Run unit tests
-        run: tox -c ${{ matrix.part }} -e py3
-
-      - name: Setup LXD
-        uses: canonical/setup-lxd@v0.1.1
-        with:
-          channel: 5.21/stable
-
-      - name: Build charm(s)
-        id: builder
-        run: |
-          sudo snap install charmcraft --classic
-          tox -c ${{ matrix.part }} -e build
-
-      - name: Upload built charm
-        uses: actions/upload-artifact@v4
-        with:
-          name: charm-artifact-${{ matrix.part }}
-          path: "./${{ matrix.part }}/*.charm"
-
   functional-test:
     needs:
       - modifiedparts
-      - build
     name: Functional tests
     runs-on: [self-hosted, linux, amd64, X64, large, noble]
     if: ${{ needs.modifiedparts.outputs.parts != '[]' }}
@@ -114,13 +73,6 @@ jobs:
         part: ${{ fromJson(needs.modifiedparts.outputs.parts) }}
       fail-fast: false
     steps:
-      - name: Download charm
-        uses: actions/download-artifact@v4
-        with:
-          pattern: charm-artifact-*
-          merge-multiple: true
-          path: ~/artifacts/
-
       - name: Checkout code
         uses: actions/checkout@v3
         with:
@@ -145,7 +97,7 @@ jobs:
         run: |
           date
           ~/actionutils.sh setup_functest
-          ~/actionutils.sh cacheimgs "ubuntu@22.04"
+          ~/actionutils.sh cacheimgs "ubuntu@20.04"
 
       - name: Run the tests
         run: |
