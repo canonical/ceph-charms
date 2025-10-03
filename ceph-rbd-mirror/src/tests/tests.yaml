@@ -1,18 +1,17 @@
 charm_name: ceph-rbd-mirror
 
 gate_bundles:
-  - jammy-antelope
+  - focal-yoga
 
 smoke_bundles:
-  - jammy-antelope
+  - focal-yoga
 
 dev_bundles:
-  - jammy-antelope
+  - focal-yoga
 
 configure:
   - tests.target.setup_rbd_mirror
 tests:
-- zaza.charm_tests.lifecycle.refresh.CharmRefreshAll
 - tests.target.CephRBDMirrorTest
 - tests.target.CephRBDMirrorControlledFailoverTest
 - tests.target.CephRBDMirrorDisasterFailoverTest

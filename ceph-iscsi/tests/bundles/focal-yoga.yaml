@@ -1,8 +1,8 @@
 local_overlay_enabled: False
-series: jammy
+series: focal
 
 variables:
-  openstack-origin: &openstack-origin cloud:jammy-antelope
+  openstack-origin: &openstack-origin cloud:focal-yoga/proposed
 
 machines:
   '0':

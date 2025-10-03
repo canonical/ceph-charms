@@ -1,5 +1,7 @@
-options:
-  source: &source cloud:jammy-antelope
+series: focal
+
+variables:
+  openstack-origin: &openstack-origin cloud:focal-yoga/proposed
 
 machines:
   '0':
@@ -12,63 +14,52 @@ machines:
   '4':
   '5':
   '6':
-  '7':
 
-local_overlay_enabled: False
-series: jammy
 applications:
-  ceph-nfs:
-    charm: ch:ceph-nfs
-    channel: quincy/edge
-    num_units: 2
-    options:
-      source: distro
-    to:
-      - '6'
-      - '7'
   ceph-osd:
     charm: ch:ceph-osd
-    channel: quincy/edge
     num_units: 3
-    options:
-      source: *source
     storage:
       osd-devices: 'loop,10G'
+    options:
+      source: *openstack-origin
     to:
       - '0'
       - '1'
       - '2'
+    channel: quincy/edge
+
   ceph-mon:
     charm: ch:ceph-mon
-    channel: quincy/edge
     num_units: 3
     options:
-      monitor-count: '3'
-      source: *source
+      expected-osd-count: 3
+      source: *openstack-origin
+    channel: quincy/edge
     to:
       - '3'
       - '4'
       - '5'
-  ceph-fs:
-    charm: ch:ceph-fs
+
+  ceph-proxy:
+    charm: ch:ceph-proxy
     channel: quincy/edge
     num_units: 1
     options:
-      source: *source
+      source: *openstack-origin
     to:
-      - '2'
-  hacluster:
-    charm: ch:hacluster
-    channel: latest/edge
+      - '6'
+
+  ceph-radosgw:
+    charm: ch:ceph-radosgw
+    num_units: 1
+    channel: quincy/edge
     options:
-      cluster_count: 2
+      source: *openstack-origin
 
 relations:
-  - - 'ceph-mon:client'
-    - 'ceph-nfs:ceph-client'
   - - 'ceph-osd:mon'
     - 'ceph-mon:osd'
-  - - 'ceph-fs'
-    - 'ceph-mon'
-  - - 'ceph-nfs:ha'
-    - 'hacluster:ha'
+
+  - - 'ceph-proxy:radosgw'
+    - 'ceph-radosgw:mon'

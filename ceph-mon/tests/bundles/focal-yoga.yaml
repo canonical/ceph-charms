@@ -1,7 +1,7 @@
-series: &series jammy
+series: &series focal
 
 variables:
-  openstack-origin: &openstack-origin cloud:jammy-antelope
+  openstack-origin: &openstack-origin cloud:focal-yoga/proposed
 
 machines:
   '0':
@@ -14,7 +14,9 @@ machines:
   '5':
     constraints: cores=2 mem=4G root-disk=25G virt-type=virtual-machine
   '6':
+    series: jammy
   '7':
+    series: jammy
 
 applications:
   ceph-mon:
@@ -45,6 +47,7 @@ applications:
   mysql:
     charm: ch:mysql
     num_units: 1
+    series: jammy
     channel: 8.0/stable
     to:
       - '7'
@@ -53,6 +56,7 @@ applications:
     charm: ch:rabbitmq-server
     channel: latest/edge
     num_units: 1
+    series: jammy
     options:
       min-cluster-size: 1
     to:
@@ -61,6 +65,7 @@ applications:
   cinder:
     charm: ch:cinder
     channel: latest/edge
+    series: jammy
     num_units: 1
     options:
       block-device: 'None'
@@ -71,6 +76,7 @@ applications:
     charm: ch:keystone
     channel: latest/edge
     num_units: 1
+    series: jammy
     to:
       - '7'
 

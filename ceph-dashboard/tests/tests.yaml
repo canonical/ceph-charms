@@ -1,15 +1,14 @@
 charm_name: ceph-dasboard
 gate_bundles:
-  - jammy-antelope
+  - focal-yoga
 smoke_bundles:
-  - jammy-antelope
+  - focal-yoga
 dev_bundles:
-  - jammy-antelope
+  - focal-yoga
 configure:
   - zaza.openstack.charm_tests.vault.setup.auto_initialize_no_validation
   - tests.target.check_dashboard_cert
 tests:
-  - zaza.charm_tests.lifecycle.refresh.CharmRefreshAll
   - tests.target.CephDashboardTest
 target_deploy_status:
   ceph-dashboard:

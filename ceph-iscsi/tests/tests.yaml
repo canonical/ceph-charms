@@ -1,13 +1,13 @@
 charm_name: ceph-iscsi
 
 gate_bundles:
-  - jammy-antelope
+  - focal-yoga
 
 smoke_bundles:
-  - jammy-antelope
+  - focal-yoga
 
 dev_bundles:
-  - jammy-antelope
+  - focal-yoga
 
 configure:
   - tests.target.basic_guest_setup

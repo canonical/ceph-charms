@@ -1,19 +1,18 @@
 charm_name: ceph-proxy
 
 gate_bundles:
-  - jammy-antelope
+  - focal-yoga
 
 smoke_bundles:
-  - jammy-antelope
+  - focal-yoga
 
 dev_bundles:
-  - jammy-antelope
+  - focal-yoga
 
 configure:
   - tests.target.setup_ceph_proxy
 
 tests:
-  - zaza.charm_tests.lifecycle.refresh.CharmRefreshAll
   - tests.target.CephProxyTest
 
 target_deploy_status:

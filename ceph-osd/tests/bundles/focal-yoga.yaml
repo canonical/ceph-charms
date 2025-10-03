@@ -1,7 +1,7 @@
-series: &series jammy
+series: &series series
 
 variables:
-  openstack-origin: &openstack-origin cloud:jammy-antelope
+  openstack-origin: &openstack-origin cloud:focal-yoga/proposed
 
 machines:
   '0':

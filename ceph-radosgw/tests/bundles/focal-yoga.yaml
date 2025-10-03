@@ -1,7 +1,7 @@
 options:
-  source: &source cloud:jammy-antelope
+  source: &source cloud:focal-yoga/proposed
 
-series: jammy
+series: focal
 
 comment:
 - 'machines section to decide order of deployment. database sooner = faster'

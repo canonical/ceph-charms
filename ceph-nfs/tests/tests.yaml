@@ -1,13 +1,12 @@
 charm_name: ceph-nfs
 gate_bundles:
-  - jammy-antelope
+  - focal-yoga
 smoke_bundles:
-  - jammy-antelope
+  - focal-yoga
 dev_bundles:
-  - jammy-antelope
+  - focal-yoga
 configure: []
 tests:
-  - zaza.charm_tests.lifecycle.refresh.CharmRefreshAll
   - tests.nfs_ganesha.NfsGaneshaTest
 target_deploy_status:
   ubuntu:
