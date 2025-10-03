@@ -1,4 +1,4 @@
-series: &series series
+series: &series focal
 
 variables:
   openstack-origin: &openstack-origin cloud:focal-yoga/proposed
