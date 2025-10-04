@@ -1,6 +1,6 @@
 variables:
-  openstack-origin: &openstack-origin cloud:focal-yoga/proposed
-  series: &series focal
+  openstack-origin: &openstack-origin cloud:jammy-antelope
+  series: &series jammy
 
 series: *series
 
@@ -87,8 +87,7 @@ applications:
       - '5'
 
   ceph-rbd-mirror-b:
-    charm: ch:ceph-rbd-mirror
-    channel: quincy/edge
+    charm: ../../../../ceph-rbd-mirror.charm
     num_units: 1
     options:
       source: *openstack-origin

@@ -350,7 +350,7 @@ class CephDashboardTest(test_utils.BaseCharmTest):
             'ceph-dashboard': {
                 "workload-status": state,
                 "workload-status-message-prefix": message_prefix
-            }
+            },
             'mysql': {
                 'workload-status': 'active',
                 'workload-status-message-prefix': 'Primary'
