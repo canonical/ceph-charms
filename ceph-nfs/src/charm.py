@@ -466,8 +466,19 @@ class CephNFSCharm(
         name = event.params.get('name')
         allowed_ips = event.params.get('allowed-ips')
         allowed_ips = [ip.strip() for ip in allowed_ips.split(',')]
+        squash_access = event.params.get('squash-access') or "none"
+        allowed_squash_access = {"root", "root_squash", "rootsquash", "rootid",
+                                 "root_id_squash", "rootidsquash", "all",
+                                 "all_squash", "allsquash", "all_anomnymous",
+                                 "allanonymous", "no_root_squash", "none",
+                                 "noidsquash"}
+        squash_access_norm = squash_access.lower()
+        if squash_access_norm not in allowed_squash_access:
+            event.fail(f"Invalid squash-access value: {squash_access}")
+            return
         export_path = self.ganesha_client.create_share(
-            size=share_size, name=name, access_ips=allowed_ips)
+            size=share_size, name=name, access_ips=allowed_ips,
+            squash_access=squash_access)
         if not export_path:
             event.fail("Failed to create share, check the "
                        "log for more details")
