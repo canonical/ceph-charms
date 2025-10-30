@@ -22,6 +22,11 @@ create-share:
         Name of the share that will be exported.
       type: string
       default:
+    squash-access:
+      description: |
+        Specify the Ganesha export squash access type of the share.
+      type: string
+      default: "None"
 grant-access:
   description: |
     Grant the specified client access to a share.
