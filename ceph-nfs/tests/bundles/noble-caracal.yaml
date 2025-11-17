@@ -1,5 +1,5 @@
 options:
-  source: &source distro
+  source: &source ppa:lmlogiudice/ceph-tentacle
 
 machines:
   '0':
