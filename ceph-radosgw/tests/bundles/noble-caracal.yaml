@@ -1,5 +1,5 @@
 options:
-  source: &source ppa:lmlogiudice/ceph-tentacle
+  source: &source ppa:lmlogiudice/ceph-tentacle-stable
 
 series: noble
 
