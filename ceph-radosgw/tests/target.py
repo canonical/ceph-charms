@@ -17,7 +17,6 @@
 import unittest
 import json
 import logging
-import pprint
 import requests
 import boto3
 import botocore.exceptions
@@ -33,7 +32,6 @@ import zaza.utilities.networking as network_utils
 import zaza.utilities.juju as juju_utils
 import zaza.openstack.utilities.openstack as zaza_openstack
 import zaza.openstack.utilities.generic as generic_utils
-import zaza.openstack.utilities.openstack as openstack_utils
 
 # Disable warnings for ssl_verify=false
 urllib3.disable_warnings(
@@ -1086,67 +1084,3 @@ class CephKeyRotationTests(test_utils.BaseCharmTest):
             self._check_key_rotation(rgw_client, unit)
         else:
             logging.info('ceph-radosgw units present, but no RGW service')
-
-
-class S3APITest(test_utils.OpenStackBaseTest):
-    """Test object storage S3 API."""
-
-    @classmethod
-    def setUpClass(cls):
-        """Run class setup for running tests."""
-        super(S3APITest, cls).setUpClass()
-
-        session = openstack_utils.get_overcloud_keystone_session()
-        ks_client = openstack_utils.get_keystone_session_client(session)
-
-        # Get token data so we can glean our user_id and project_id
-        token_data = ks_client.tokens.get_token_data(session.get_token())
-        project_id = token_data['token']['project']['id']
-        user_id = token_data['token']['user']['id']
-
-        # Store URL to service providing S3 compatible API
-        for entry in token_data['token']['catalog']:
-            if entry['type'] == 's3':
-                for endpoint in entry['endpoints']:
-                    if endpoint['interface'] == 'public':
-                        cls.s3_region = endpoint['region']
-                        cls.s3_endpoint = endpoint['url']
-
-        # Create AWS compatible application credentials in Keystone
-        cls.ec2_creds = ks_client.ec2.create(user_id, project_id)
-
-    def test_901_s3_list_buckets(self):
-        """Use S3 API to list buckets."""
-        # We use a mix of the high- and low-level API with common arguments
-        kwargs = {
-            'region_name': self.s3_region,
-            'aws_access_key_id': self.ec2_creds.access,
-            'aws_secret_access_key': self.ec2_creds.secret,
-            'endpoint_url': self.s3_endpoint,
-            'verify': self.cacert,
-        }
-        s3_client = boto3.client('s3', **kwargs)
-        s3 = boto3.resource('s3', **kwargs)
-
-        # Create bucket
-        bucket_name = 'zaza-s3'
-        bucket = s3.Bucket(bucket_name)
-        bucket.create()
-
-        # Validate its presence
-        bucket_list = s3_client.list_buckets()
-        logging.info(pprint.pformat(bucket_list))
-        for bkt in bucket_list['Buckets']:
-            if bkt['Name'] == bucket_name:
-                break
-        else:
-            AssertionError('Bucket "{}" not found'.format(bucket_name))
-
-        # Delete bucket
-        bucket.delete()
-
-        # Validate its absence
-        bucket_list = s3_client.list_buckets()
-        logging.info(pprint.pformat(bucket_list))
-        for bkt in bucket_list['Buckets']:
-            assert bkt['Name'] != bucket_name

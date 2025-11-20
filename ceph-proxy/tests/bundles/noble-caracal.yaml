@@ -1,3 +1,6 @@
+variables:
+  openstack-origin: &openstack-origin proposed
+
 series: noble
 
 machines:
@@ -18,6 +21,8 @@ applications:
     num_units: 3
     storage:
       osd-devices: 'loop,10G'
+    options:
+      source: *openstack-origin
     to:
       - '0'
       - '1'
@@ -28,6 +33,7 @@ applications:
     charm: ch:ceph-mon
     num_units: 3
     options:
+      source: *openstack-origin
       expected-osd-count: 3
     channel: latest/edge
     to:
@@ -46,12 +52,16 @@ applications:
   ceph-radosgw:
     charm: ch:ceph-radosgw
     num_units: 1
+    options:
+      source: *openstack-origin
     channel: latest/edge
 
   ceph-fs:
     charm: ch:ceph-fs
     channel: latest/edge
     num_units: 1
+    options:
+      source: *openstack-origin
     to:
       - '2'
 
