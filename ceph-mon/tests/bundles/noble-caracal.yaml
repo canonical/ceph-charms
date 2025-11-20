@@ -10,9 +10,6 @@ machines:
     constraints: cores=2 mem=6G root-disk=40G virt-type=virtual-machine
   '5':
     constraints: cores=2 mem=6G root-disk=40G virt-type=virtual-machine
-  '6':
-    series: jammy
-  '7':
 
 applications:
   ceph-mon:
@@ -37,54 +34,6 @@ applications:
       - '4'
       - '5'
 
-  mysql:
-    charm: ch:mysql
-    num_units: 1
-    channel: 8.0/stable
-    series: jammy
-    to:
-      - '6'
-
-  rabbitmq-server:
-    charm: ch:rabbitmq-server
-    channel: latest/edge
-    num_units: 1
-    options:
-      min-cluster-size: 1
-    to:
-      - '0'
-
-  cinder:
-    charm: ch:cinder
-    channel: latest/edge
-    num_units: 1
-    options:
-      block-device: 'None'
-    to:
-      - '2'
-
-  keystone:
-    charm: ch:keystone
-    channel: latest/edge
-    num_units: 1
-    to:
-      - '7'
-
 relations:
   - - 'ceph-osd:mon'
     - 'ceph-mon:osd'
-
-  - - 'keystone'
-    - 'mysql'
-
-  - - 'cinder:identity-service'
-    - 'keystone:identity-service'
-
-  - - 'cinder'
-    - 'rabbitmq-server'
-
-  - - 'cinder'
-    - 'ceph-mon'
-
-  - - 'cinder'
-    - 'mysql'
