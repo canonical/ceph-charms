@@ -1,29 +1,14 @@
-# This file is managed centrally by release-tools and should not be modified
-# within individual charm repos.  See the 'global' dir contents for available
-# choices of *requirements.txt files for OpenStack Charms:
-#     https://github.com/openstack-charmers/release-tools
-#
-# TODO: Distill the func test requirements from the lint/unit test
-#       requirements.  They are intertwined.  Also, Zaza itself should specify
-#       all of its own requirements and if it doesn't, fix it there.
-#
-pbr==5.6.0
-simplejson>=2.2.0
-netifaces>=0.10.4
-
-# NOTE: newer versions of cryptography require a Rust compiler to build,
-# see
-# * https://github.com/openstack-charmers/zaza/issues/421
-# * https://mail.python.org/pipermail/cryptography-dev/2021-January/001003.html
-#
-cryptography<3.4
-
-# Strange import error with newer netaddr:
-netaddr>0.7.16,<0.8.0
-
-Jinja2>=2.6  # BSD License (3 clause)
-six>=1.9.0
-
+importlib-resources
+ops >= 1.2.0
+tenacity
+pyudev
 dnspython
-
-psutil>=1.1.1,<2.0.0
+netaddr
+netifaces
+pyyaml
+git+https://github.com/openstack/charms.ceph#egg=charms_ceph
+git+https://opendev.org/openstack/charm-ops-openstack#egg=ops_openstack
+git+https://opendev.org/openstack/charm-ops-interface-tls-certificates#egg=interface_tls_certificates
+git+https://github.com/openstack-charmers/ops-interface-ceph-iscsi-admin-access#egg=interface_ceph_iscsi_admin_access
+git+https://github.com/openstack-charmers/ops-interface-openstack-loadbalancer#egg=interface_openstack_loadbalancer
+git+https://github.com/juju/charm-helpers#egg=charmhelpers
