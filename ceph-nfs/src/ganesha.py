@@ -109,7 +109,8 @@ class GaneshaNFS(object):
         self.ceph_pool = ceph_pool
 
     def create_share(self, name: str = None, size: int = None,
-                     access_ips: List[str] = None) -> str:
+                     access_ips: List[str] = None,
+                     squash_access: str = 'None') -> str:
         """Create a CephFS Share and export it via Ganesha
 
         :param name: String name of the share to create
@@ -151,7 +152,7 @@ class GaneshaNFS(object):
                         'Secret_Access_Key': self._ceph_auth_key(access_id)
                     },
                     'Pseudo': self.export_path,
-                    'Squash': 'None',
+                    'Squash': squash_access,
                     'CLIENT': [
                         {
                             'Access_Type': 'RW',
