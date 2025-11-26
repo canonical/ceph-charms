@@ -13,7 +13,7 @@ machines:
   '5':
 
 local_overlay_enabled: False
-series: noble
+series: jammy
 applications:
   ceph-nfs:
     charm: ch:ceph-nfs
@@ -57,7 +57,7 @@ applications:
       - '2'
   hacluster:
     charm: ch:hacluster
-    channel: 2.4/edge
+    channel: 2.4/stable
     options:
       cluster_count: 2
 
