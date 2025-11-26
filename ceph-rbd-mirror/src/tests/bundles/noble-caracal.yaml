@@ -1,6 +1,6 @@
 variables:
-  openstack-origin: &openstack-origin distro
-  series: &series noble
+  openstack-origin: &openstack-origin cloud:jammy-caracal/proposed
+  series: &series jammy
 
 series: *series
 
