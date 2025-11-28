@@ -5,13 +5,14 @@ machines:
   '1':
   '2':
   '3':
-    constraints: cores=2 mem=6G root-disk=40G virt-type=virtual-machine
+    constraints: cores=2 mem=6G root-disk=24G virt-type=virtual-machine
   '4':
-    constraints: cores=2 mem=6G root-disk=40G virt-type=virtual-machine
+    constraints: cores=2 mem=6G root-disk=24G virt-type=virtual-machine
   '5':
-    constraints: cores=2 mem=6G root-disk=40G virt-type=virtual-machine
+    constraints: cores=2 mem=6G root-disk=24G virt-type=virtual-machine
   '6':
     series: jammy
+    constraints: root-disk=12G virt-type=virtual-machine
   '7':
 
 applications:
@@ -31,7 +32,7 @@ applications:
     num_units: 3
     channel: latest/edge
     storage:
-      osd-devices: 'loop,10G'
+      osd-devices: 'loop,8G'
     to:
       - '3'
       - '4'

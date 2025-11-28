@@ -6,20 +6,21 @@ series: noble
 comment:
 - 'machines section to decide order of deployment. database sooner = faster'
 machines:
-  '0':
-  '1':
-    constraints: cores=2 mem=6G root-disk=40G virt-type=virtual-machine
-  '2':
-    constraints: cores=2 mem=6G root-disk=40G virt-type=virtual-machine
-  '3':
-    constraints: cores=2 mem=6G root-disk=40G virt-type=virtual-machine
-  '4':
-  '5':
-  '6':
-  '7':
-    series: jammy
-  '8':
-  '9':
+   '0':
+   '1':
+     constraints: cores=2 mem=6G root-disk=24G virt-type=virtual-machine
+   '2':
+     constraints: cores=2 mem=6G root-disk=24G virt-type=virtual-machine
+   '3':
+     constraints: cores=2 mem=6G root-disk=24G virt-type=virtual-machine
+   '4':
+   '5':
+   '6':
+   '7':
+     series: jammy
+     constraints: root-disk=12G virt-type=virtual-machine
+   '8':
+   '9':
 
 applications:
   ceph-radosgw:
@@ -36,7 +37,7 @@ applications:
     charm: ch:ceph-osd
     num_units: 3
     storage:
-      osd-devices: 'loop,10G'
+      osd-devices: 'loop,8G'
     options:
       source: *source
       osd-devices: '/srv/ceph /dev/test-non-existent'
