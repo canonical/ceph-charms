@@ -107,7 +107,7 @@ jobs:
       - modifiedparts
       - build
     name: Functional tests
-    runs-on: [self-hosted, linux, amd64, X64, large, noble]
+    runs-on: [self-hosted, linux, amd64, X64, xlarge, noble]
     if: ${{ needs.modifiedparts.outputs.parts != '[]' }}
     strategy:
       matrix:
@@ -130,8 +130,8 @@ jobs:
       - name: Copy utils
         run: cp tests/scripts/actionutils.sh $HOME
 
-      - name: Clear FORWARD firewall rules
-        run: ~/actionutils.sh cleaript
+     #- name: Clear FORWARD firewall rules
+     #  run: ~/actionutils.sh cleaript
 
       - name: Setup LXD
         run: |
