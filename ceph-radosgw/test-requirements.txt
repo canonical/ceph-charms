@@ -17,6 +17,11 @@ stestr>=2.2.0
 # https://github.com/mtreinish/stestr/issues/145
 cliff<3.0.0
 
+# Python 3.12+ requires setuptools for pkg_resources (used by cliff).
+# pbr 5.6.0 doesn't require setuptools, so we need to add it explicitly.
+# We may consider upgrading the pbr version or unpinning it.
+setuptools
+
 coverage>=4.5.2
 pyudev              # for ceph-* charm unit tests (need to fix the ceph-* charm unit tests/mocking)
 git+https://github.com/openstack-charmers/zaza.git#egg=zaza

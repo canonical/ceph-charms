@@ -18,6 +18,11 @@ stestr>=2.2.0
 # https://github.com/mtreinish/stestr/issues/145
 cliff<3.0.0
 
+# Python 3.12+ requires setuptools for pkg_resources (used by cliff).
+# pbr 5.6.0 doesn't require setuptools, so we need to add it explicitly.
+# We may consider upgrading the pbr version or unpinning it.
+setuptools
+
 # Dependencies of stestr. Newer versions use keywords that didn't exist in
 # python 3.5 yet (e.g. "ModuleNotFoundError")
 importlib-metadata<3.0.0; python_version < '3.6'
