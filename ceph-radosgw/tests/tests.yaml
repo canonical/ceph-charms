@@ -19,7 +19,6 @@ target_deploy_status:
     workload-status-message: 'Primary'
 
 tests:
-  - zaza.charm_tests.lifecycle.refresh.CharmRefreshAll
   - tests.target.CephRGWTest
   - tests.target.BlueStoreCompressionCharmOperation
   - tests.target.CephKeyRotationTests

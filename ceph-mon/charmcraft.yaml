@@ -31,7 +31,8 @@ parts:
       fi
 
 
-base: ubuntu@24.04
+build-base: ubuntu@devel
+base: ubuntu@25.04
 platforms:
   amd64:
     build-on: amd64

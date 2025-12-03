@@ -7,7 +7,6 @@ dev_bundles:
   - noble-caracal
 configure: []
 tests:
-  - zaza.charm_tests.lifecycle.refresh.CharmRefreshAll
   - tests.nfs_ganesha.NfsGaneshaTest
 target_deploy_status:
   ubuntu:

@@ -12,6 +12,7 @@ tags:
 - misc
 series:
 - noble
+- plucky
 subordinate: false
 requires:
   ceph-mds:

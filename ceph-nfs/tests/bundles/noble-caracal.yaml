@@ -1,5 +1,5 @@
 options:
-  source: &source cloud:jammy-caracal/proposed
+  source: &source proposed
 
 machines:
   '0':
@@ -11,22 +11,23 @@ machines:
   '3':
   '4':
   '5':
+  '6':
+    series: noble
 
 local_overlay_enabled: False
-series: jammy
+series: plucky
 applications:
   ceph-nfs:
-    charm: ch:ceph-nfs
-    channel: latest/edge
+    charm: ../../../ceph-nfs.charm
     num_units: 2
     options:
       source: *source
     to:
       - '3'
       - '4'
+
   ceph-osd:
-    charm: ch:ceph-osd
-    channel: latest/edge
+    charm: ../../../ceph-osd.charm
     num_units: 3
     storage:
       osd-devices: 'loop,10G'
@@ -36,9 +37,9 @@ applications:
       - '0'
       - '1'
       - '2'
+
   ceph-mon:
-    charm: ch:ceph-mon
-    channel: latest/edge
+    charm: ../../../ceph-mon.charm
     num_units: 3
     options:
       monitor-count: '3'
@@ -47,17 +48,19 @@ applications:
       - '3'
       - '4'
       - '5'
+
   ceph-fs:
-    charm: ch:ceph-fs
-    channel: latest/edge
+    charm: ../../../ceph-fs.charm
     num_units: 1
     options:
       source: *source
     to:
       - '2'
+
   hacluster:
     charm: ch:hacluster
-    channel: 2.4/stable
+    channel: 2.4/edge
+    series: noble
     options:
       cluster_count: 2
 

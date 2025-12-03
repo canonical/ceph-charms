@@ -1,6 +1,6 @@
 variables:
-  openstack-origin: &openstack-origin cloud:jammy-caracal/proposed
-  series: &series jammy
+  openstack-origin: &openstack-origin proposed
+  series: &series plucky
 
 series: *series
 
@@ -26,35 +26,31 @@ machines:
 
 applications:
   ceph-mon:
-    charm: ch:ceph-mon
+    charm: ../../../../ceph-mon.charm
     num_units: 3
     options:
       expected-osd-count: 3
       source: *openstack-origin
-    channel: latest/edge
     to:
       - '6'
       - '7'
       - '8'
 
   ceph-osd:
-    charm: ch:ceph-osd
+    charm: ../../../../ceph-osd.charm
     num_units: 3
     storage:
       osd-devices: 'loop,4G'
     options:
       source: *openstack-origin
       osd-devices: '/dev/test-non-existent'
-    channel: latest/edge
     to:
       - '0'
       - '1'
       - '2'
 
   ceph-rbd-mirror:
-    series: *series
-    charm: ch:ceph-rbd-mirror
-    channel: latest/edge
+    charm: ../../../../ceph-rbd-mirror.charm
     num_units: 1
     options:
       source: *openstack-origin
@@ -62,35 +58,31 @@ applications:
       - '0'
 
   ceph-mon-b:
-    charm: ch:ceph-mon
+    charm: ../../../../ceph-mon.charm
     num_units: 3
     options:
       expected-osd-count: 3
       source: *openstack-origin
-    channel: latest/edge
     to:
       - '9'
       - '10'
       - '11'
 
   ceph-osd-b:
-    charm: ch:ceph-osd
+    charm: ../../../../ceph-osd.charm
     num_units: 3
     storage:
       osd-devices: 'loop,4G'
     options:
       source: *openstack-origin
       osd-devices: '/dev/test-non-existent'
-    channel: latest/edge
     to:
       - '3'
       - '4'
       - '5'
 
   ceph-rbd-mirror-b:
-    series: *series
-    charm: ch:ceph-rbd-mirror
-    channel: latest/edge
+    charm: ../../../../ceph-rbd-mirror.charm
     num_units: 1
     options:
       source: *openstack-origin

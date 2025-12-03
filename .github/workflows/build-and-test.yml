@@ -93,7 +93,7 @@ jobs:
       - name: Build charm(s)
         id: builder
         run: |
-          sudo snap install charmcraft --classic
+          sudo snap install charmcraft --classic --channel=latest/stable
           tox -c ${{ matrix.part }} -e build
 
       - name: Upload built charm
@@ -107,7 +107,7 @@ jobs:
       - modifiedparts
       - build
     name: Functional tests
-    runs-on: [self-hosted, linux, amd64, X64, large, noble]
+    runs-on: [self-hosted, linux, amd64, X64, large, jammy]
     if: ${{ needs.modifiedparts.outputs.parts != '[]' }}
     strategy:
       matrix:
@@ -146,7 +146,7 @@ jobs:
         run: |
           date
           ~/actionutils.sh setup_functest
-          ~/actionutils.sh cacheimgs "ubuntu@24.04"
+          ~/actionutils.sh cacheimgs "ubuntu@25.04"
 
       - name: Run the tests
         run: |
@@ -192,7 +192,7 @@ jobs:
       - modifiedparts
       - build
     name: COS Integration test 
-    runs-on: [self-hosted, linux, amd64, X64, large, noble]
+    runs-on: [self-hosted, linux, amd64, X64, large, jammy]
     if: ${{ contains(needs.modifiedparts.outputs.parts, 'ceph-mon') }}
     steps:
       - name: Download charm

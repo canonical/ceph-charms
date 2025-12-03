@@ -17,6 +17,7 @@ tags:
 - misc
 series:
 - noble
+- plucky
 extra-bindings:
   public:
   cluster:
