@@ -17,7 +17,7 @@ machines:
 
 applications:
   ceph-osd:
-    charm: ../../../../ceph-osd.charm
+    charm: ../../../ceph-osd.charm
     num_units: 3
     storage:
       osd-devices: 'loop,10G'
@@ -29,7 +29,7 @@ applications:
       - '2'
 
   ceph-mon:
-    charm: ../../../../ceph-mon.charm
+    charm: ../../../ceph-mon.charm
     num_units: 3
     options:
       expected-osd-count: 3
@@ -40,7 +40,7 @@ applications:
       - '5'
 
   ceph-proxy:
-    charm: ../../../../ceph-proxy.charm
+    charm: ../../../ceph-proxy.charm
     num_units: 1
     options:
       source: distro

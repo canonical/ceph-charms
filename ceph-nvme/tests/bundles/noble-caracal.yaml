@@ -18,7 +18,7 @@ machines:
 
 applications:
   ceph-mon:
-    charm: ../../../../ceph-mon.charm
+    charm: ../../../ceph-mon.charm
     num_units: 3
     options:
       monitor-count: 3
@@ -29,7 +29,7 @@ applications:
       - '2'
 
   ceph-nvme:
-    charm: ../../../../ceph-nvme.charm
+    charm: ../../../ceph-nvme.charm
     num_units: 2
     options:
       nr-hugepages: 0
@@ -39,7 +39,7 @@ applications:
       - '4'
 
   ceph-osd:
-    charm: ../../../../ceph-osd.charm
+    charm: ../../../ceph-osd.charm
     num_units: 3
     storage:
       osd-devices: 'loop,10G'
