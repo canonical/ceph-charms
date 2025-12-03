@@ -26,7 +26,7 @@ machines:
 
 applications:
   ceph-mon:
-    charm: ../../../../ceph-mon.charm
+    charm: ../../../../../ceph-mon.charm
     num_units: 3
     options:
       expected-osd-count: 3
@@ -37,7 +37,7 @@ applications:
       - '8'
 
   ceph-osd:
-    charm: ../../../../ceph-osd.charm
+    charm: ../../../../../ceph-osd.charm
     num_units: 3
     storage:
       osd-devices: 'loop,4G'
@@ -50,7 +50,7 @@ applications:
       - '2'
 
   ceph-rbd-mirror:
-    charm: ../../../../ceph-rbd-mirror.charm
+    charm: ../../../../../ceph-rbd-mirror.charm
     num_units: 1
     options:
       source: *openstack-origin
@@ -58,7 +58,7 @@ applications:
       - '0'
 
   ceph-mon-b:
-    charm: ../../../../ceph-mon.charm
+    charm: ../../../../../ceph-mon.charm
     num_units: 3
     options:
       expected-osd-count: 3
@@ -69,7 +69,7 @@ applications:
       - '11'
 
   ceph-osd-b:
-    charm: ../../../../ceph-osd.charm
+    charm: ../../../../../ceph-osd.charm
     num_units: 3
     storage:
       osd-devices: 'loop,4G'
@@ -82,7 +82,7 @@ applications:
       - '5'
 
   ceph-rbd-mirror-b:
-    charm: ../../../../ceph-rbd-mirror.charm
+    charm: ../../../../../ceph-rbd-mirror.charm
     num_units: 1
     options:
       source: *openstack-origin
