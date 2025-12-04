@@ -6,17 +6,17 @@ series: *series
 
 machines:
   '0':
-    constraints: cores=2 mem=4G root-disk=16G virt-type=virtual-machine
+    constraints: cores=2 mem=4G root-disk=14G virt-type=virtual-machine
   '1':
-    constraints: cores=2 mem=4G root-disk=16G virt-type=virtual-machine
+    constraints: cores=2 mem=4G root-disk=14G virt-type=virtual-machine
   '2':
-    constraints: cores=2 mem=4G root-disk=16G virt-type=virtual-machine
+    constraints: cores=2 mem=4G root-disk=14G virt-type=virtual-machine
   '3':
-    constraints: cores=2 mem=4G root-disk=16G virt-type=virtual-machine
+    constraints: cores=2 mem=4G root-disk=14G virt-type=virtual-machine
   '4':
-    constraints: cores=2 mem=4G root-disk=16G virt-type=virtual-machine
+    constraints: cores=2 mem=4G root-disk=14G virt-type=virtual-machine
   '5':
-    constraints: cores=2 mem=4G root-disk=16G virt-type=virtual-machine
+    constraints: cores=2 mem=4G root-disk=14G virt-type=virtual-machine
   '6':
   '7':
   '8':
@@ -46,7 +46,7 @@ applications:
     num_units: 3
     channel: latest/edge
     storage:
-      osd-devices: 'loop,4G'
+      osd-devices: 'loop,3G'
     options:
       source: *openstack-origin
       osd-devices: '/dev/test-non-existent'
@@ -81,7 +81,7 @@ applications:
     num_units: 3
     channel: latest/edge
     storage:
-      osd-devices: 'loop,4G'
+      osd-devices: 'loop,3G'
     options:
       source: *openstack-origin
       osd-devices: '/dev/test-non-existent'
