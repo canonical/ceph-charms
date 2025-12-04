@@ -71,8 +71,6 @@ applications:
     series: noble
     options:
       cluster_count: 2
-    to:
-      - '6'
 
 relations:
   - - 'ceph-mon:client'

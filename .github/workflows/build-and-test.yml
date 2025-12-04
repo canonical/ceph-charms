@@ -146,6 +146,7 @@ jobs:
         run: |
           date
           ~/actionutils.sh setup_functest
+          ~/actionutils.sh cacheimgs "ubuntu@24.04"
           ~/actionutils.sh cacheimgs "ubuntu@25.04"
 
       - name: Run the tests
