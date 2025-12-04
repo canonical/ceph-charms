@@ -13,6 +13,7 @@ configure:
   - tests.target.setup_ceph_proxy
 
 tests:
+  - zaza.charm_tests.lifecycle.refresh.CharmRefreshAll
   - tests.target.CephProxyTest
   - tests.target.CephFSWithCephProxyTests
 

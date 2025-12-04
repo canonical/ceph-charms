@@ -1,7 +1,7 @@
 variables:
   openstack-origin: &openstack-origin proposed
 
-series: noble
+series: jammy
 
 machines:
   '0':
@@ -14,13 +14,12 @@ machines:
   '4':
   '5':
   '6':
-    series: plucky
+    series: noble
 
 applications:
   ceph-osd:
     charm: ch:ceph-osd
     num_units: 3
-    channel: latest/edge
     storage:
       osd-devices: 'loop,10G'
     options:
@@ -29,34 +28,36 @@ applications:
       - '0'
       - '1'
       - '2'
+    channel: latest/edge
 
   ceph-mon:
     charm: ch:ceph-mon
     num_units: 3
-    channel: latest/edge
     options:
       expected-osd-count: 3
       source: *openstack-origin
+    channel: latest/edge
     to:
       - '3'
       - '4'
       - '5'
 
   ceph-proxy:
-    charm: ../../../ceph-proxy.charm
+    charm: ch:ceph-proxy
     num_units: 1
-    series: plucky
+    channel: latest/edge
+    series: noble
     options:
-      source: *openstack-origin
+      source: distro
     to:
       - '6'
 
   ceph-radosgw:
     charm: ch:ceph-radosgw
-    channel: latest/edge
     num_units: 1
     options:
       source: *openstack-origin
+    channel: latest/edge
 
   ceph-fs:
     charm: ch:ceph-fs
