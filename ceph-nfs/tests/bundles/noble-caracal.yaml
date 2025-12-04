@@ -12,18 +12,15 @@ machines:
   '4':
   '5':
   '6':
-    series: plucky
   '7':
-    series: plucky
 
 local_overlay_enabled: False
 series: noble
 
 applications:
   ceph-nfs:
-    charm: ../../../ceph-nfs.charm
+    charm: ch:ceph-nfs
     num_units: 2
-    series: plucky
     options:
       source: *source
     to:
@@ -67,7 +64,6 @@ applications:
   hacluster:
     charm: ch:hacluster
     channel: 2.4/edge
-    series: noble
     options:
       cluster_count: 2
 

@@ -107,7 +107,7 @@ jobs:
       - modifiedparts
       - build
     name: Functional tests
-    runs-on: [self-hosted, linux, amd64, X64, large, jammy]
+    runs-on: [self-hosted, linux, amd64, X64, xlarge, noble]
     if: ${{ needs.modifiedparts.outputs.parts != '[]' }}
     strategy:
       matrix:
