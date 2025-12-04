@@ -1,7 +1,7 @@
 variables:
   openstack-origin: &openstack-origin proposed
 
-series: jammy
+series: noble
 
 machines:
   '0':
