@@ -19,6 +19,7 @@ import json
 import logging
 import pprint
 import requests
+from requests.adapters import HTTPAdapter
 import boto3
 import botocore.exceptions
 import urllib3
@@ -39,6 +40,29 @@ import zaza.openstack.utilities.openstack as openstack_utils
 urllib3.disable_warnings(
     urllib3.exceptions.InsecureRequestWarning
 )
+
+
+class SNIAdapter(HTTPAdapter):
+    """HTTPAdapter that sets a specific SNI hostname for SSL connections."""
+
+    def __init__(self, sni_hostname, *args, **kwargs):
+        """Initialize the adapter with a specific SNI hostname.
+
+        :param sni_hostname: The hostname to use for SNI
+        :type sni_hostname: str
+        """
+        self.sni_hostname = sni_hostname
+        super().__init__(*args, **kwargs)
+
+    def init_poolmanager(self, *args, **kwargs):
+        """Initialize the pool manager with the custom SNI hostname.
+        """
+        kwargs['server_hostname'] = self.sni_hostname
+
+        # The server_hostname parameter is passed through the following chain.
+        # PoolManager -> ConnectionPool -> HTTPSConnection, where it's used
+        # to set the SNI (Server Name Indication) for the SSL handshake.
+        return super().init_poolmanager(*args, **kwargs)
 
 
 class CephRGWTest(test_utils.BaseCharmTest):
@@ -903,8 +927,11 @@ class CephRGWTest(test_utils.BaseCharmTest):
             self.primary_rgw_app
         )["os-public-hostname"]["value"]
         url = f"{primary_endpoint}/{obj_name}"
-        headers = {'host': f"{container_name}.{public_hostname}"}
-        f = requests.get(url, headers=headers, verify=False)
+        virtual_host = f"{container_name}.{public_hostname}"
+        headers = {'host': virtual_host}
+        with requests.Session() as session:
+            session.mount('https://', SNIAdapter(virtual_host))
+            f = session.get(url, headers=headers, verify=False)
         self.assertEqual(f.text, obj_data)
 
         # 4. Cleanup and de-configure virtual hosted bucket
