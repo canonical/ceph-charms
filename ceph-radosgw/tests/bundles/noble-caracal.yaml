@@ -1,5 +1,5 @@
 options:
-  source: &source distro
+  source: &source proposed
 
 series: noble
 
@@ -7,6 +7,7 @@ comment:
 - 'machines section to decide order of deployment. database sooner = faster'
 machines:
   '0':
+    series: plucky
   '1':
     constraints: cores=2 mem=6G root-disk=40G virt-type=virtual-machine
   '2':
@@ -19,9 +20,9 @@ machines:
 
 applications:
   ceph-radosgw:
-    charm: ch:ceph-radosgw
-    channel: latest/edge
+    charm: ../../../ceph-radosgw.charm
     num_units: 1
+    series: plucky
     options:
       source: *source
       namespace-tenants: True
@@ -31,6 +32,7 @@ applications:
   ceph-osd:
     charm: ch:ceph-osd
     num_units: 3
+    channel: latest/edge
     storage:
       osd-devices: 'loop,10G'
     options:
@@ -40,11 +42,11 @@ applications:
       - '1'
       - '2'
       - '3'
-    channel: latest/edge
 
   ceph-mon:
     charm: ch:ceph-mon
     num_units: 3
+    channel: latest/edge
     options:
       monitor-count: 3
       source: *source
@@ -52,7 +54,6 @@ applications:
       - '4'
       - '5'
       - '6'
-    channel: latest/edge
 
 relations:
   - - 'ceph-osd:mon'

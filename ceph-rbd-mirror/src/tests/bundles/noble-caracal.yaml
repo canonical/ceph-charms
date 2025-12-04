@@ -1,73 +1,76 @@
 variables:
-  openstack-origin: &openstack-origin distro
+  openstack-origin: &openstack-origin proposed
   series: &series noble
 
 series: *series
 
 machines:
   '0':
-    constraints: cores=2 mem=4G root-disk=16G virt-type=virtual-machine
+    constraints: cores=2 mem=4G root-disk=14G virt-type=virtual-machine
   '1':
-    constraints: cores=2 mem=4G root-disk=16G virt-type=virtual-machine
+    constraints: cores=2 mem=4G root-disk=14G virt-type=virtual-machine
   '2':
-    constraints: cores=2 mem=4G root-disk=16G virt-type=virtual-machine
+    constraints: cores=2 mem=4G root-disk=14G virt-type=virtual-machine
   '3':
-    constraints: cores=2 mem=4G root-disk=16G virt-type=virtual-machine
+    constraints: cores=2 mem=4G root-disk=14G virt-type=virtual-machine
   '4':
-    constraints: cores=2 mem=4G root-disk=16G virt-type=virtual-machine
+    constraints: cores=2 mem=4G root-disk=14G virt-type=virtual-machine
   '5':
-    constraints: cores=2 mem=4G root-disk=16G virt-type=virtual-machine
+    constraints: cores=2 mem=4G root-disk=14G virt-type=virtual-machine
   '6':
   '7':
   '8':
   '9':
   '10':
   '11':
+  '12':
+    series: plucky
+  '13':
+    series: plucky
 
 applications:
   ceph-mon:
     charm: ch:ceph-mon
     num_units: 3
+    channel: latest/edge
     options:
       expected-osd-count: 3
       source: *openstack-origin
-    channel: latest/edge
     to:
       - '6'
       - '7'
       - '8'
 
   ceph-osd:
-    charm: ch:ceph-osd
+    charm: ceph-osd
     num_units: 3
+    channel: latest/edge
     storage:
-      osd-devices: 'loop,4G'
+      osd-devices: 'loop,3G'
     options:
       source: *openstack-origin
       osd-devices: '/dev/test-non-existent'
-    channel: latest/edge
     to:
       - '0'
       - '1'
       - '2'
 
   ceph-rbd-mirror:
-    series: *series
-    charm: ch:ceph-rbd-mirror
-    channel: latest/edge
+    charm: ../../../../ceph-rbd-mirror.charm
+    series: plucky
     num_units: 1
     options:
       source: *openstack-origin
     to:
-      - '0'
+      - '12'
 
   ceph-mon-b:
     charm: ch:ceph-mon
     num_units: 3
+    channel: latest/edge
     options:
       expected-osd-count: 3
       source: *openstack-origin
-    channel: latest/edge
     to:
       - '9'
       - '10'
@@ -76,26 +79,25 @@ applications:
   ceph-osd-b:
     charm: ch:ceph-osd
     num_units: 3
+    channel: latest/edge
     storage:
-      osd-devices: 'loop,4G'
+      osd-devices: 'loop,3G'
     options:
       source: *openstack-origin
       osd-devices: '/dev/test-non-existent'
-    channel: latest/edge
     to:
       - '3'
       - '4'
       - '5'
 
   ceph-rbd-mirror-b:
-    series: *series
-    charm: ch:ceph-rbd-mirror
-    channel: latest/edge
+    charm: ../../../../ceph-rbd-mirror.charm
+    series: plucky
     num_units: 1
     options:
       source: *openstack-origin
     to:
-      - '3'
+      - '13'
 
 relations:
 

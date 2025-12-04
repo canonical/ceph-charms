@@ -16,6 +16,7 @@ tags:
 series:
 - focal
 - jammy
+- plucky
 extra-bindings:
   public:
   admin:

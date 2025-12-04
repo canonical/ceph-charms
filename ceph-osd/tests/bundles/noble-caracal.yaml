@@ -1,3 +1,6 @@
+variables:
+  openstack-origin: &openstack-origin proposed
+
 series: &series noble
 
 machines:
@@ -6,29 +9,35 @@ machines:
   '2':
   '3':
     constraints: cores=2 mem=4G root-disk=25G virt-type=virtual-machine
+    series: plucky
   '4':
     constraints: cores=2 mem=4G root-disk=25G virt-type=virtual-machine
+    series: plucky
   '5':
     constraints: cores=2 mem=4G root-disk=25G virt-type=virtual-machine
+    series: plucky
 
 applications:
   ceph-mon:
     charm: ch:ceph-mon
-    channel: latest/edge
     num_units: 3
+    channel: latest/edge
     options:
       monitor-count: 3
+      source: *openstack-origin
     to:
       - '0'
       - '1'
       - '2'
 
   ceph-osd:
-    charm: ch:ceph-osd
-    channel: latest/edge
+    charm: ../../../ceph-osd.charm
     num_units: 3
+    series: plucky
     storage:
       osd-devices: 'loop,5G,2'
+    options:
+      source: *openstack-origin
     to:
       - '3'
       - '4'
