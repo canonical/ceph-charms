@@ -153,10 +153,7 @@ jobs:
         run: |
           date
           mv ~/artifacts/*.charm ./
-          pwd
-          ls ./
-          realpath ~/artifacts
-          ls ~/artifacts
+          sudo apt autoremove
           if [[ -f "./${{ matrix.part }}/src/tox.ini" ]]; then
             tox -c ${{ matrix.part }}/src -e func-dev
           else
