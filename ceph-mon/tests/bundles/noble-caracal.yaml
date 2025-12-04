@@ -5,11 +5,11 @@ series: &series noble
 
 machines:
   '0':
-    series: plucky
+    series: questing
   '1':
-    series: plucky
+    series: questing
   '2':
-    series: plucky
+    series: questing
   '3':
     constraints: cores=2 mem=6G root-disk=40G virt-type=virtual-machine
   '4':
@@ -21,7 +21,7 @@ applications:
   ceph-mon:
     charm: ../../../ceph-mon.charm
     num_units: 3
-    series: plucky
+    series: questing
     options:
       monitor-count: 3
       source: *openstack-origin

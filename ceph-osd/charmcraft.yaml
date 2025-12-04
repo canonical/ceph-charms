@@ -16,8 +16,8 @@ parts:
         echo "commit_date: $(git -C $CRAFT_PROJECT_DIR show -s --format=%cI HEAD)" >> $CRAFT_PART_INSTALL/git-info.txt
       fi
 
-base: ubuntu@25.04
-build-base: ubuntu@25.04
+base: ubuntu@25.10
+build-base: ubuntu@25.10
 platforms:
   amd64:
     build-on: amd64

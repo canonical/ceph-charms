@@ -12,7 +12,7 @@ tags:
 - misc
 series:
 - noble
-- plucky
+- questing
 subordinate: false
 requires:
   ceph-mds:
