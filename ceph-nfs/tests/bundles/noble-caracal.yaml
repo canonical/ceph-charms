@@ -20,6 +20,7 @@ series: noble
 applications:
   ceph-nfs:
     charm: ch:ceph-nfs
+    channel: latest/edge
     num_units: 2
     options:
       source: *source
