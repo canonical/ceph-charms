@@ -40,6 +40,5 @@ pyopenssl<=22.0.0
 pydantic < 2
 cosl
 
-netifaces
 git+https://github.com/openstack/charms.openstack.git#egg=charms.openstack
 charms.reactive
