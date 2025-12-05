@@ -32,7 +32,7 @@ parts:
 
 
 build-base: ubuntu@25.10
-base: ubuntu@25.10
+base: ubuntu@devel
 platforms:
   amd64:
     build-on: amd64
