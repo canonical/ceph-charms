@@ -94,7 +94,7 @@ jobs:
         id: builder
         run: |
           sudo snap install charmcraft --classic --channel=latest/stable
-          tox -c ${{ matrix.part }} -e build
+          sudo tox -c ${{ matrix.part }} -e build
 
       - name: Upload built charm
         uses: actions/upload-artifact@v4
