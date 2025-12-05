@@ -126,7 +126,6 @@ class CephNVMECharm(ops.CharmBase):
         """Create a socket to communicate with the proxy."""
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         sock.bind(('0.0.0.0', 0))
-        sock.settimeout(30)
         return sock
 
     def _msgloop(self, msg, addr=None, sock=None):
