@@ -110,12 +110,6 @@
     },
     {
       "type": "python_module",
-      "package": "Cython",
-      "vcs": null,
-      "version": "3.0.11"
-    },
-    {
-      "type": "python_module",
       "package": "charms.reactive",
       "url": "git+https://github.com/canonical/charms.reactive.git",
       "branch": "f7debc39e623a3a73673ba1f7e4cb5bc7ae9ecd9",
