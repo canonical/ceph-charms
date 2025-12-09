@@ -1,5 +1,5 @@
 variables:
-  openstack-origin: &openstack-origin proposed
+  openstack-origin: &openstack-origin cloud:noble-caracal/proposed
 
 series: &series noble
 
@@ -8,9 +8,7 @@ machines:
   '1':
   '2':
   '3':
-    series: questing
   '4':
-    series: questing
   '5':
     constraints: cores=2 mem=6G root-disk=40G virt-type=virtual-machine
   '6':
@@ -34,7 +32,6 @@ applications:
   ceph-nvme:
     charm: ../../../ceph-nvme.charm
     num_units: 2
-    series: questing
     options:
       nr-hugepages: 0
       cpuset: "2"
