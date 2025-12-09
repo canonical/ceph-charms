@@ -98,11 +98,12 @@ jobs:
           mkdir tmp
           mv ${{ matrix.part}}.charm tmp/
           cd tmp
-          unzip ${{ matrix.part }}.charm
+          unzip -qq ${{ matrix.part }}.charm
           sed -i 's/25\.04/25\.10/g' ./manifest.yaml
           rm ${{ matrix.part }}.charm
-          zip -r ../${{ matrix.part }}.charm *
+          zip -q -r ../${{ matrix.part }}.charm *
           cd ..
+          cp ${{ matrix.part }}.charm ${{ matrix.part }}/
 
       - name: Upload built charm
         uses: actions/upload-artifact@v4
