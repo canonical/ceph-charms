@@ -95,6 +95,14 @@ jobs:
         run: |
           sudo snap install charmcraft --classic --channel=latest/stable
           tox -c ${{ matrix.part }} -e build
+          mkdir tmp
+          mv ${{ matrix.part}}.charm tmp/
+          cd tmp
+          unzip ${{ matrix.part }}.charm
+          sed -i 's/25\.04/25\.10/g' ./manifest.yaml
+          rm ${{ matrix.part }}.charm
+          zip -r ../${{ matrix.part }}.charm *
+          cd ..
 
       - name: Upload built charm
         uses: actions/upload-artifact@v4

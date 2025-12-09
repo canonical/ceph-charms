@@ -24,9 +24,9 @@ machines:
   '10':
   '11':
   '12':
-    series: plucky
+    series: questing
   '13':
-    series: plucky
+    series: questing
 
 applications:
   ceph-mon:
@@ -57,7 +57,7 @@ applications:
 
   ceph-rbd-mirror:
     charm: ../../../../ceph-rbd-mirror.charm
-    series: plucky
+    series: questing
     num_units: 1
     options:
       source: *openstack-origin
@@ -92,7 +92,7 @@ applications:
 
   ceph-rbd-mirror-b:
     charm: ../../../../ceph-rbd-mirror.charm
-    series: plucky
+    series: questing
     num_units: 1
     options:
       source: *openstack-origin
