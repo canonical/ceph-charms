@@ -6,6 +6,9 @@ parts:
       - update-certificates
     build-packages:
       - git
+    charm-python-packages:
+      - "setuptools<70"
+      - "wheel<0.44"
 
   update-certificates:
     plugin: nil
