@@ -402,7 +402,7 @@ class CephDashboardTest(test_utils.BaseCharmTest):
                         cert=(ca_file, key_file))
 
                     rcs[req.status_code].append(ipaddr)
-                    
+
                 self.assertEqual(len(rcs[requests.codes.ok]), 1)
                 self.assertEqual(
                     len(rcs[requests.codes.see_other]),
