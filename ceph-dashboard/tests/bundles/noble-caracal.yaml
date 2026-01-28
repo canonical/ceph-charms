@@ -49,7 +49,7 @@ applications:
     channel: latest/edge
   ceph-dashboard:
     charm: ch:ceph-dashboard
-    channel: latest/edge
+    channel: squid/edge
     options:
       public-hostname: 'ceph-dashboard.zaza.local'
   prometheus:
