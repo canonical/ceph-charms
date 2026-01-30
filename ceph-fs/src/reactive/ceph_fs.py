@@ -39,29 +39,67 @@ charm.use_defaults(
 )
 
 
+def _read_keyring_key(keyring_path):
+    """Read the key value from a Ceph keyring file.
+
+    Ceph keyring files have the format:
+        [mds.hostname]
+            key = AQD...==
+            caps ...
+
+    :param keyring_path: Path to the keyring file
+    :type keyring_path: str
+    :returns: The key value if found, None otherwise
+    :rtype: str or None
+    """
+    if not os.path.exists(keyring_path):
+        return None
+
+    try:
+        with open(keyring_path, 'r') as f:
+            for line in f:
+                line = line.strip()
+                if line.startswith('key') and '=' in line:
+                    # Format: "key = AQD...=="
+                    return line.split('=', 1)[1].strip()
+    except (IOError, OSError) as e:
+        ch_core.hookenv.log('Failed to read keyring file {}: {}'.format(
+            keyring_path, str(e)), level=ch_core.hookenv.WARNING)
+        return None
+
+    return None
+
+
 @reactive.when_none('charm.paused', 'is-update-status-hook')
 @reactive.when('ceph-mds.pools.available')
 def config_changed():
     ceph_mds = reactive.endpoint_from_flag('ceph-mds.pools.available')
     with charm.provide_charm_instance() as cephfs_charm:
         host = cephfs_charm.hostname
-        exists = os.path.exists('/var/lib/ceph/mds/ceph-%s/keyring' % host)
+        keyring_path = '/var/lib/ceph/mds/ceph-%s/keyring' % host
 
-        cephfs_charm.configure_ceph_keyring(ceph_mds.mds_key())
+        # Read the existing key before updating the keyring
+        old_key = _read_keyring_key(keyring_path)
+
+        # Get the new key and configure the keyring
+        new_key = ceph_mds.mds_key()
+        cephfs_charm.configure_ceph_keyring(new_key)
         cephfs_charm.render_with_interfaces([ceph_mds])
+
         if reactive.is_flag_set('config.changed.source'):
             # update system source configuration and check for upgrade
             cephfs_charm.install()
             cephfs_charm.upgrade_if_available([ceph_mds])
             reactive.clear_flag('config.changed.source')
+
         reactive.set_flag('cephfs.configured')
         reactive.set_flag('config.rendered')
         cephfs_charm.assess_status()
 
-        # If the keyring file existed before this call, then the new
-        # provided key implies a rotation.
-        if exists:
+        # Only restart the MDS service if the key actually changed.
+        if old_key is not None and old_key != new_key:
             svc = 'ceph-mds@%s.service' % host
+            ch_core.hookenv.log('MDS key has changed, restarting service')
             try:
                 # Reset the failure count first, as the service may fail
                 # to come up due to the way the restart-map is handled.
