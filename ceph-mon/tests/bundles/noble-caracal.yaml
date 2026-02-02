@@ -1,9 +1,15 @@
+variables:
+  openstack-origin: &openstack-origin ppa:lmlogiudice/ceph-tentacle
+
 series: &series noble
 
 machines:
   '0':
+    series: resolute
   '1':
+    series: resolute
   '2':
+    series: resolute
   '3':
     constraints: cores=2 mem=6G root-disk=24G virt-type=virtual-machine
   '4':
@@ -17,11 +23,12 @@ machines:
 
 applications:
   ceph-mon:
-    charm: ch:ceph-mon
-    channel: latest/edge
+    charm: ../../../ceph-mon.charm
+    series: resolute
     num_units: 3
     options:
       monitor-count: 3
+      source: *openstack-origin
     to:
       - '0'
       - '1'
