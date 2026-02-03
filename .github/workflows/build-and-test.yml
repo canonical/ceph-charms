@@ -105,7 +105,7 @@ jobs:
           rm ${{ matrix.part }}.charm
           zip -q -r ../${{ matrix.part }}.charm *
           cd ..
-          cp ${{ matrix.part }}.charm ${{ matrix.part }}/
+          sudo cp ${{ matrix.part }}.charm ${{ matrix.part }}/
 
       - name: Upload built charm
         uses: actions/upload-artifact@v4
