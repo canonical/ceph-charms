@@ -95,7 +95,7 @@ jobs:
         id: builder
         run: |
           sudo snap install charmcraft --classic --channel=latest/stable
-          tox -c ${{ matrix.part }} -e build
+          sudo tox -c ${{ matrix.part }} -e build
           mkdir tmp
           mv ${{ matrix.part}}.charm tmp/
           cd tmp
