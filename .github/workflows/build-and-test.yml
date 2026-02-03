@@ -96,8 +96,9 @@ jobs:
         run: |
           sudo snap install charmcraft --classic --channel=latest/stable
           sudo tox -c ${{ matrix.part }} -e build
+          sudo chown `whoami`:`whoami` ${{ matrix.part }}.charm
           mkdir tmp
-          mv ${{ matrix.part}}.charm tmp/
+          mv ${{ matrix.part }}.charm tmp/
           cd tmp
           unzip -qq ${{ matrix.part }}.charm
           sed -i 's/25\.10/26\.04/g' ./manifest.yaml
