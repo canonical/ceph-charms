@@ -78,7 +78,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get -qq install libxslt-dev libxml2-dev python3-lxml tox
+          sudo apt-get -qq install libxslt-dev libxml2-dev python3-lxml tox yq
 
       - name: Run linters
         run: tox -c ${{ matrix.part }} -e pep8
@@ -101,7 +101,7 @@ jobs:
           mv ${{ matrix.part }}.charm tmp/
           cd tmp
           unzip -qq ${{ matrix.part }}.charm
-          sed -i 's/25\.10/26\.04/g' ./manifest.yaml
+          yq -i '.bases.0.channel = "26.04"' ./manifest.yaml
           rm ${{ matrix.part }}.charm
           zip -q -r ../${{ matrix.part }}.charm *
           cd ..
