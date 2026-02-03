@@ -78,7 +78,8 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get -qq install libxslt-dev libxml2-dev python3-lxml tox yq
+          sudo apt-get -qq install libxslt-dev libxml2-dev python3-lxml tox
+          sudo snap install yq
 
       - name: Run linters
         run: tox -c ${{ matrix.part }} -e pep8
