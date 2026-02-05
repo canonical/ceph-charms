@@ -10,6 +10,7 @@ dev_bundles:
   - noble-caracal
 
 tests:
+  - zaza.charm_tests.lifecycle.refresh.CharmRefreshAll
   - tests.target.CephLowLevelTest
   - tests.target.CephTest
   - tests.target.CephPrometheusTest

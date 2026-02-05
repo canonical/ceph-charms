@@ -13,7 +13,8 @@ tags:
 series:
 - focal
 - jammy
-- questing
+- noble
+- resolute
 peers:
   mon:
     interface: ceph
