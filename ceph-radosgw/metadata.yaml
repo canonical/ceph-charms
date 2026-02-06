@@ -16,6 +16,8 @@ tags:
 series:
 - focal
 - jammy
+- noble
+- resolute
 extra-bindings:
   public:
   admin:
