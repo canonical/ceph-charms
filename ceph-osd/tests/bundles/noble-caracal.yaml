@@ -29,6 +29,8 @@ applications:
     num_units: 3
     storage:
       osd-devices: 'loop,5G,2'
+    options:
+      source: ppa:lmlogiudice/ceph-tentacle-noble
     to:
       - '3'
       - '4'

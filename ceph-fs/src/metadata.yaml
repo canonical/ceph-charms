@@ -12,6 +12,7 @@ tags:
 - misc
 series:
 - noble
+- resolute
 subordinate: false
 requires:
   ceph-mds:
