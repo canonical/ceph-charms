@@ -20,7 +20,7 @@ applications:
     channel: latest/edge
     num_units: 2
     options:
-      source: ppa:lmlogiudice/ceph-tentacle-noble
+      source: *source
     to:
       - '3'
       - '4'
