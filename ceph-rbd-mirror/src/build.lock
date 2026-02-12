@@ -162,12 +162,6 @@
     },
     {
       "type": "python_module",
-      "package": "pbr",
-      "vcs": null,
-      "version": "6.0.0"
-    },
-    {
-      "type": "python_module",
       "package": "dnspython",
       "vcs": null,
       "version": "2.6.1"
