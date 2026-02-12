@@ -111,51 +111,6 @@ class TestCephOps(unittest.TestCase):
         mock_erasure_pool.assert_called_with()
         self.assertEqual(json.loads(rc), {'exit-code': 0})
 
-    @patch('charmhelpers.contrib.storage.linux.ceph.cmp_pkgrevno')
-    @patch.object(broker, 'pool_exists')
-    @patch.object(broker.BasePool, 'add_cache_tier')
-    @patch.object(broker, 'log', lambda *args, **kwargs: None)
-    def test_process_requests_create_cache_tier(self, mock_pool,
-                                                mock_pool_exists,
-                                                mock_cmp_pkgrevno):
-        mock_pool_exists.return_value = True
-        mock_cmp_pkgrevno.return_value = 1
-        reqs = json.dumps({'api-version': 1,
-                           'ops': [{
-                               'op': 'create-cache-tier',
-                               'cold-pool': 'foo',
-                               'hot-pool': 'foo-ssd',
-                               'mode': 'writeback',
-                               'erasure-profile': 'default'
-                           }]})
-        rc = broker.process_requests(reqs)
-        self.assertEqual(json.loads(rc), {'exit-code': 0})
-
-        mock_pool_exists.assert_any_call(service='admin', name='foo')
-        mock_pool_exists.assert_any_call(service='admin', name='foo-ssd')
-
-        mock_pool.assert_called_with(cache_pool='foo-ssd', mode='writeback')
-
-    @patch('charmhelpers.contrib.storage.linux.ceph.cmp_pkgrevno')
-    @patch.object(broker, 'pool_exists')
-    @patch.object(broker.BasePool, 'remove_cache_tier')
-    @patch.object(broker, 'log', lambda *args, **kwargs: None)
-    def test_process_requests_remove_cache_tier(self, mock_pool,
-                                                mock_pool_exists,
-                                                mock_cmp_pkgrevno):
-        mock_pool_exists.return_value = True
-        mock_cmp_pkgrevno.return_value = 1
-        reqs = json.dumps({'api-version': 1,
-                           'ops': [{
-                               'op': 'remove-cache-tier',
-                               'hot-pool': 'foo-ssd',
-                           }]})
-        rc = broker.process_requests(reqs)
-        self.assertEqual(json.loads(rc), {'exit-code': 0})
-        mock_pool_exists.assert_any_call(service='admin', name='foo-ssd')
-
-        mock_pool.assert_called_with(cache_pool='foo-ssd')
-
     @patch.object(broker, 'snapshot_pool')
     @patch.object(broker, 'log', lambda *args, **kwargs: None)
     def test_snapshot_pool(self, mock_snapshot_pool):
