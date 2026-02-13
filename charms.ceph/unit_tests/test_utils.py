@@ -2148,3 +2148,61 @@ class CephManagerAndConfig(unittest.TestCase):
         utils.ceph_config_get('mgr/dashboard/ssl', 'mgr')
         _check_output.assert_called_once_with(
             ['ceph', 'config', 'get', 'mgr', 'mgr/dashboard/ssl'])
+
+
+class CephGetOSDStateTestCase(unittest.TestCase):
+
+    @patch.object(utils.time, 'time')
+    @patch.object(utils.subprocess, 'check_output')
+    def test_get_osd_state_timeout(self, _check_output, _time):
+        """Test that get_osd_state returns None after timeout."""
+        _time.side_effect = [0, 0, 601]
+        _check_output.return_value = b'{"state": "booting"}'
+
+        result = utils.get_osd_state(0, osd_goal_state='active', timeout=600)
+
+        self.assertIsNone(result)
+
+    @patch.object(utils.time, 'time')
+    @patch.object(utils.subprocess, 'check_output')
+    def test_get_osd_state_success_after_retries(self, _check_output, _time):
+        """Test that get_osd_state succeeds after retries on failure."""
+        _time.side_effect = [0, 0, 10, 20, 30, 40]
+        _check_output.side_effect = [
+            CalledProcessError(1, 'cmd'),
+            CalledProcessError(1, 'cmd'),
+            b'{"state": "active"}'
+        ]
+
+        result = utils.get_osd_state(0, osd_goal_state='active')
+
+        self.assertEqual(result, 'active')
+
+    @patch.object(utils.time, 'time')
+    @patch.object(utils.subprocess, 'check_output')
+    def test_get_osd_state_no_goal_state(self, _check_output, _time):
+        """Test get_osd_state returns current state when no goal."""
+        _time.side_effect = [0, 0]
+        _check_output.return_value = b'{"state": "booting"}'
+
+        result = utils.get_osd_state(0)
+
+        self.assertEqual(result, 'booting')
+
+    @patch.object(utils.time, 'sleep')
+    @patch.object(utils.time, 'time')
+    @patch.object(utils.subprocess, 'check_output')
+    def test_get_osd_state_custom_retry_interval(self, _check_output, _time,
+                                                 _sleep):
+        """Test custom retry_interval parameter."""
+        _time.side_effect = [0, 0, 10]
+        _check_output.side_effect = [
+            b'{"state": "booting"}',
+            b'{"state": "active"}'
+        ]
+
+        result = utils.get_osd_state(0, osd_goal_state='active',
+                                     retry_interval=10)
+
+        self.assertEqual(result, 'active')
+        _sleep.assert_called_with(10)
