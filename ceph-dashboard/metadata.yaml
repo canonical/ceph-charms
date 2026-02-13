@@ -17,7 +17,6 @@ subordinate: true
 series:
 - focal
 - jammy
-- resolute
 requires:
   dashboard:
     interface: ceph-dashboard

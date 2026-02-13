@@ -1,26 +1,17 @@
-# This file is managed centrally by release-tools and should not be modified
-# within individual charm repos.  See the 'global' dir contents for available
-# choices of *requirements.txt files for OpenStack Charms:
-#     https://github.com/openstack-charmers/release-tools
-#
-# TODO: Distill the func test requirements from the lint/unit test
-#       requirements.  They are intertwined.  Also, Zaza itself should specify
-#       all of its own requirements and if it doesn't, fix it there.
-#
-setuptools<70
-pyparsing<3.0.0  # aodhclient is pinned in zaza and needs pyparsing < 3.0.0, but cffi also needs it, so pin here.
-
-requests>=2.18.4
-
+# This file is managed centrally.  If you find the need to modify this as a
+# one-off, please don't.  Intead, consult #openstack-charms and ask about
+# requirements management in charms via bot-control.  Thank you.
+charm-tools>=2.4.4
+coverage>=3.6
+flake8
+pyflakes==2.1.1
 stestr>=2.2.0
-
-coverage>=4.5.2
-pyudev              # for ceph-* charm unit tests (need to fix the ceph-* charm unit tests/mocking)
+requests>=2.18.4
+psutil
+# oslo.i18n dropped py35 support
+oslo.i18n<4.0.0
 git+https://github.com/openstack-charmers/zaza.git#egg=zaza
 git+https://github.com/openstack-charmers/zaza-openstack-tests.git#egg=zaza.openstack
-
-# Needed for charm-glance:
-git+https://opendev.org/openstack/tempest.git#egg=tempest
-
-croniter            # needed for charm-rabbitmq-server unit tests
-psutil
+pytz    # workaround for 14.04 pip/tox
+pyudev  # for ceph-* charm unit tests (not mocked?)
+cffi==1.14.6; python_version < '3.6'  # cffi 1.15.0 drops support for py35.

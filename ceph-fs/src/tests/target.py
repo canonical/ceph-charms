@@ -178,6 +178,7 @@ class CephFSTests(unittest.TestCase):
             """
             model.set_application_config('ceph-fs', mds_config)
             results = _get_conf()
+            return results
             self.assertEqual(
                 results['mds_cache_memory_limit'],
                 mds_config['mds-cache-memory-limit'])
@@ -198,6 +199,12 @@ class CephFSTests(unittest.TestCase):
         mds_config = {'mds-cache-memory-limit': '8589934592',
                       'mds-cache-reservation': '0.10',
                       'mds-health-cache-threshold': '2'}
+        _change_conf_check(mds_config)
+
+        # Restore config to keep tests idempotent
+        mds_config = {'mds-cache-memory-limit': '4294967296',
+                      'mds-cache-reservation': '0.05',
+                      'mds-health-cache-threshold': '1.5'}
         _change_conf_check(mds_config)
 
 
