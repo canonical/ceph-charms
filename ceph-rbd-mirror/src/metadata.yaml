@@ -17,7 +17,6 @@ tags:
 - misc
 series:
 - noble
-- resolute
 extra-bindings:
   public:
   cluster:

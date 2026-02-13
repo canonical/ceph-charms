@@ -200,12 +200,6 @@ class CephFSTests(unittest.TestCase):
                       'mds-health-cache-threshold': '2'}
         _change_conf_check(mds_config)
 
-        # Restore config to keep tests idempotent
-        mds_config = {'mds-cache-memory-limit': '4294967296',
-                      'mds-cache-reservation': '0.05',
-                      'mds-health-cache-threshold': '1.5'}
-        _change_conf_check(mds_config)
-
 
 class CharmOperationTest(test_utils.BaseCharmTest):
     """CephFS Charm operation tests."""
