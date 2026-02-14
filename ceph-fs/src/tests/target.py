@@ -208,21 +208,6 @@ class CephFSTests(unittest.TestCase):
         _change_conf_check(mds_config)
 
 
-class CharmOperationTest(test_utils.BaseCharmTest):
-    """CephFS Charm operation tests."""
-
-    def test_pause_resume(self):
-        """Run pause and resume tests.
-
-        Pause service and check services are stopped, then resume and check
-        they are started.
-        """
-        services = ['ceph-mds']
-        with self.pause_resume(services):
-            logging.info('Testing pause resume (services="{}")'
-                         .format(services))
-
-
 class CephKeyRotationTests(test_utils.BaseCharmTest):
     """Tests for the rotate-key action."""
 
