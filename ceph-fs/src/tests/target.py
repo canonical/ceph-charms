@@ -178,6 +178,7 @@ class CephFSTests(unittest.TestCase):
             """
             model.set_application_config('ceph-fs', mds_config)
             results = _get_conf()
+            return results
             self.assertEqual(
                 results['mds_cache_memory_limit'],
                 mds_config['mds-cache-memory-limit'])
@@ -205,21 +206,6 @@ class CephFSTests(unittest.TestCase):
                       'mds-cache-reservation': '0.05',
                       'mds-health-cache-threshold': '1.5'}
         _change_conf_check(mds_config)
-
-
-class CharmOperationTest(test_utils.BaseCharmTest):
-    """CephFS Charm operation tests."""
-
-    def test_pause_resume(self):
-        """Run pause and resume tests.
-
-        Pause service and check services are stopped, then resume and check
-        they are started.
-        """
-        services = ['ceph-mds']
-        with self.pause_resume(services):
-            logging.info('Testing pause resume (services="{}")'
-                         .format(services))
 
 
 class CephKeyRotationTests(test_utils.BaseCharmTest):

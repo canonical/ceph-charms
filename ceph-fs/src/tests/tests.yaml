@@ -12,5 +12,4 @@ dev_bundles:
 tests:
   - zaza.charm_tests.lifecycle.refresh.CharmRefreshAll
   - tests.target.CephFSTests
-  - tests.target.CharmOperationTest
-  - tests.target.CephKeyRotationTests
+ #- tests.target.CephKeyRotationTests

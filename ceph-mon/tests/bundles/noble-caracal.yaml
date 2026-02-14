@@ -21,6 +21,7 @@ applications:
     channel: latest/edge
     num_units: 3
     options:
+      source: ppa:lmlogiudice/ceph-tentacle-noble
       monitor-count: 3
     to:
       - '0'

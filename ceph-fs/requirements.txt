@@ -5,6 +5,6 @@
 #
 cryptography<3.4
 
-git+https://github.com/juju/charm-tools.git
+#git+https://github.com/juju/charm-tools.git
 
 simplejson
