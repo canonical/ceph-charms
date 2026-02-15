@@ -6,13 +6,13 @@ description: |
   excellent performance, reliability, and scalability.
 docs: https://discourse.charmhub.io/t/ceph-mon-docs-index/10544
 tags:
-- openstack
-- storage
-- file-servers
-- misc
+  - openstack
+  - storage
+  - file-servers
+  - misc
 series:
-- focal
-- jammy
+  - focal
+  - jammy
 peers:
   mon:
     interface: ceph
@@ -43,6 +43,8 @@ provides:
     interface: ceph-dashboard
   cos-agent:
     interface: cos_agent
+  yield-admin:
+    interface: ceph-remote-admin
 
 requires:
   bootstrap-source:
