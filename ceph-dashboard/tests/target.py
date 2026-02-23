@@ -121,13 +121,27 @@ class CephDashboardTest(test_utils.BaseCharmTest):
         """Run class setup for running ceph dashboard tests."""
         super().setUpClass()
         cls.application_name = 'ceph-dashboard'
-        cls.cert_file = tempfile.NamedTemporaryFile(mode='w+')
-        cls.key_file = tempfile.NamedTemporaryFile(mode='w+')
+        cert_file = tempfile.NamedTemporaryFile(mode='w+')
+        key_file = tempfile.NamedTemporaryFile(mode='w+')
+        pem_file = tempfile.NamedTemporaryFile(mode='w+')
 
-        cls.cert_file.write(cls.get_mgr_key('crt'))
-        cls.key_file.write(cls.get_mgr_key('key'))
-        cls.cert_file.flush()
-        cls.key_file.flush()
+        crt_contents = cls.get_mgr_key('crt')
+        key_contents = cls.get_mgr_key('key')
+
+        cert_file.write(crt_contents)
+        key_file.write(key_contents)
+        pem_file.write(crt_contents)
+        pem_file.write(key_contents)
+        pem_file.flush()
+        pem_file = pem_file.seek(0)
+
+        cert_file.flush()
+        cls.cert_file = cert_file
+
+        key_file.flush()
+        cls.key_file = key_file
+
+        cls.pem_file = pem_file
 
     @tenacity.retry(wait=tenacity.wait_exponential(multiplier=1,
                                                    min=5, max=10),
@@ -262,7 +276,7 @@ class CephDashboardTest(test_utils.BaseCharmTest):
         payload = {"username": user, "password": password}
         r = self._run_request_post(
             "{}/{}".format(dashboard_url, path),
-            verify=self.cert_file.name,
+            verify=self.pem_file.name,
             data=json.dumps(payload),
             headers=headers,
             cert=(self.cert_file.name, self.key_file.name))
@@ -324,14 +338,14 @@ class CephDashboardTest(test_utils.BaseCharmTest):
         # Check that both login and metadata are accesible.
         resp = self._run_request_get(
             url + '/auth/saml2/login',
-            verify=self.cert_file.name,
+            verify=self.pem_file.name,
             allow_redirects=False,
             cert=(self.cert_file.name, self.key_file.name))
         self.assertTrue(resp.status_code, requests.codes.ok)
 
         resp = self._run_request_get(
             url + '/auth/saml2/metadata',
-            verify=self.cert_file.name,
+            verify=self.pem_file.name,
             allow_redirects=False,
             cert=(self.cert_file.name, self.key_file.name))
         self.assertEqual(resp.status_code, requests.codes.ok)
