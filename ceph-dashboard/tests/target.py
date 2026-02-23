@@ -384,10 +384,10 @@ class CephDashboardTest(test_utils.BaseCharmTest):
             addr = addr.strip().replace(':8443', '')
             ret = network_utils.format_addr(addr)
             if addr == '0.0.0.0' or addr == '::':
-              return self.unit_addr(unit, format_ipv6)
+                return CephDashboardTest.unit_addr(unit, format_ipv6)
             return ret if format_ipv6 else addr
         except Exception:
-            return self.unit_addr(unit, format_ipv6)
+            return CephDashboardTest.unit_addr(unit, format_ipv6)
 
     def verify_ssl_config(self, ca_file, key_file):
         """Check if request validates the configured SSL cert."""
