@@ -262,7 +262,7 @@ class CephDashboardTest(test_utils.BaseCharmTest):
         payload = {"username": user, "password": password}
         r = self._run_request_post(
             "{}/{}".format(dashboard_url, path),
-            verify=False,
+            verify=self.cert_file.name,
             data=json.dumps(payload),
             headers=headers,
             cert=(self.cert_file.name, self.key_file.name))
@@ -324,14 +324,14 @@ class CephDashboardTest(test_utils.BaseCharmTest):
         # Check that both login and metadata are accesible.
         resp = self._run_request_get(
             url + '/auth/saml2/login',
-            verify=False,
+            verify=self.cert_file.name,
             allow_redirects=False,
             cert=(self.cert_file.name, self.key_file.name))
         self.assertTrue(resp.status_code, requests.codes.ok)
 
         resp = self._run_request_get(
             url + '/auth/saml2/metadata',
-            verify=False,
+            verify=self.cert_file.name,
             allow_redirects=False,
             cert=(self.cert_file.name, self.key_file.name))
         self.assertEqual(resp.status_code, requests.codes.ok)
@@ -367,6 +367,11 @@ class CephDashboardTest(test_utils.BaseCharmTest):
         return assert_state
 
     @staticmethod
+    def unit_addr(unit, format_ipv6=True):
+        addr = zaza.model.get_unit_public_address(unit)
+        return network_utils.format_addr(addr) if format_ipv6 else addr
+
+    @staticmethod
     def dashboard_addr(unit, format_ipv6=True):
         """
         The dashboard address may not be the same as the unit's public
@@ -378,10 +383,11 @@ class CephDashboardTest(test_utils.BaseCharmTest):
         try:
             addr = addr.strip().replace(':8443', '')
             ret = network_utils.format_addr(addr)
+            if addr == '0.0.0.0' or addr == '::':
+              return self.unit_addr(unit, format_ipv6)
             return ret if format_ipv6 else addr
         except Exception:
-            addr = zaza.model.get_unit_public_address(unit)
-            return network_utils.format_addr(addr) if format_ipv6 else addr
+            return self.unit_addr(unit, format_ipv6)
 
     def verify_ssl_config(self, ca_file, key_file):
         """Check if request validates the configured SSL cert."""
@@ -397,7 +403,7 @@ class CephDashboardTest(test_utils.BaseCharmTest):
                     ipaddr = self.dashboard_addr(unit)
                     req = self._run_request_get(
                         'https://{}:8443'.format(ipaddr),
-                        verify=False,
+                        verify=ca_file,
                         allow_redirects=False,
                         cert=(ca_file, key_file))
 
