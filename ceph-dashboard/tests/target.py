@@ -276,7 +276,7 @@ class CephDashboardTest(test_utils.BaseCharmTest):
         payload = {"username": user, "password": password}
         r = self._run_request_post(
             "{}/{}".format(dashboard_url, path),
-            verify=self.pem_file.name,
+            verify=self.pem_file,
             data=json.dumps(payload),
             headers=headers,
             cert=(self.cert_file.name, self.key_file.name))
@@ -338,14 +338,14 @@ class CephDashboardTest(test_utils.BaseCharmTest):
         # Check that both login and metadata are accesible.
         resp = self._run_request_get(
             url + '/auth/saml2/login',
-            verify=self.pem_file.name,
+            verify=self.pem_file,
             allow_redirects=False,
             cert=(self.cert_file.name, self.key_file.name))
         self.assertTrue(resp.status_code, requests.codes.ok)
 
         resp = self._run_request_get(
             url + '/auth/saml2/metadata',
-            verify=self.pem_file.name,
+            verify=self.pem_file,
             allow_redirects=False,
             cert=(self.cert_file.name, self.key_file.name))
         self.assertEqual(resp.status_code, requests.codes.ok)
