@@ -2883,7 +2883,8 @@ def update_owner(path, recurse_dirs=True):
         secs=elapsed_time.total_seconds(), path=path), DEBUG)
 
 
-def get_osd_state(osd_num, osd_goal_state=None):
+def get_osd_state(osd_num, osd_goal_state=None, timeout=600,
+                  retry_interval=10):
     """Get OSD state or loop until OSD state matches OSD goal state.
 
     If osd_goal_state is None, just return the current OSD state.
@@ -2893,10 +2894,23 @@ def get_osd_state(osd_num, osd_goal_state=None):
     :param osd_num: the OSD id to get state for
     :param osd_goal_state: (Optional) string indicating state to wait for
                            Defaults to None
+    :param timeout: Maximum time in seconds to wait (default: 600)
+    :param retry_interval: Time in seconds between retries (default: 10)
     :returns: Returns a str, the OSD state.
     :rtype: str
     """
+    start_time = time.time()
+
     while True:
+        elapsed_time = time.time() - start_time
+
+        if elapsed_time > timeout:
+            log("Timeout waiting for OSD {} to reach state {}. "
+                "Elapsed time: {:.1f}s".format(
+                    osd_num, osd_goal_state or "any", elapsed_time),
+                level=WARNING)
+            return
+
         asok = "/var/run/ceph/ceph-osd.{}.asok".format(osd_num)
         cmd = [
             'ceph',
@@ -2909,7 +2923,9 @@ def get_osd_state(osd_num, osd_goal_state=None):
                                     .check_output(cmd)
                                     .decode('UTF-8')))
         except (subprocess.CalledProcessError, ValueError) as e:
-            log("{}".format(e), level=DEBUG)
+            log("Failed to get OSD {} state: {} (elapsed: {:.1f}s)".format(
+                osd_num, e, elapsed_time), level=ERROR)
+            time.sleep(retry_interval)
             continue
         osd_state = result['state']
         log("OSD {} state: {}, goal state: {}".format(
@@ -2918,7 +2934,8 @@ def get_osd_state(osd_num, osd_goal_state=None):
             return osd_state
         if osd_state == osd_goal_state:
             return osd_state
-        time.sleep(3)
+
+        time.sleep(retry_interval)
 
 
 def get_all_osd_states(osd_goal_states=None):
