@@ -114,10 +114,19 @@ class CephClientProvides(Object):
             'mon cluster in quorum and osds bootstrapped '
             '- providing client with keys, processing broker requests')
 
-        service_name = self._get_client_application_name(relation, unit)
         data = self._get_ceph_info_from_configs()
         data.update(self._get_custom_relation_init_data())
-        data.update({'key': ceph.get_named_key(service_name)})
+
+        # check if the client has already set 'application-name' in the
+        # relation data which would indicate the right cephx key has been
+        # configured (context in LP#2125295). If not, reuse the existing
+        # key to avoid race condition with client hooks.
+        ceph_key = relation.data[self.this_unit].get('key', None)
+        if 'application-name' not in relation.data[unit] and ceph_key:
+            data.update({'key': ceph_key})
+        else:
+            service_name = self._get_client_application_name(relation, unit)
+            data.update({'key': ceph.get_named_key(service_name)})
 
         data.update(
             self._handle_broker_request(
