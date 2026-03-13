@@ -1,6 +1,6 @@
-# ceph-osd Terraform module
+# ceph-radosgw Terraform module
 
-CC008-style charm module for deploying the `ceph-osd` charm with the Juju Terraform provider.
+CC008-style charm module for deploying the `ceph-radosgw` charm with the Juju Terraform provider.
 
 ## Requirements
 
@@ -13,7 +13,7 @@ CC008-style charm module for deploying the `ceph-osd` charm with the Juju Terraf
 
 | Name | Type | Default | Description |
 |---|---|---|---|
-| `app_name` | `string` | `"ceph-osd"` | Name of the deployed application. |
+| `app_name` | `string` | `"ceph-radosgw"` | Name of the deployed application. |
 | `channel` | `string` | `"squid/stable"` | Charm channel to deploy. |
 | `config` | `map(string)` | `{}` | Charm config options. |
 | `constraints` | `string` | `null` | Juju constraints for the application. |
@@ -25,9 +25,8 @@ CC008-style charm module for deploying the `ceph-osd` charm with the Juju Terraf
 
 | Name | Type | Default | Description |
 |---|---|---|---|
-| `base` | `string` | `null` | Base used for deployment, e.g. `ubuntu@24.04`. |
+| `base` | `string` | `"ubuntu@24.04"` | Base used for deployment, e.g. `ubuntu@24.04`. |
 | `resources` | `map(string)` | `{}` | Resources to use with the charm. |
-| `storage_directives` | `map(string)` | `{}` | Storage directives to pass to Juju. |
 | `offered_endpoints` | `list(string)` | `[]` | List of provides endpoint aliases to publish as Juju offers. |
 
 ## Outputs

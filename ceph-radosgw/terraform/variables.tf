@@ -4,13 +4,13 @@
 variable "app_name" {
   description = "Name of the application in the Juju model."
   type        = string
-  default     = "ceph-osd"
+  default     = "ceph-radosgw"
 }
 
 variable "base" {
   description = "Operating system base used for deployment, e.g. ubuntu@24.04."
   type        = string
-  default     = null
+  default     = "ubuntu@24.04"
 }
 
 variable "channel" {
@@ -20,7 +20,7 @@ variable "channel" {
 }
 
 variable "config" {
-  description = "Application config options for ceph-osd."
+  description = "Application config options for ceph-radosgw."
   type        = map(string)
   default     = {}
 }
@@ -45,9 +45,20 @@ variable "offered_endpoints" {
   validation {
     condition = alltrue([
       for alias in var.offered_endpoints :
-      contains(["nrpe_external_master"], alias)
+      contains(
+        [
+          "gateway",
+          "master",
+          "nrpe_external_master",
+          "object_store",
+          "primary",
+          "radosgw_user",
+          "s3",
+        ],
+        alias,
+      )
     ])
-    error_message = "offered_endpoints must only contain ceph-osd provides aliases."
+    error_message = "offered_endpoints must only contain ceph-radosgw provides aliases."
   }
 }
 
@@ -61,12 +72,6 @@ variable "revision" {
   description = "Revision number of the charm to deploy."
   type        = number
   default     = null
-}
-
-variable "storage_directives" {
-  description = "Storage directives for this application."
-  type        = map(string)
-  default     = {}
 }
 
 variable "units" {

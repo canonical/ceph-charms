@@ -1,9 +1,10 @@
-# Copyright 2025 Canonical Ltd.
+# Copyright 2026 Canonical Ltd.
 # See LICENSE file for licensing details.
 
 resource "juju_application" "ceph_osd" {
-  name  = var.app_name
-  model = var.model
+  # Juju provider v1 uses model UUIDs rather than model names for targeting.
+  name       = var.app_name
+  model_uuid = var.model_uuid
 
   charm {
     name     = "ceph-osd"
@@ -14,7 +15,7 @@ resource "juju_application" "ceph_osd" {
 
   config             = var.config
   constraints        = var.constraints
-  units              = var.units
   resources          = var.resources
-  storage_directives = var.storage
+  storage_directives = var.storage_directives
+  units              = var.units
 }

@@ -1,13 +1,22 @@
-# Copyright 2025 Canonical Ltd.
+# Copyright 2026 Canonical Ltd.
 # See LICENSE file for licensing details.
 
-output "app_name" {
-  description = "Name of the deployed application."
-  value       = juju_application.ceph_osd.name
+output "application" {
+  description = "Object representing the deployed ceph-osd application."
+  value       = juju_application.ceph_osd
+}
+
+output "offers" {
+  description = "Map of exposed offer URLs keyed by endpoint key."
+  value       = local.offers
+}
+
+output "provides" {
+  description = "Map of provides endpoints keyed by relation alias."
+  value       = local.provides
 }
 
 output "requires" {
-  value = {
-    mon = "mon"
-  }
+  description = "Map of requires endpoints keyed by relation alias."
+  value       = local.requires
 }

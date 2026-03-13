@@ -2,8 +2,8 @@
 # See LICENSE file for licensing details.
 
 output "application" {
-  description = "Object representing the deployed ceph-mon application."
-  value       = juju_application.ceph_mon
+  description = "Object representing the deployed ceph-radosgw application."
+  value       = juju_application.ceph_radosgw
 }
 
 output "offers" {
