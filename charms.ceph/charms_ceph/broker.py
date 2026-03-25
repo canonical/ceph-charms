@@ -26,6 +26,7 @@ from charms_ceph.utils import (
 from charms_ceph.crush_utils import Crushmap
 
 from charmhelpers.core.hookenv import (
+    config,
     log,
     DEBUG,
     INFO,
@@ -111,6 +112,23 @@ def decode_req_encode_rsp(f):
         return json.dumps(f(json.loads(req)))
 
     return decode_inner
+
+
+def get_broker_service():
+    """Return ceph client id used for broker operations.
+
+    The charm config stores ``admin-user`` as a ceph entity name (e.g.
+    ``client.admin`` or ``client.anbox``), while the ceph/rados CLI ``--id``
+    argument expects only the id portion (e.g. ``admin`` or ``anbox``).
+
+    Strip only the literal ``client.`` prefix when present. Any other value is
+    treated as an already-qualified id and returned unchanged.
+    """
+    admin_user = (config('admin-user') or 'client.admin').strip()
+    if admin_user.startswith('client.'):
+        admin_user = admin_user[len('client.'):]
+
+    return admin_user or 'admin'
 
 
 @decode_req_encode_rsp
@@ -250,15 +268,16 @@ def handle_set_key_permissions(request, service):
 
 
 def update_service_permissions(service, service_obj=None, namespace=None):
-    """Update the key permissions for the named client in Ceph"""
+    """Update the key permissions for the named client in Ceph."""
     if not service_obj:
         service_obj = get_service_groups(service=service, namespace=namespace)
     permissions = pool_permission_list_for_service(service_obj)
-    call = ['ceph', 'auth', 'caps', 'client.{}'.format(service)] + permissions
+    call = ['ceph', '--id', get_broker_service(), 'auth', 'caps',
+            'client.{}'.format(service)] + permissions
     try:
         check_call(call)
     except CalledProcessError as e:
-        log("Error updating key capabilities: {}".format(e))
+        log("Error updating key capabilities: {}".format(e), level=ERROR)
 
 
 def add_pool_to_group(pool, group, namespace=None):
@@ -316,8 +335,10 @@ def get_service_groups(service, namespace=None):
         }
     }
     """
-    service_json = monitor_key_get(service='admin',
-                                   key="cephx.services.{}".format(service))
+    service_json = monitor_key_get(
+        service=get_broker_service(),
+        key="cephx.services.{}".format(service),
+    )
     try:
         service = json.loads(service_json)
     except (TypeError, ValueError):
@@ -364,7 +385,10 @@ def get_group(group_name):
     }
     """
     group_key = get_group_key(group_name=group_name)
-    group_json = monitor_key_get(service='admin', key=group_key)
+    group_json = monitor_key_get(
+        service=get_broker_service(),
+        key=group_key,
+    )
     try:
         group = json.loads(group_json)
     except (TypeError, ValueError):
@@ -380,17 +404,21 @@ def get_group(group_name):
 def save_service(service_name, service):
     """Persist a service in the monitor cluster"""
     service['groups'] = {}
-    return monitor_key_set(service='admin',
-                           key="cephx.services.{}".format(service_name),
-                           value=json.dumps(service, sort_keys=True))
+    return monitor_key_set(
+        service=get_broker_service(),
+        key="cephx.services.{}".format(service_name),
+        value=json.dumps(service, sort_keys=True),
+    )
 
 
 def save_group(group, group_name):
     """Persist a group in the monitor cluster"""
     group_key = get_group_key(group_name=group_name)
-    return monitor_key_set(service='admin',
-                           key=group_key,
-                           value=json.dumps(group, sort_keys=True))
+    return monitor_key_set(
+        service=get_broker_service(),
+        key=group_key,
+        value=json.dumps(group, sort_keys=True),
+    )
 
 
 def get_group_key(group_name):
@@ -912,9 +940,9 @@ def process_requests_v1(reqs):
     for req in reqs:
         op = req.get('op')
         log("Processing op='{}'".format(op), level=DEBUG)
-        # Use admin client since we do not have other client key locations
-        # setup to use them for these operations.
-        svc = 'admin'
+        # Use the configured admin user (via --id form) for broker
+        # operations.
+        svc = get_broker_service()
         if op == "create-pool":
             pool_type = req.get('pool-type')  # "replicated" | "erasure"
 
