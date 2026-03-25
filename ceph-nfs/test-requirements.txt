@@ -1,11 +1,17 @@
 # This file is managed centrally.  If you find the need to modify this as a
 # one-off, please don't.  Intead, consult #openstack-charms and ask about
 # requirements management in charms via bot-control.  Thank you.
-charm-tools>=2.4.4
 coverage>=3.6
 mock>=1.2
 flake8>=2.2.4
 stestr>=2.2.0
+
+# setuptools>=82 removed pkg_resources which is used by cliff<3.0.0.
+setuptools<82
+
+# stestr uses testtools.compat._b which was removed in testtools 2.8.0.
+testtools<2.8.0
+
 requests>=2.18.4
 psutil
 # oslo.i18n dropped py35 support

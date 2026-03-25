@@ -18,6 +18,12 @@ stestr>=2.2.0
 # https://github.com/mtreinish/stestr/issues/145
 cliff<3.0.0
 
+# setuptools>=82 removed pkg_resources which is used by cliff<3.0.0.
+setuptools<82
+
+# stestr uses testtools.compat._b which was removed in testtools 2.8.0.
+testtools<2.8.0
+
 # Dependencies of stestr. Newer versions use keywords that didn't exist in
 # python 3.5 yet (e.g. "ModuleNotFoundError")
 importlib-metadata<3.0.0; python_version < '3.6'
