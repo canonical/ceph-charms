@@ -1,3 +1,5 @@
+# setuptools>=82 removed pkg_resources which is used by charms.layer.basic
+setuptools<82
 netifaces
 dnspython3
 ceph_api

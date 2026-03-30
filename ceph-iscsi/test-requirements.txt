@@ -1,12 +1,5 @@
-# This file is managed centrally by release-tools and should not be modified
-# within individual charm repos.  See the 'global' dir contents for available
-# choices of *requirements.txt files for OpenStack Charms:
-#     https://github.com/openstack-charmers/release-tools
-#
-# TODO: Distill the func test requirements from the lint/unit test
-#       requirements.  They are intertwined.  Also, Zaza itself should specify
-#       all of its own requirements and if it doesn't, fix it there.
-#
+# This file was originally managed centrally by release-tools but has been
+# locally modified after moving to monorepo and is no longer in sync with release-tools.
 
 # NOTE: newer versions of cryptography require a Rust compiler to build,
 # see
@@ -22,6 +15,12 @@ stestr>=2.2.0
 # Dependency of stestr. Workaround for
 # https://github.com/mtreinish/stestr/issues/145
 cliff<3.0.0
+
+# setuptools>=82 removed pkg_resources which is used by cliff<3.0.0.
+setuptools<82
+
+# stestr uses testtools.compat._b which was removed in testtools 2.8.0.
+testtools<2.8.0
 
 # Dependencies of stestr. Newer versions use keywords that didn't exist in
 # python 3.5 yet (e.g. "ModuleNotFoundError")
