@@ -9,6 +9,8 @@ parts:
     - setuptools
     build-packages:
     - git
+    build-environment:
+    - PIP_CONSTRAINT: $CRAFT_PROJECT_DIR/build-constraints.txt
 
   update-certificates:
     # Ensure that certificates in the base image are up-to-date.

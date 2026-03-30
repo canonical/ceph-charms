@@ -1,0 +1,5 @@
+# Build-time constraints for charmcraft pack.
+# setuptools>=82 removed pkg_resources, breaking build dependencies.
+# setuptools_scm>=10 causes circular build dependency with --no-binary=:all:.
+setuptools<82
+setuptools_scm<10
