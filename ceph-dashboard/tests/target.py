@@ -20,6 +20,7 @@ import logging
 import collections
 from base64 import b64encode
 import requests
+import tempfile
 import tenacity
 import trustme
 
@@ -103,29 +104,17 @@ def check_dashboard_cert(model_name=None):
     zaza.model.block_until_all_units_idle(model_name=model_name)
 
 
-def set_grafana_url(model_name=None):
-    """Set the url for the grafana api.
-
-    :param model_name: Name of model to query.
-    :type model_name: str
-    """
-    try:
-        unit = zaza.model.get_units('grafana')[0]
-    except KeyError:
-        return
-    zaza.model.set_application_config(
-        'ceph-dashboard',
-        {
-            'grafana-api-url': "https://{}:3000".format(
-                zaza.model.get_unit_public_address(unit))
-        })
-
-
 class CephDashboardTest(test_utils.BaseCharmTest):
     """Class for `ceph-dashboard` tests."""
 
     REMOTE_CERT_FILE = ('/usr/local/share/ca-certificates/'
                         'vault_ca_cert_dashboard.crt')
+
+    @classmethod
+    def get_mgr_key(_, key_name):
+        return zaza.model.run_on_leader(
+            'ceph-mon',
+            'ceph config-key get mgr/dashboard/%s' % key_name)['Stdout']
 
     @classmethod
     def setUpClass(cls):
@@ -135,7 +124,20 @@ class CephDashboardTest(test_utils.BaseCharmTest):
         cls.local_ca_cert = openstack_utils.get_remote_ca_cert_file(
             cls.application_name)
 
-    def _run_request_get(self, url, verify, allow_redirects):
+        cert_file = tempfile.NamedTemporaryFile(mode='w+')
+        key_file = tempfile.NamedTemporaryFile(mode='w+')
+
+        cert_file.write(cls.get_mgr_key('crt'))
+        key_file.write(cls.get_mgr_key('key'))
+
+        cert_file.flush()
+        key_file.flush()
+
+        cls.cert_file = cert_file
+        cls.key_file = key_file
+        cls.verify = cert_file.seek(0) or key_file.seek(0)
+
+    def _run_request_get(self, url, verify, allow_redirects, cert=None):
         """Run a GET request against `url` with tenacity retries.
 
         :param url: url to access
@@ -149,18 +151,23 @@ class CephDashboardTest(test_utils.BaseCharmTest):
         :returns: Request response
         :rtype: requests.models.Response
         """
+
+        if cert is None:
+            cert = (self.cert_file.name, self.key_file.name)
+
         return requests.get(
             url,
-            verify=verify,
+            verify=self.verify and verify,
             allow_redirects=allow_redirects,
-            timeout=120)
+            timeout=120,
+            cert=cert)
 
     @tenacity.retry(wait=tenacity.wait_exponential(multiplier=1,
                                                    min=5, max=10),
                     retry=tenacity.retry_if_exception_type(
                         requests.exceptions.ConnectionError),
                     reraise=True)
-    def _run_request_post(self, url, verify, data, headers):
+    def _run_request_post(self, url, verify, data, headers, cert=None):
         """Run a POST request against `url` with tenacity retries.
 
         :param url: url to access
@@ -176,12 +183,17 @@ class CephDashboardTest(test_utils.BaseCharmTest):
         :returns: Request response
         :rtype: requests.models.Response
         """
+
+        if cert is None:
+            cert = (self.cert_file.name, self.key_file.name)
+
         return requests.post(
             url,
             data=data,
             headers=headers,
-            verify=verify,
-            timeout=120)
+            verify=self.verify and verify,
+            timeout=120,
+            cert=cert)
 
     @tenacity.retry(wait=tenacity.wait_fixed(2), reraise=True,
                     stop=tenacity.stop_after_attempt(90))
@@ -283,8 +295,6 @@ class CephDashboardTest(test_utils.BaseCharmTest):
             dashboard_keys.append('PROMETHEUS_API_HOST')
         ceph_keys.extend(
             ['config/mgr/mgr/dashboard/{}'.format(k) for k in dashboard_keys])
-        if 'ceph-iscsi' in applications:
-            ceph_keys.append('mgr/dashboard/_iscsi_config')
         for key in ceph_keys:
             logging.info("Checking key {} exists".format(key))
             check_out = zaza.model.run_on_leader(
@@ -340,12 +350,12 @@ class CephDashboardTest(test_utils.BaseCharmTest):
             return False
 
     def _get_wait_for_dashboard_assert_state(
-            self, state, message_prefix) -> dict:
+            self, state, message_regex) -> dict:
         """Generate a assert state for ceph-dashboard charm blocked state."""
         assert_state = {
             'ceph-dashboard': {
                 "workload-status": state,
-                "workload-status-message-prefix": message_prefix
+                "workload-status-message-regex": message_regex
             },
             'mysql': {
                 "workload-status": "active",
@@ -355,7 +365,31 @@ class CephDashboardTest(test_utils.BaseCharmTest):
 
         return assert_state
 
-    def verify_ssl_config(self, ca_file):
+    @staticmethod
+    def unit_addr(unit, format_ipv6=True):
+        addr = zaza.model.get_unit_public_address(unit)
+        return network_utils.format_addr(addr) if format_ipv6 else addr
+
+    @staticmethod
+    def dashboard_addr(unit, format_ipv6=True):
+        """
+        The dashboard address may not be the same as the unit's public
+        address, so we get it manually here.
+        """
+        addr = zaza.model.run_on_unit(
+            unit.entity_id,
+            "ss -Htnpl 'sport :8443' | awk '{print $4}'")['Stdout']
+
+        try:
+            addr = addr.strip().replace(':8443', '')
+            ret = network_utils.format_addr(addr)
+            if addr == '0.0.0.0' or addr == '::':
+                return CephDashboardTest.unit_addr(unit, format_ipv6)
+            return ret if format_ipv6 else addr
+        except Exception:
+            return CephDashboardTest.unit_addr(unit, format_ipv6)
+
+    def verify_ssl_config(self, ca_file, cert=None):
         """Check if request validates the configured SSL cert."""
         units = zaza.model.get_units('ceph-mon')
         for attempt in tenacity.Retrying(
@@ -365,13 +399,12 @@ class CephDashboardTest(test_utils.BaseCharmTest):
             with attempt:
                 rcs = collections.defaultdict(list)
                 for unit in units:
-                    ipaddr = network_utils.format_addr(
-                        zaza.model.get_unit_public_address(unit)
-                    )
+                    ipaddr = self.dashboard_addr(unit)
                     req = self._run_request_get(
                         'https://{}:8443'.format(ipaddr),
                         verify=ca_file,
-                        allow_redirects=False)
+                        allow_redirects=False,
+                        cert=cert)
                     rcs[req.status_code].append(ipaddr)
                 self.assertEqual(len(rcs[requests.codes.ok]), 1)
                 self.assertEqual(
@@ -384,7 +417,7 @@ class CephDashboardTest(test_utils.BaseCharmTest):
         # Since Ceph-Dashboard is a subordinate application,
         # we use the principle application to get public addresses.
         for unit in zaza.model.get_units('ceph-mon'):
-            addr = zaza.model.get_unit_public_address(unit)
+            addr = self.dashboard_addr(unit, False)
             if addr:
                 yield addr
 
@@ -412,7 +445,7 @@ class CephDashboardTest(test_utils.BaseCharmTest):
 
         # Check application status message.
         assert_state = self._get_wait_for_dashboard_assert_state(
-            "blocked", "Conflict: Active SSL from 'certificates' relation"
+            "blocked", "SSL.*source"
         )
         zaza.model.wait_for_application_states(
             states=assert_state, timeout=500
@@ -433,8 +466,10 @@ class CephDashboardTest(test_utils.BaseCharmTest):
         )
 
         # Verify Certificates.
-        with local_ca.cert_pem.tempfile() as ca_temp_file:
-            self.verify_ssl_config(ca_temp_file)
+        with (local_ca.cert_pem.tempfile() as ca_temp_file,
+              local_ca.private_key_pem.tempfile() as key_temp_file):
+            self.verify_ssl_config(local_ca,
+                                   (ca_temp_file, key_temp_file))
 
         # Re-add certificates relation
         zaza.model.add_relation(
@@ -444,7 +479,7 @@ class CephDashboardTest(test_utils.BaseCharmTest):
 
         # Check blocked status message
         assert_state = self._get_wait_for_dashboard_assert_state(
-            "blocked", "Conflict: Active SSL from Charm config"
+            "blocked", "SSL.*source"
         )
 
         zaza.model.wait_for_application_states(

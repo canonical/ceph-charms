@@ -148,6 +148,10 @@ class CephDashboardCharm(ops_openstack.core.OSBaseCharm):
             self.on["certificates"].relation_departed,
             self._certificates_relation_departed,
         )
+        self.framework.observe(
+            self.on["certificates"].relation_broken,
+            self._certificates_relation_broken,
+        )
 
         # Charm Custom Events
         self.framework.observe(self.on.disable_ssl, self._clean_ssl_conf)
@@ -556,6 +560,20 @@ class CephDashboardCharm(ops_openstack.core.OSBaseCharm):
             # Possible handover to charm-config SSL.
             if self._is_charm_ssl_from_config():
                 self.on.enable_ssl_from_config.emit()
+
+    def _certificates_relation_broken(self, _event) -> None:
+        """Handle certificates relation fully removed.
+
+        Clear cached certificate data from the ca_client stored state
+        so that _is_charm_ssl_from_relation() returns False. Then
+        force a status re-evaluation to clear stale conflict messages.
+        """
+        self.ca_client._stored.server = None
+        self.ca_client._stored.certificate = None
+        self.ca_client._stored.key = None
+        self.ca_client._stored.ca_certificate = None
+        self.ca_client._stored.root_ca_chain = None
+        self.update_status()
 
     def _configure_tls(self, key, cert, ca_cert, ca_cert_path) -> None:
         """Configure TLS using provided credentials"""
