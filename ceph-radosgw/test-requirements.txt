@@ -39,3 +39,9 @@ psutil
 
 # https://github.com/boto/boto3/issues/4392
 boto3<1.36.0
+
+# setuptools>=82 removed pkg_resources which is used by various packages.
+setuptools<82
+
+# stestr uses testtools.compat._b which was removed in testtools 2.8.0.
+testtools<2.8.0

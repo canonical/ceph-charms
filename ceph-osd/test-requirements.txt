@@ -33,3 +33,9 @@ git+https://opendev.org/openstack/tempest.git#egg=tempest
 
 croniter            # needed for charm-rabbitmq-server unit tests
 psutil
+
+# setuptools>=82 removed pkg_resources which is used by various packages.
+setuptools<82
+
+# stestr uses testtools.compat._b which was removed in testtools 2.8.0.
+testtools<2.8.0
