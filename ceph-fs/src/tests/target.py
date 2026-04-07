@@ -18,8 +18,8 @@ import logging
 import json
 import subprocess
 from tenacity import (
-    retry, Retrying, stop_after_attempt, wait_exponential,
-    retry_if_exception_type, retry_if_result)
+    retry, Retrying, RetryError, stop_after_attempt, stop_after_delay,
+    wait_exponential, retry_if_exception_type, retry_if_result)
 import unittest
 import zaza
 import zaza.model as model
@@ -140,8 +140,34 @@ class CephFSTests(unittest.TestCase):
             :rtype: dict
             """
             cmd = "sudo ceph daemon mds.$HOSTNAME config show"
-            conf = model.run_on_unit(self.TESTED_UNIT, cmd)
-            return json.loads(conf['Stdout'])
+            last_stdout = ""
+
+            @retry(
+                wait=wait_exponential(multiplier=1, min=4, max=10),
+                stop=stop_after_delay(300),
+                retry=retry_if_result(lambda result: result is None)
+            )
+            def _attempt_conf_fetch():
+                nonlocal last_stdout
+                conf = model.run_on_unit(self.TESTED_UNIT, cmd)
+                stdout = conf.get('Stdout', '')
+                last_stdout = stdout
+                try:
+                    return json.loads(stdout)
+                except json.JSONDecodeError:
+                    logging.debug(
+                        'ceph daemon config show returned invalid JSON'
+                    )
+                    return None
+
+            try:
+                return _attempt_conf_fetch()
+            except RetryError:
+                logging.error(
+                    'Failed to parse ceph daemon config show output. '
+                    'Last non-JSON payload: %s',
+                    last_stdout)
+                raise
 
         @retry(wait=wait_exponential(multiplier=1, min=4, max=10),
                stop=stop_after_attempt(10))
