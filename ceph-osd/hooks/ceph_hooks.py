@@ -486,6 +486,10 @@ def get_osd_memory_target():
     if match:
         percentage = int(match.group(1)) / 100
         num_osds = len(kv().get("osd-devices", []))
+        if num_osds == 0:
+            log("tune-osd-memory-target is a percentage but no OSDs are"
+                " initialised yet, skipping", level=WARNING)
+            return ""
         osd_memory_target = int(get_total_ram() * percentage / num_osds)
         warn_if_memory_outside_bounds(osd_memory_target)
         return str(osd_memory_target)

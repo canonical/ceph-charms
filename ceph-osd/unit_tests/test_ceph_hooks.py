@@ -919,6 +919,65 @@ class CephHooksTestCase(unittest.TestCase):
     @patch.object(ceph_hooks, "get_total_ram")
     @patch.object(ceph_hooks, "kv")
     @patch.object(ceph_hooks, "log")
+    def test_get_osd_memory_target_percentage_no_osds(
+        self, mock_log, mock_kv, mock_total_ram, mock_config,
+    ):
+        """
+        Regression test for LP: #2147431
+        no ZeroDivisionError on fresh deploy.
+        """
+
+        mock_total_ram.return_value = 16 * 1024 * 1024 * 1024  # 16GB
+        mock_kv.return_value = {"osd-devices": []}
+
+        def config_func(k):
+            if k == "tune-osd-memory-target":
+                return "50%"
+            raise ValueError
+        mock_config.side_effect = config_func
+
+        target = ceph_hooks.get_osd_memory_target()
+
+        self.assertEqual(target, "")
+        mock_log.assert_called_with(
+            "tune-osd-memory-target is a percentage but no OSDs are"
+            " initialised yet, skipping",
+            level=ceph_hooks.WARNING,
+        )
+
+    @patch.object(ceph_hooks, "config")
+    @patch.object(ceph_hooks, "get_total_ram")
+    @patch.object(ceph_hooks, "kv")
+    @patch.object(ceph_hooks, "log")
+    def test_get_osd_memory_target_percentage_no_osd_key(
+        self, mock_log, mock_kv, mock_total_ram, mock_config,
+    ):
+        """
+        Regression test for LP: #2147431
+        no ZeroDivisionError on fresh deploy.
+        """
+        mock_total_ram.return_value = 16 * 1024 * 1024 * 1024  # 16GB
+        mock_kv.return_value = {}
+
+        def config_func(k):
+            if k == "tune-osd-memory-target":
+                return "50%"
+            raise ValueError
+        mock_config.side_effect = config_func
+
+        target = ceph_hooks.get_osd_memory_target()
+
+        self.assertEqual(target, "")
+        mock_log.assert_called_with(
+            "tune-osd-memory-target is a percentage but no OSDs are"
+            " initialised yet, skipping",
+            level=ceph_hooks.WARNING,
+        )
+
+    @patch.object(ceph_hooks, "config")
+    @patch.object(ceph_hooks, "get_total_ram")
+    @patch.object(ceph_hooks, "kv")
+    @patch.object(ceph_hooks, "log")
     def test_get_osd_memory_target_empty(
         self, mock_log, mock_kv, mock_total_ram,
         mock_config,
