@@ -29,6 +29,10 @@ CC008-style charm module for deploying the `ceph-mon` charm with the Juju Terraf
 | `resources` | `map(string)` | `{}` | Resources to use with the charm. |
 | `offered_endpoints` | `list(string)` | `[]` | List of provides endpoint aliases to publish as Juju offers. |
 
+> **Warning**: The `requires.bootstrap_source` endpoint exposed by this module
+> maps to ceph-mon's deprecated `bootstrap-source` relation and will be
+> removed in the Umbrella release.
+
 ## Outputs
 
 | Name | Type | Description |

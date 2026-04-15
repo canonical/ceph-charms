@@ -3,8 +3,10 @@
 
 # External integration descriptors share one schema across optional relations
 # so callers can switch between in-model endpoints and cross-model offers.
+# DEPRECATED: bootstrap_source is deprecated and will be removed in the
+# Umbrella release.
 variable "bootstrap_source" {
-  description = "Optional external integration to satisfy ceph-mon:bootstrap-source. Use kind=\"endpoint\" for in-model integrations or kind=\"offer\" for cross-model integrations."
+  description = "DEPRECATED: Optional external integration to satisfy ceph-mon:bootstrap-source. This input is deprecated and will be removed in the Umbrella release. Use kind=\"endpoint\" for in-model integrations or kind=\"offer\" for cross-model integrations."
   type = object({
     endpoint = optional(string, null)
     kind     = string

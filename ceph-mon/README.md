@@ -17,6 +17,10 @@ This section covers common and/or important configuration options. See file
 default values. See the [Juju documentation][juju-docs-config-apps] for details
 on configuring applications.
 
+> **Warning**: The `no-bootstrap` configuration option and the
+> `bootstrap-source` relation are deprecated and will be removed in the
+> Umbrella release.
+
 #### `customize-failure-domain`
 
 The `customize-failure-domain` option determines how a Ceph CRUSH map is
