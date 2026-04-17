@@ -111,7 +111,7 @@ class CephCOSAgentProvider(cos_agent.COSAgentProvider):
                         "regex": "(.+)",
                         "target_label": "instance",
                         "action": "replace",
-                        "replacement": "${1}",
+                        "replacement": "$1",
                     },
                     {   # tack on the domain to the instance label to make it
                         # conform to grafana-agent's node-exporter expectations
@@ -119,7 +119,7 @@ class CephCOSAgentProvider(cos_agent.COSAgentProvider):
                         "regex": "(.*)",
                         "target_label": "instance",
                         "action": "replace",
-                        "replacement": "${1}." + domain,
+                        "replacement": "$1." + domain,
                     },
                 ]
             },
