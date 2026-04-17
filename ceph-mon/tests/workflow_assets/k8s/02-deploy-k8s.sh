@@ -63,7 +63,7 @@ echo "==> Bootstrapping k8s cluster"
 lxc exec "${VM_NAME}" -- k8s bootstrap
 
 echo "==> Waiting for cluster to be ready"
-lxc exec "${VM_NAME}" -- k8s status --wait-ready
+lxc exec "${VM_NAME}" -- k8s status --wait-ready --timeout=300s
 
 # --- Enable ingress and load-balancer ---
 echo "==> Enabling ingress"
@@ -78,7 +78,7 @@ lxc exec "${VM_NAME}" -- k8s kubectl wait \
   --for=condition=ready pod \
   -l app.kubernetes.io/name=metallb \
   -n metallb-system \
-  --timeout=180s
+  --timeout=300s
 
 echo "==> Configuring load-balancer L2 mode with CIDRs: ${LB_CIDRS}"
 lxc exec "${VM_NAME}" -- k8s set \

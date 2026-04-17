@@ -33,11 +33,6 @@ applications:
       - '4'
       - '5'
 
-  grafana-agent:
-    charm: ch:grafana-agent
-
 relations:
   - - 'ceph-osd:mon'
     - 'ceph-mon:osd'
-  - - 'ceph-mon:cos-agent'
-    - 'grafana-agent:cos-agent'
