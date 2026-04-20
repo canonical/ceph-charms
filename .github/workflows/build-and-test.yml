@@ -247,16 +247,16 @@ jobs:
           set -eux
           juju status
 
-      - name: Collect logs
-        if: failure()
-        run: ./tests/scripts/ci_helpers.sh collect_microceph_logs || true
+      - name: Collect COS diagnostics
+        if: ${{ failure() || cancelled() }}
+        run: ./ceph-mon/tests/workflow_assets/ci_helpers.sh collect_cos_diagnostics post-step || true
 
-      - name: Upload logs
-        if: failure()
+      - name: Upload COS diagnostics
+        if: ${{ failure() || cancelled() }}
         uses: actions/upload-artifact@v4
         with:
-          name: microceph_juju_storage_cluster_test_logs
-          path: logs
+          name: cos-integration-diagnostics
+          path: logs/cos
           retention-days: 30
 
       - name: Setup tmate session

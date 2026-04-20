@@ -1,5 +1,115 @@
 #!/usr/bin/env bash
 
+WATCH_PIDS=()
+
+function _logs_root() {
+  echo "${GITHUB_WORKSPACE:-$(pwd)}/logs/cos"
+}
+
+function _capture_command() {
+  local output_file="$1"
+  shift
+
+  {
+    printf '$'
+    printf ' %q' "$@"
+    printf '\n'
+    "$@"
+  } >"${output_file}" 2>&1 || true
+}
+
+function _collect_common_state() {
+  local destination="$1"
+
+  mkdir -p "${destination}"
+  _capture_command "${destination}/date.txt" date -u
+  _capture_command "${destination}/snap-list.txt" snap list
+  _capture_command "${destination}/juju-version.txt" juju version
+  _capture_command "${destination}/juju-controllers.txt" juju controllers
+  _capture_command "${destination}/juju-models.txt" juju models
+  _capture_command "${destination}/microk8s-version.txt" sudo microk8s version
+  _capture_command "${destination}/microk8s-status.txt" sudo microk8s status
+  _capture_command "${destination}/k8s-nodes.txt" sudo microk8s kubectl get nodes -o wide
+  _capture_command "${destination}/k8s-storageclass.txt" sudo microk8s kubectl get storageclass
+  _capture_command "${destination}/k8s-pods.txt" sudo microk8s kubectl get pods -A -o wide
+  _capture_command "${destination}/k8s-pvc-pv.txt" sudo microk8s kubectl get pvc,pv -A
+  _capture_command "${destination}/df-h.txt" df -h
+  _capture_command "${destination}/free-h.txt" free -h
+  _capture_command "${destination}/id.txt" id
+  _capture_command "${destination}/groups.txt" groups
+  _capture_command "${destination}/lxd-version.txt" lxd --version
+}
+
+function _collect_controller_state() {
+  local destination="$1"
+
+  mkdir -p "${destination}"
+  _capture_command "${destination}/k8s-all.txt" sudo microk8s kubectl get all -A -o wide
+  _capture_command "${destination}/k8s-events.txt" sudo microk8s kubectl get events -A --sort-by=.lastTimestamp
+  _capture_command "${destination}/k8s-describe-nodes.txt" sudo microk8s kubectl describe nodes
+  _capture_command "${destination}/k8s-kube-system-pods.txt" sudo microk8s kubectl get pods -n kube-system -o wide
+  _capture_command "${destination}/k8s-describe-pvc.txt" sudo microk8s kubectl describe pvc -A
+  _capture_command "${destination}/juju-status.txt" juju status
+
+  if sudo microk8s kubectl get namespace controller-k8s >/dev/null 2>&1; then
+    _capture_command "${destination}/controller-k8s-all.txt" sudo microk8s kubectl get all -n controller-k8s -o wide
+    _capture_command "${destination}/controller-k8s-describe-statefulset.txt" sudo microk8s kubectl describe statefulset -n controller-k8s controller
+    _capture_command "${destination}/controller-k8s-describe-pod.txt" sudo microk8s kubectl describe pod -n controller-k8s controller-0
+    _capture_command "${destination}/controller-k8s-logs.txt" sudo microk8s kubectl logs -n controller-k8s controller-0 --all-containers=true
+  fi
+}
+
+function _start_bootstrap_watchers() {
+  local destination="$1"
+
+  mkdir -p "${destination}/watchers" "${destination}/snapshots"
+
+  sudo microk8s kubectl get events -A --watch-only >"${destination}/watchers/k8s-events-watch.log" 2>&1 &
+  WATCH_PIDS+=("$!")
+
+  sudo microk8s kubectl get pods -A -w >"${destination}/watchers/k8s-pods-watch.log" 2>&1 &
+  WATCH_PIDS+=("$!")
+
+  (
+    while true; do
+      local timestamp snapshot_dir
+      timestamp=$(date -u +%Y%m%dT%H%M%SZ)
+      snapshot_dir="${destination}/snapshots/${timestamp}"
+      mkdir -p "${snapshot_dir}"
+      _capture_command "${snapshot_dir}/k8s-pods.txt" sudo microk8s kubectl get pods -A -o wide
+      _capture_command "${snapshot_dir}/k8s-pvc-pv.txt" sudo microk8s kubectl get pvc,pv -A
+      _capture_command "${snapshot_dir}/k8s-statefulsets.txt" sudo microk8s kubectl get statefulsets -A
+      sleep 10
+    done
+  ) &
+  WATCH_PIDS+=("$!")
+}
+
+function _stop_bootstrap_watchers() {
+  local pid
+
+  for pid in "${WATCH_PIDS[@]}"; do
+    kill "${pid}" >/dev/null 2>&1 || true
+    wait "${pid}" >/dev/null 2>&1 || true
+  done
+
+  WATCH_PIDS=()
+}
+
+function capture_baseline_diagnostics() {
+  _collect_common_state "$(_logs_root)/baseline"
+}
+
+function collect_cos_diagnostics() {
+  local context log_root
+  context="${1:-manual}"
+  log_root="$(_logs_root)"
+
+  mkdir -p "${log_root}"
+  _collect_common_state "${log_root}/failure/${context}/common"
+  _collect_controller_state "${log_root}/failure/${context}/controller"
+}
+
 function install_deps() {
   date
   sudo apt-get -qq install jq
@@ -23,10 +133,30 @@ function bootstrap_k8s() {
 }
 
 function bootstrap_k8s_controller() {
-  set -eux
+  local bootstrap_log_dir bootstrap_rc
+
+  set -euxo pipefail
+
+  capture_baseline_diagnostics
+  bootstrap_log_dir="$(_logs_root)/bootstrap"
+  mkdir -p "${bootstrap_log_dir}"
+
   sudo microk8s kubectl config view --raw | juju add-k8s localk8s --client
- 
-  juju bootstrap localk8s k8s --debug
+
+  _start_bootstrap_watchers "${bootstrap_log_dir}"
+
+  set +e
+  juju bootstrap localk8s k8s --debug 2>&1 | tee "${bootstrap_log_dir}/juju-bootstrap.log"
+  bootstrap_rc=${PIPESTATUS[0]}
+  set -e
+
+  if [[ ${bootstrap_rc} -ne 0 ]]; then
+    collect_cos_diagnostics bootstrap-step
+  fi
+
+  _stop_bootstrap_watchers
+
+  return "${bootstrap_rc}"
 }
 
 function deploy_cos() {
