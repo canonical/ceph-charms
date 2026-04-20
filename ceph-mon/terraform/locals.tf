@@ -23,6 +23,8 @@ locals {
   }
 
   requires = {
+    # DEPRECATED: bootstrap-source is deprecated and will be removed in the
+    # Umbrella release.
     bootstrap_source = "bootstrap-source"
   }
 }

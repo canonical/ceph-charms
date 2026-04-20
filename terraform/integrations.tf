@@ -2,6 +2,8 @@
 # See LICENSE file for licensing details.
 
 # Optional external relation for ceph-mon bootstrap-source.
+# DEPRECATED: bootstrap_source is deprecated and will be removed in the
+# Umbrella release.
 # The input object supports:
 # - kind = "endpoint": in-model integration via name/endpoint
 # - kind = "offer": cross-model integration via offer URL

@@ -313,6 +313,9 @@ options:
     type: boolean
     default: False
     description: |
+      DEPRECATED: This option is deprecated and will be removed in the
+      Umbrella release.
+      .
       Causes the charm to not do any of the initial bootstrapping of the
       Ceph monitor cluster. This is only intended to be used when migrating
       from the ceph all-in-one charm to a ceph-mon / ceph-osd deployment.

@@ -45,6 +45,8 @@ provides:
     interface: cos_agent
 
 requires:
+  # DEPRECATED: The bootstrap-source relation is deprecated and will be
+  # removed in the Umbrella release.
   bootstrap-source:
     interface: ceph-bootstrap
 resources:

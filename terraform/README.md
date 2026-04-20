@@ -77,11 +77,15 @@ Exactly one non-empty model target must be provided: `model_uuid` or `model_name
 
 | Name | Type | Description |
 |---|---|---|
-| `bootstrap_source` | `object` | External integration descriptor for `ceph-mon:bootstrap-source` (`kind = endpoint|offer`). |
+| `bootstrap_source` | `object` | DEPRECATED: External integration descriptor for `ceph-mon:bootstrap-source` (`kind = endpoint|offer`). This input will be removed in the Umbrella release. |
 | `secrets_storage` | `object` | External integration descriptor for `ceph-osd:secrets-storage` (`kind = endpoint|offer`). |
 | `expose_endpoints` | `list(string)` | List of `<charm>_<endpoint_alias>` keys from `provides` to publish as Juju offers. |
 
 Offer publication is enabled when either a charm's `offered_endpoints` list or this top-level `expose_endpoints` list includes a provided endpoint.
+
+> **Warning**: The `bootstrap_source` Terraform input maps to ceph-mon's
+> deprecated `bootstrap-source` relation and will be removed in the Umbrella
+> release.
 
 ## Outputs
 
