@@ -235,6 +235,43 @@ def _planned_resource_addresses(plan_json: dict[str, Any]) -> set[str]:
     return addresses
 
 
+def _planned_output_value(plan_json: dict[str, Any], output_name: str) -> Any:
+    planned_values = plan_json.get("planned_values", {})
+    outputs = planned_values.get("outputs", {})
+    if isinstance(outputs, dict):
+        output = outputs.get(output_name, {})
+        if isinstance(output, dict) and "value" in output:
+            return output["value"]
+
+    output_changes = plan_json.get("output_changes", {})
+    if isinstance(output_changes, dict):
+        output = output_changes.get(output_name, {})
+        if isinstance(output, dict) and "after" in output:
+            return output["after"]
+
+    raise KeyError(f"Planned output {output_name!r} not found in terraform plan JSON")
+
+
+def _planned_component_channels(plan_json: dict[str, Any]) -> dict[str, str]:
+    components_map = _planned_output_value(plan_json, "components_map")
+    channels: dict[str, str] = {}
+    for name, component in components_map.items():
+        if not isinstance(component, dict):
+            continue
+
+        charm = component.get("charm")
+        if isinstance(charm, list) and charm:
+            first_charm = charm[0]
+            if isinstance(first_charm, dict) and isinstance(first_charm.get("channel"), str):
+                channels[name] = first_charm["channel"]
+                continue
+
+        if isinstance(component.get("channel"), str):
+            channels[name] = component["channel"]
+
+    return channels
+
+
 def _workspace_main(module_source: str) -> str:
     # Keep test workspace minimal and self-contained so each module test run can
     # pass optional relation descriptors via plain JSON `-var` arguments.
@@ -260,6 +297,11 @@ variable "model_name" {{
 }}
 
 variable "model_uuid" {{
+  type    = string
+  default = null
+}}
+
+variable "charm_channel" {{
   type    = string
   default = null
 }}
@@ -293,22 +335,31 @@ module "ceph" {{
   secrets_storage  = var.secrets_storage
   expose_endpoints = var.expose_endpoints
 
-  ceph_mon = {{
+  ceph_mon = merge({{
     units = 3
     config = {{
       "expected-osd-count" = "3"
       "monitor-count"      = "3"
     }}
-  }}
+  }}, var.charm_channel == null ? {{}} : {{
+    channel = var.charm_channel
+  }})
 
-  ceph_osd = {{
+  ceph_osd = merge({{
     units = 3
     storage_directives = {{
       "osd-devices" = "1G,1"
     }}
-  }}
+  }}, var.charm_channel == null ? {{}} : {{
+    channel = var.charm_channel
+  }})
 
-  ceph_radosgw = var.ceph_radosgw
+  ceph_radosgw = merge(
+    var.ceph_radosgw,
+    var.charm_channel == null ? {{}} : {{
+      channel = var.charm_channel
+    }},
+  )
 }}
 
 output "components" {{
@@ -607,6 +658,38 @@ class TestTerraformOptionalInputWiring:
         assert "module.ceph.juju_integration.ceph_osd_secrets_storage[0]" not in addresses
         assert "module.ceph.module.ceph_mon.juju_offer.offers[\"client\"]" not in addresses
         assert "module.ceph.module.ceph_radosgw.juju_offer.offers[\"s3\"]" not in addresses
+
+    def test_charm_channel_defaults_remain_unchanged(
+        self,
+        terraform_controller: TerraformController,
+    ) -> None:
+        terraform_controller.plan(out="default-charm-channel.tfplan")
+        channels = _planned_component_channels(
+            terraform_controller.show_plan_json("default-charm-channel.tfplan")
+        )
+        assert channels == {
+            "ceph_mon": "squid/stable",
+            "ceph_osd": "squid/stable",
+            "ceph_radosgw": "squid/stable",
+        }
+
+    def test_charm_channel_override_wires_all_charms(
+        self,
+        terraform_controller: TerraformController,
+    ) -> None:
+        plan_file = "override-charm-channel.tfplan"
+        terraform_controller._env["TF_VAR_charm_channel"] = "reef/stable"
+        try:
+            terraform_controller.plan(out=plan_file)
+        finally:
+            terraform_controller._env.pop("TF_VAR_charm_channel", None)
+
+        channels = _planned_component_channels(terraform_controller.show_plan_json(plan_file))
+        assert channels == {
+            "ceph_mon": "reef/stable",
+            "ceph_osd": "reef/stable",
+            "ceph_radosgw": "reef/stable",
+        }
 
     @pytest.mark.parametrize(
         "scenario,var_name,var_value,expected_address",
