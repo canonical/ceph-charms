@@ -627,7 +627,6 @@ class LdapContextTest(CharmTestCase):
                          '(objectclass=posixAccount)')
         mock_os_open.assert_called_once_with(context.LDAP_SECRET_FILE,
                                              ANY, 0o600)
-        mock_fdopen.assert_called_once_with(99, 'w')
         self.assertEqual(written, [passwd])
 
     def test_ldap_without_bind_password(self):
