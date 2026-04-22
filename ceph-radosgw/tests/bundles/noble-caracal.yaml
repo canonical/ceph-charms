@@ -20,7 +20,6 @@ machines:
      series: jammy
      constraints: root-disk=12G virt-type=virtual-machine
    '8':
-   '9':
 
 applications:
   ceph-radosgw:
@@ -64,7 +63,7 @@ applications:
     num_units: 1
     channel: latest/edge
     to:
-      - '9'
+      - '0'
 
   mysql:
     charm: ch:mysql
