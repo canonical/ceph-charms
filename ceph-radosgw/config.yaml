@@ -253,6 +253,48 @@ options:
     type: int
     default: 500
     description: Number of keystone tokens to hold in local cache.
+  # LDAP integration
+  ldap-uri:
+    type: string
+    default: ""
+    description: |
+      URI of the LDAP server to use for S3 authentication.
+      When set, RGW will authenticate S3 requests via LDAP in addition
+      to its local user database.
+      Example: ldaps://ldap.example.com
+  ldap-search-base:
+    type: string
+    default: ""
+    description: |
+      Base DN used when searching for users in the LDAP directory.
+      Required when ldap-uri is set.
+      Example: ou=users,dc=example,dc=com
+  ldap-bind-dn:
+    type: string
+    default: ""
+    description: |
+      Distinguished Name used to bind to the LDAP directory before
+      performing user searches. Leave empty for anonymous binding.
+      Example: cn=admin,dc=example,dc=com
+  ldap-bind-password:
+    type: string
+    default: ""
+    description: |
+      Password for the LDAP bind DN. The charm writes this to
+      /etc/ceph/ldap.secret (mode 0600) and sets rgw ldap secret
+      to that path. Leave empty for anonymous binding.
+  ldap-user-attr:
+    type: string
+    default: "uid"
+    description: |
+      LDAP attribute whose value must match the S3 access key / uid
+      presented by the client. Mapped to the rgw ldap dnattr option.
+  ldap-search-filter:
+    type: string
+    default: ""
+    description: |
+      Additional LDAP search filter applied when looking up users.
+      Example: (objectclass=posixAccount)
   # HA config
   use-syslog:
     type: boolean

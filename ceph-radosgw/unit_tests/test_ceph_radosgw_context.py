@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock, ANY
 
 import ceph_radosgw_context as context
 import charmhelpers.contrib.storage.linux.ceph as ceph
@@ -580,6 +580,65 @@ class MonContextTest(CharmTestCase):
             'public_hostname': 'rgw.example.com',
         }
         self.assertEqual(expect, mon_ctxt())
+
+
+class LdapContextTest(CharmTestCase):
+
+    def setUp(self):
+        super(LdapContextTest, self).setUp(context, TO_PATCH)
+        self.config.side_effect = self.test_config.get
+
+    def test_ldap_not_configured(self):
+        """Returns empty dict when ldap-uri is not set."""
+        self.test_config.set('ldap-uri', '')
+        self.assertEqual({}, context.LdapContext()())
+
+    @patch('os.fdopen')
+    @patch('os.open')
+    def test_ldap_with_bind_password(self, mock_os_open, mock_fdopen):
+        """Secret file path is included and password is written when set."""
+        passwd = 's3cr3t'
+        mock_os_open.return_value = 3
+
+        written = []
+        mock_fh = MagicMock()
+        mock_fh.__enter__ = lambda s: s
+        mock_fh.__exit__ = lambda s, *a: False
+        mock_fh.write.side_effect = written.append
+        mock_fdopen.return_value = mock_fh
+
+        self.test_config.set('ldap-uri', 'ldaps://ldap.example.com')
+        self.test_config.set('ldap-search-base', 'ou=users,dc=example,dc=com')
+        self.test_config.set('ldap-bind-dn', 'cn=admin,dc=example,dc=com')
+        self.test_config.set('ldap-bind-password', passwd)
+        self.test_config.set('ldap-user-attr', 'uid')
+        self.test_config.set('ldap-search-filter',
+                             '(objectclass=posixAccount)')
+
+        result = context.LdapContext()()
+
+        self.assertEqual(result['ldap_uri'], 'ldaps://ldap.example.com')
+        self.assertEqual(result['ldap_search_base'],
+                         'ou=users,dc=example,dc=com')
+        self.assertEqual(result['ldap_bind_dn'], 'cn=admin,dc=example,dc=com')
+        self.assertEqual(result['ldap_secret_file'], context.LDAP_SECRET_FILE)
+        self.assertEqual(result['ldap_user_attr'], 'uid')
+        self.assertEqual(result['ldap_search_filter'],
+                         '(objectclass=posixAccount)')
+        mock_os_open.assert_called_once_with(context.LDAP_SECRET_FILE,
+                                             ANY, 0o600)
+        mock_fdopen.assert_called_once_with(99, 'w')
+        self.assertEqual(written, [passwd])
+
+    def test_ldap_without_bind_password(self):
+        """Test that secret file is non-existent when no password is set."""
+        self.test_config.set('ldap-uri', 'ldap://ldap.example.com')
+        self.test_config.set('ldap-search-base', 'ou=users,dc=example,dc=com')
+        self.test_config.set('ldap-bind-password', '')
+
+        ctx = context.LdapContext()()
+        self.assertIsNone(ctx['ldap_secret_file'])
+        self.assertEqual(ctx['ldap_user_attr'], 'uid')
 
 
 class ApacheContextTest(CharmTestCase):
