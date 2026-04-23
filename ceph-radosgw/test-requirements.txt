@@ -14,8 +14,8 @@ testtools<2.8.0
 
 coverage>=4.5.2
 pyudev              # for ceph-* charm unit tests (need to fix the ceph-* charm unit tests/mocking)
-git+https://github.com/openstack-charmers/zaza.git#egg=zaza
-git+https://github.com/openstack-charmers/zaza-openstack-tests.git#egg=zaza.openstack
+zaza @ git+https://github.com/openstack-charmers/zaza.git
+zaza.openstack @ git+https://github.com/openstack-charmers/zaza-openstack-tests.git
 
 # netaddr is pinned in requirements.txt, but temptest below sometimes pulls in a newer version
 netaddr>0.7.16,<0.8.0
