@@ -45,5 +45,5 @@ pydantic < 2
 cosl
 
 netifaces
-git+https://github.com/openstack/charms.openstack.git#egg=charms.openstack
+charms.openstack @ git+https://github.com/openstack/charms.openstack.git
 charms.reactive
