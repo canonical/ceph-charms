@@ -2159,7 +2159,8 @@ class CephGetOSDStateTestCase(unittest.TestCase):
         _time.side_effect = [0, 0, 601]
         _check_output.return_value = b'{"state": "booting"}'
 
-        result = utils.get_osd_state(0, osd_goal_state='active', timeout=600)
+        result = utils.get_osd_state(0, osd_goal_state='active', timeout=0.01,
+                                     retry_interval=0.02)
 
         self.assertIsNone(result)
 
@@ -2174,7 +2175,8 @@ class CephGetOSDStateTestCase(unittest.TestCase):
             b'{"state": "active"}'
         ]
 
-        result = utils.get_osd_state(0, osd_goal_state='active')
+        result = utils.get_osd_state(0, osd_goal_state='active',
+                                     retry_interval=0.02)
 
         self.assertEqual(result, 'active')
 
