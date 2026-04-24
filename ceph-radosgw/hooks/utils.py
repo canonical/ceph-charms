@@ -162,6 +162,7 @@ def register_configs(release='icehouse'):
         CONFIGS[CEPH_CONF]['contexts'].append(
             ceph_radosgw_context.IdentityServiceContext()
         )
+    CONFIGS[CEPH_CONF]['contexts'].append(ceph_radosgw_context.LdapContext())
     for cfg, rscs in CONFIGS.items():
         configs.register(cfg, rscs['contexts'])
     return configs
@@ -288,6 +289,10 @@ def check_optional_config_and_relations(configs):
             if not multisite_ready:
                 return ('waiting',
                         'multi-site master relation incomplete')
+
+    if config('ldap-uri') and not config('ldap-search-base'):
+        return ('blocked',
+                'ldap-search-base must be set when ldap-uri is configured')
 
     # Check that provided Ceph BlueStoe configuration is valid.
     try:

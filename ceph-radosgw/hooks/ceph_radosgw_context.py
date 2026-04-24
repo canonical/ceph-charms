@@ -54,6 +54,35 @@ BEAST_FRONTEND = 'beast'
 CIVETWEB_FRONTEND = 'civetweb'
 SUPPORTED_FRONTENDS = (BEAST_FRONTEND, CIVETWEB_FRONTEND)
 UNSUPPORTED_BEAST_ARCHS = ('s390x', 'riscv64')
+LDAP_SECRET_FILE = '/etc/ceph/ldap.secret'
+
+
+class LdapContext(context.OSContextGenerator):
+
+    def __call__(self):
+        ctxt = {}
+        ldap_uri = config('ldap-uri')
+        if not ldap_uri:
+            return ctxt
+
+        bind_password = config('ldap-bind-password')
+        secret_file = None
+        if bind_password:
+            secret_file = LDAP_SECRET_FILE
+            # Need to use the OS wrapper instead of Python's builtin
+            # because the access mode _must_ be set to 0600.
+            flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC
+            fd = os.open(secret_file, flags, 0o600)
+            with os.fdopen(fd, 'w') as f:
+                f.write(bind_password)
+
+        ctxt['ldap_uri'] = ldap_uri
+        ctxt['ldap_search_base'] = config('ldap-search-base')
+        ctxt['ldap_bind_dn'] = config('ldap-bind-dn')
+        ctxt['ldap_secret_file'] = secret_file
+        ctxt['ldap_user_attr'] = config('ldap-user-attr') or 'uid'
+        ctxt['ldap_search_filter'] = config('ldap-search-filter')
+        return ctxt
 
 
 class ApacheSSLContext(context.ApacheSSLContext):
