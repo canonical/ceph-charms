@@ -90,7 +90,7 @@ class TestCephClientKeyHandling(CharmTestCase):
         self.mock_get_named_key.return_value = 'rotated-key'
         self.mock_get_named_key.reset_mock()
 
-        # Client fires another relation-changed without setting application-name.
+        # Client fires relation-changed without setting application-name.
         self.harness.update_relation_data(
             rel_id, 'glance/0', {'ingress-address': '10.0.0.3'})
 
@@ -101,7 +101,7 @@ class TestCephClientKeyHandling(CharmTestCase):
             "Key must not change while client hasn't set application-name")
 
     def test_get_named_key_called_when_application_name_set(self):
-        """get_named_key is called with the application-name once client is ready.
+        """get_named_key is called with application-name once client is ready.
 
         Branch 3: when the client sets 'application-name' in its relation
         data, that signals it has finished configuring and the correct named
@@ -113,7 +113,7 @@ class TestCephClientKeyHandling(CharmTestCase):
         self.mock_get_named_key.return_value = 'named-key'
         self.mock_get_named_key.reset_mock()
 
-        # Client sets application-name (different from app name) signalling readiness.
+        # Client sets application-name to signal readiness.
         self.harness.update_relation_data(
             rel_id, 'glance/0', {'application-name': 'custom-nova'})
 
