@@ -1,0 +1,23 @@
+[project]
+name = "ceph-mon"
+version = "0.0.1"
+requires-python = ">=3.10"
+dependencies = [
+    "importlib-resources",
+    "ops>=1.2.0",
+    "tenacity",
+    "pyudev",
+    "dnspython",
+    "netaddr",
+    "netifaces",
+    "pyyaml",
+    "setuptools",
+    "cosl",
+    "pydantic<2",
+    "charms-ceph @ git+https://github.com/openstack/charms.ceph",
+    "ops-openstack @ git+https://opendev.org/openstack/charm-ops-openstack",
+    "interface-tls-certificates @ git+https://opendev.org/openstack/charm-ops-interface-tls-certificates",
+    "interface-ceph-iscsi-admin-access @ git+https://github.com/openstack-charmers/ops-interface-ceph-iscsi-admin-access",
+    "interface-openstack-loadbalancer @ git+https://github.com/openstack-charmers/ops-interface-openstack-loadbalancer",
+    "charmhelpers @ git+https://github.com/juju/charm-helpers",
+]

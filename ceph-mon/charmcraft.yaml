@@ -4,11 +4,14 @@ parts:
   charm:
     after:
     - update-certificates
-    charm-python-packages:
-      # Use the updated version of setuptools (needed by jinja2).
-    - setuptools
+    plugin: uv
+    source: .
+    build-snaps:
+    - astral-uv
     build-packages:
     - git
+    - gcc
+    - python3-dev
 
   update-certificates:
     # Ensure that certificates in the base image are up-to-date.
