@@ -621,8 +621,6 @@ class LdapContextTest(CharmTestCase):
         self.assertEqual(ctx['ldap_user_attr'], 'uid')
 
 
-
-
 class ApacheContextTest(CharmTestCase):
 
     def setUp(self):
