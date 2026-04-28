@@ -4,11 +4,14 @@ parts:
   charm:
     after:
     - update-certificates
-    charm-python-packages:
-      # Use the updated version of setuptools (needed by jinja2).
-    - setuptools
+    plugin: uv
+    source: .
+    build-snaps:
+    - astral-uv
     build-packages:
     - git
+    - gcc
+    - python3-dev
 
   update-certificates:
     # Ensure that certificates in the base image are up-to-date.
@@ -30,18 +33,12 @@ parts:
         echo "commit_date: $(git -C $CRAFT_PROJECT_DIR show -s --format=%cI HEAD)" >> $CRAFT_PART_INSTALL/git-info.txt
       fi
 
-
-base: ubuntu@24.04
 platforms:
-  amd64:
-    build-on: amd64
-    build-for: amd64
-  arm64:
-    build-on: arm64
-    build-for: arm64
-  ppc64el:
-    build-on: ppc64el
-    build-for: ppc64el
-  s390x:
-    build-on: s390x
-    build-for: s390x
+  ubuntu-26.04-amd64:
+    build-on: [ubuntu@26.04:amd64]
+    build-for: [ubuntu@26.04:amd64]
+  ubuntu-24.04-amd64:
+    build-on: [ubuntu@24.04:amd64]
+    build-for: [ubuntu@24.04:amd64]
+    
+
