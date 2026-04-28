@@ -1,8 +1,8 @@
 local_overlay_enabled: False
 series: jammy
 variables:
-  openstack-origin: &openstack-origin distro
-  source: &source distro
+  openstack-origin: &openstack-origin proposed
+  source: &source proposed
 
 machines:
   '0':
