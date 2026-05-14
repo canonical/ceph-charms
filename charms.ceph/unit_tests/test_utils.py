@@ -1101,6 +1101,7 @@ class CephTestCase(unittest.TestCase):
             'pacific -> quincy',
             'quincy -> reef',
             'reef -> squid',
+            'squid -> tentacle',
         ])
         self.assertEqual(utils.pretty_print_upgrade_paths(), expected)
 
