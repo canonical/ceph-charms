@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from copy import deepcopy
 from datetime import datetime, timezone
 import json
 
@@ -50,6 +51,25 @@ def _make_log_str(description, level, msg, appid, event, detail):
 
 
 def log(description, level='WARN', **kwargs):
+    """
+    Generate a security event and log it.
+
+    :param str description: Detailed explanation of the event.
+
+    :param str level *(default 'WARN'): Severity level, one of
+      (INFO, WARN or ERROR)
+
+    :param dict kwargs: Extra arguments. These may include:
+      - msg: A short, human-readable message. Defaults to the description if
+             not present.
+      - appid: Component that generates the event.
+      - event: OWASP-standard event name (must start with one of
+               sys_, auth_ or authz_).
+      - detail: Component-specific event identifier.
+
+    Note that all arguments are consolidated into a JSON object and thus must
+    be JSON-serializable.
+    """
     msg = kwargs.get('msg', None)
     if msg is None:
         kwargs['msg'] = description
@@ -60,6 +80,12 @@ def log(description, level='WARN', **kwargs):
 
 
 def register_log_callback(fn):
+    """
+    Register the callback used for logging.
+
+    The callback must be a callable object that will be invoked with the
+    JSON object produced in the exported log function in this module.
+    """
     global _log_callback
     ret = _log_callback
     _log_callback = fn
@@ -67,7 +93,14 @@ def register_log_callback(fn):
 
 
 def register_defaults(dfls):
+    """
+    Register default parameters for all logging calls.
+
+    In order to make some logging calls less verbose, this call allows users to
+    register some defaults that are constant across all invokations. Likely
+    candidates for this are 'detail' and 'appid'.
+    """
     global _defaults
     prev = _defaults
-    _defaults = dfls
+    _defaults = deepcopy(dfls)
     return prev
