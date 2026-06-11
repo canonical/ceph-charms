@@ -1,22 +1,25 @@
 charm_name: ceph-mon
 
 gate_bundles:
-  - focal-ussuri-ec
   - focal-ussuri
 
 smoke_bundles:
   - focal-ussuri
 
-configure:
-  - zaza.openstack.charm_tests.glance.setup.add_lts_image
+dev_bundles:
+  - focal-ussuri
+
+target_deploy_status:
+  mysql:
+    workload-status: idle
+    workload-status-message: 'Primary'
 
 tests:
-  - zaza.openstack.charm_tests.ceph.tests.CheckPoolTypes
-  - zaza.openstack.charm_tests.ceph.tests.CephLowLevelTest
-  - zaza.openstack.charm_tests.ceph.tests.CephRelationTest
-  - zaza.openstack.charm_tests.ceph.tests.CephTest
-  - zaza.openstack.charm_tests.ceph.osd.tests.SecurityTest
-  - zaza.openstack.charm_tests.ceph.tests.CephPrometheusTest
-
-tests_options:
-  force_deploy: []
+  - zaza.charm_tests.lifecycle.refresh.CharmRefreshAll
+  - tests.target.CephLowLevelTest
+  - tests.target.CephTest
+  - tests.target.CephPrometheusTest
+  - tests.target.CephAuthTest
+  - tests.target.CephMonActionsTest
+  - tests.target.CephMonKeyRotationTests
+  - tests.target.CephMonJujuPersistent

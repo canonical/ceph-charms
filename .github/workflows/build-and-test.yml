@@ -22,7 +22,7 @@ jobs:
       - name: Get modified files
         id: changed-files
         if: ${{ github.event_name != 'workflow_dispatch' }}
-        uses: tj-actions/changed-files@823fcebdb31bb35fdf2229d9f769b400309430d0 # v46.0.3
+        uses: tj-actions/changed-files@v35
 
       - name: Determine charms to build/test
         id: determine-parts
@@ -77,6 +77,7 @@ jobs:
 
       - name: Install dependencies
         run: |
+          sudo apt-get update
           sudo apt-get -qq install libxslt-dev libxml2-dev python3-lxml tox
 
       - name: Run linters
@@ -101,3 +102,87 @@ jobs:
         with:
           name: charm-artifact-${{ matrix.part }}
           path: "./${{ matrix.part }}/*.charm"
+
+  functional-test:
+    needs:
+      - modifiedparts
+      - build
+    name: Functional tests
+    runs-on: [self-hosted, linux, amd64, X64, large, noble]
+    if: ${{ needs.modifiedparts.outputs.parts != '[]' }}
+    strategy:
+      matrix:
+        part: ${{ fromJson(needs.modifiedparts.outputs.parts) }}
+      fail-fast: false
+    steps:
+      - name: Download charm
+        uses: actions/download-artifact@v4
+        with:
+          pattern: charm-artifact-*
+          merge-multiple: true
+          path: ~/artifacts/
+
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Copy utils
+        run: cp tests/scripts/actionutils.sh $HOME
+
+      - name: Clear FORWARD firewall rules
+        run: ~/actionutils.sh cleaript
+
+      - name: Setup LXD
+        run: |
+          if [[ "$(snap list | grep -c lxd)" -eq 0 ]]; then
+            sudo snap install lxd --channel=5.21/stable
+            sudo usermod -aG lxd "$USER"
+            newgrp lxd
+            lxd init --minimal
+          fi
+
+      - name: Install and configure tests
+        run: |
+          date
+          ~/actionutils.sh setup_functest
+          ~/actionutils.sh cacheimgs "ubuntu@20.04"
+
+      - name: Run the tests
+        run: |
+          date
+          mv ~/artifacts/*.charm ./
+          if [[ -f "./${{ matrix.part }}/src/tox.ini" ]]; then
+            tox -c ${{ matrix.part }}/src -e func-dev
+          else
+            tox -c ${{ matrix.part }} -e func-dev
+          fi
+
+      - name: Generate crash dumps
+        if: ${{ failure() || cancelled() }}
+        run: |
+          models=$(juju models | grep zaza | awk '{print $1}' | tr -d '*')
+          rm -rf ./crashdumps
+          mkdir ./crashdumps
+          for model in $models; do
+            juju-crashdump -m $model -o ./crashdumps
+          done
+
+      - name: Upload artifacts on failure
+        uses: actions/upload-artifact@v4
+        with:
+          name: crashdumps-${{ matrix.part }}
+          path: "./crashdumps/*"
+        if: ${{ failure() || cancelled() }}
+
+      - name: Setup tmate session
+        if: ${{ (failure() || cancelled()) && runner.debug }}
+        uses: canonical/action-tmate@main
+
+      - name: Tear down models
+        if: always()
+        run: |
+          models=$(juju models | grep zaza | awk '{print $1}' | tr -d '*')
+          for model in $models; do
+            juju destroy-model --no-prompt --force --destroy-storage $model
+          done

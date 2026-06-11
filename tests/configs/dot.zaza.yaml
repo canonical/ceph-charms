@@ -1,0 +1,6 @@
+---
+model_settings:
+    logging-config: "<root>=INFO;unit=DEBUG"
+
+runtime_config:
+  TEST_MAX_RESOLVE_COUNT: 5

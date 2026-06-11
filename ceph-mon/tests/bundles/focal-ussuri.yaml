@@ -1,251 +1,98 @@
-local_overlay_enabled: False
+series: &series focal
 
 variables:
   openstack-origin: &openstack-origin distro
 
-series: focal
-
-comment:
-- 'machines section to decide order of deployment. database sooner = faster'
 machines:
   '0':
-    constraints: mem=3072M
   '1':
-    constraints: mem=3072M
   '2':
-    constraints: mem=3072M
   '3':
+    constraints: cores=2 mem=4G root-disk=25G virt-type=virtual-machine
   '4':
+    constraints: cores=2 mem=4G root-disk=25G virt-type=virtual-machine
   '5':
+    constraints: cores=2 mem=4G root-disk=25G virt-type=virtual-machine
   '6':
   '7':
-  '8':
-  '9':
-  '10':
-  '11':
-  '12':
-  '13':
-  '14':
-  '15':
-  '16':
-
 
 applications:
-
-  keystone-mysql-router:
-    charm: ch:mysql-router
-    channel: 8.0/edge
-  glance-mysql-router:
-    charm: ch:mysql-router
-    channel: 8.0/edge
-  cinder-mysql-router:
-    charm: ch:mysql-router
-    channel: 8.0/edge
-  nova-cloud-controller-mysql-router:
-    charm: ch:mysql-router
-    channel: 8.0/edge
-  placement-mysql-router:
-    charm: ch:mysql-router
-    channel: 8.0/edge
-
-  mysql-innodb-cluster:
-    charm: ch:mysql-innodb-cluster
+  ceph-mon:
+    charm: ch:ceph-mon
+    channel: octopus/stable
     num_units: 3
     options:
       source: *openstack-origin
+      monitor-count: 3
     to:
       - '0'
       - '1'
       - '2'
-    channel: 8.0/edge
 
   ceph-osd:
     charm: ch:ceph-osd
     num_units: 3
-    storage:
-      osd-devices: '10G'
+    channel: octopus/stable
     options:
       source: *openstack-origin
-      osd-devices: '/dev/test-non-existent'
+    storage:
+      osd-devices: 'loop,10G'
     to:
       - '3'
       - '4'
       - '5'
-    channel: octopus/edge
 
-  ceph-mon:
-    charm: ../../ceph-mon.charm
-    num_units: 3
-    options:
-      source: *openstack-origin
-      monitor-count: '3'
+  mysql:
+    charm: ch:mysql
+    num_units: 1
+    channel: 8.0/stable
+    series: jammy
     to:
-      - '6'
       - '7'
-      - '8'
 
   rabbitmq-server:
     charm: ch:rabbitmq-server
+    channel: latest/edge
     num_units: 1
+    series: jammy
     options:
-      source: *openstack-origin
+      min-cluster-size: 1
     to:
-      - '9'
-    channel: 3.8/edge
-
-  keystone:
-    expose: True
-    charm: ch:keystone
-    num_units: 1
-    options:
-      openstack-origin: *openstack-origin
-    to:
-      - '10'
-    channel: wallaby/edge
-
-  nova-compute:
-    charm: ch:nova-compute
-    num_units: 1
-    options:
-      openstack-origin: *openstack-origin
-      libvirt-image-backend: rbd
-    to:
-      - '11'
-    channel: wallaby/edge
-
-  glance:
-    expose: True
-    charm: ch:glance
-    num_units: 1
-    options:
-      openstack-origin: *openstack-origin
-    to:
-      - '12'
-    channel: wallaby/edge
+      - '6'
 
   cinder:
-    expose: True
     charm: ch:cinder
+    channel: latest/edge
     num_units: 1
+    series: jammy
     options:
       block-device: 'None'
-      glance-api-version: '2'
-      openstack-origin: *openstack-origin
     to:
-      - '13'
-    channel: wallaby/edge
+      - '6'
 
-  cinder-ceph:
-    charm: ch:cinder-ceph
-    channel: wallaby/edge
-
-  nova-cloud-controller:
-    expose: True
-    charm: ch:nova-cloud-controller
+  keystone:
+    charm: ch:keystone
+    channel: latest/edge
     num_units: 1
-    options:
-      openstack-origin: *openstack-origin
+    series: jammy
     to:
-      - '14'
-    channel: wallaby/edge
-
-  placement:
-    charm: ch:placement
-    num_units: 1
-    options:
-      openstack-origin: *openstack-origin
-    to:
-      - '15'
-    channel: wallaby/edge
-
-  prometheus2:
-    charm: ch:prometheus2
-    num_units: 1
-    to:
-      - '16'
+      - '7'
 
 relations:
-  - - 'nova-compute:amqp'
-    - 'rabbitmq-server:amqp'
+  - - 'ceph-osd:mon'
+    - 'ceph-mon:osd'
 
-  - - 'nova-compute:image-service'
-    - 'glance:image-service'
-
-  - - 'nova-compute:ceph'
-    - 'ceph-mon:client'
-
-  - - nova-compute:ceph-access
-    - cinder-ceph:ceph-access
-
-  - - 'keystone:shared-db'
-    - 'keystone-mysql-router:shared-db'
-  - - 'keystone-mysql-router:db-router'
-    - 'mysql-innodb-cluster:db-router'
-
-  - - 'glance:shared-db'
-    - 'glance-mysql-router:shared-db'
-  - - 'glance-mysql-router:db-router'
-    - 'mysql-innodb-cluster:db-router'
-
-  - - 'glance:identity-service'
-    - 'keystone:identity-service'
-
-  - - 'glance:amqp'
-    - 'rabbitmq-server:amqp'
-
-  - - 'glance:ceph'
-    - 'ceph-mon:client'
-
-  - - 'cinder:shared-db'
-    - 'cinder-mysql-router:shared-db'
-  - - 'cinder-mysql-router:db-router'
-    - 'mysql-innodb-cluster:db-router'
+  - - 'keystone'
+    - 'mysql'
 
   - - 'cinder:identity-service'
     - 'keystone:identity-service'
 
-  - - 'cinder:amqp'
-    - 'rabbitmq-server:amqp'
+  - - 'cinder'
+    - 'rabbitmq-server'
 
-  - - 'cinder:image-service'
-    - 'glance:image-service'
+  - - 'cinder'
+    - 'ceph-mon'
 
-  - - 'cinder-ceph:storage-backend'
-    - 'cinder:storage-backend'
-
-  - - 'cinder-ceph:ceph'
-    - 'ceph-mon:client'
-
-  - - 'ceph-osd:mon'
-    - 'ceph-mon:osd'
-
-  - - 'nova-cloud-controller:shared-db'
-    - 'nova-cloud-controller-mysql-router:shared-db'
-  - - 'nova-cloud-controller-mysql-router:db-router'
-    - 'mysql-innodb-cluster:db-router'
-
-  - - 'nova-cloud-controller:identity-service'
-    - 'keystone:identity-service'
-
-  - - 'nova-cloud-controller:amqp'
-    - 'rabbitmq-server:amqp'
-
-  - - 'nova-cloud-controller:cloud-compute'
-    - 'nova-compute:cloud-compute'
-
-  - - 'nova-cloud-controller:image-service'
-    - 'glance:image-service'
-
-  - - 'placement:shared-db'
-    - 'placement-mysql-router:shared-db'
-  - - 'placement-mysql-router:db-router'
-    - 'mysql-innodb-cluster:db-router'
-
-  - - 'placement'
-    - 'keystone'
-
-  - - 'placement'
-    - 'nova-cloud-controller'
-
-  - - 'ceph-mon:prometheus'
-    - 'prometheus2:target'
+  - - 'cinder'
+    - 'mysql'
