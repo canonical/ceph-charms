@@ -14,7 +14,9 @@ machines:
   '5':
     constraints: cores=2 mem=4G root-disk=25G virt-type=virtual-machine
   '6':
+    series: jammy
   '7':
+    series: jammy
 
 applications:
   ceph-mon:
