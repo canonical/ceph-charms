@@ -1,7 +1,7 @@
-series: &series jammy
+series: &series focal
 
 variables:
-  openstack-origin: &openstack-origin cloud:jammy-antelope
+  openstack-origin: &openstack-origin cloud:focal-ussuri
 
 machines:
   '0':
@@ -14,12 +14,14 @@ machines:
   '5':
     constraints: cores=2 mem=4G root-disk=25G virt-type=virtual-machine
   '6':
+    series: jammy
   '7':
+    series: jammy
 
 applications:
   ceph-mon:
     charm: ch:ceph-mon
-    channel: quincy/edge
+    channel: octopus/stable
     num_units: 3
     options:
       source: *openstack-origin
@@ -32,7 +34,7 @@ applications:
   ceph-osd:
     charm: ch:ceph-osd
     num_units: 3
-    channel: quincy/edge
+    channel: octopus/stable
     options:
       source: *openstack-origin
     storage:
@@ -46,6 +48,7 @@ applications:
     charm: ch:mysql
     num_units: 1
     channel: 8.0/stable
+    series: jammy
     to:
       - '7'
 
@@ -55,6 +58,7 @@ applications:
     num_units: 1
     options:
       min-cluster-size: 1
+    series: jammy
     to:
       - '6'
 
@@ -64,6 +68,7 @@ applications:
     num_units: 1
     options:
       block-device: 'None'
+    series: jammy
     to:
       - '6'
 
@@ -71,6 +76,7 @@ applications:
     charm: ch:keystone
     channel: latest/edge
     num_units: 1
+    series: jammy
     to:
       - '7'
 

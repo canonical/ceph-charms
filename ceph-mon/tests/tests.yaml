@@ -1,13 +1,13 @@
 charm_name: ceph-mon
 
 gate_bundles:
-  - jammy-antelope
+  - focal-ussuri
 
 smoke_bundles:
-  - jammy-antelope
+  - focal-ussuri
 
 dev_bundles:
-  - jammy-antelope
+  - focal-ussuri
 
 target_deploy_status:
   mysql:
