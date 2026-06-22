@@ -106,14 +106,6 @@
     },
     {
       "type": "python_module",
-      "package": "charms.ceph",
-      "url": "git+https://github.com/openstack/charms.ceph.git",
-      "branch": "1a66fb4a0154b2f9b0e2fdff76d18bb7302194cc",
-      "version": "1a66fb4a0154b2f9b0e2fdff76d18bb7302194cc",
-      "vcs": "git"
-    },
-    {
-      "type": "python_module",
       "package": "setuptools",
       "vcs": null,
       "version": "80.9.0"

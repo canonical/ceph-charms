@@ -22,6 +22,8 @@ import charms_openstack.plugins
 
 import charmhelpers.core as ch_core
 
+import charms_ceph.selog as selog
+
 # NOTE(fnordahl) theese out of style imports are here to help keeping helpers
 # moved from reactive module as-is to make the diff managable. At some point
 # in time we should replace them in favor of common helpers that would do the
@@ -93,6 +95,8 @@ class BaseCephFSCharm(charms_openstack.plugins.CephCharm):
         self.restart_map = {
             '/etc/ceph/ceph.conf': self.services,
         }
+        selog.register_defaults({'appid': 'ceph.fs'})
+        selog.register_log_callback(lambda msg: log(msg, "WARNING"))
 
     # NOTE(fnordahl) moved from reactive handler module, otherwise keeping
     # these as-is to make the diff managable. At some point in time we should
@@ -113,6 +117,9 @@ class BaseCephFSCharm(charms_openstack.plugins.CephCharm):
 
     @cached
     def get_public_addr(self):
+        selog.log('Get Ceph-FS public addresses',
+                  event='authz_public_addr',
+                  detail='public_addr_fetch')
         if config('ceph-public-network'):
             return self.get_network_addrs('ceph-public-network')[0]
 
@@ -133,6 +140,9 @@ class BaseCephFSCharm(charms_openstack.plugins.CephCharm):
     @cached
     @staticmethod
     def get_host_ip(hostname=None):
+        selog.log('Get Ceph-FS host address',
+                  event='authz_host_addr',
+                  detail='host_addr_fetch')
         if config('prefer-ipv6'):
             return get_ipv6_addr()[0]
 
