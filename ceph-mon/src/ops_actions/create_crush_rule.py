@@ -18,6 +18,7 @@
 
 import logging
 import subprocess
+import charms_ceph.selog as selog
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +26,9 @@ logger = logging.getLogger(__name__)
 def create_crush_rule(event) -> None:
     """Create a new CRUSH rule."""
 
+    selog.log('Creating new CRUSH rule',
+              event='authn_crush_rule',
+              detail='crush_rule_create')
     rule_name = event.params.get('name')
     failure_domain = event.params.get('failure-domain')
     device_class = event.params.get('device-class')

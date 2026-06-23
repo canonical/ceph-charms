@@ -17,6 +17,7 @@ from ops.framework import EventBase, EventSource
 
 import ops_openstack.core
 import charms_ceph.utils as ceph
+import charms_ceph.selog as selog
 from charms_ceph.broker import (
     process_requests
 )
@@ -71,6 +72,9 @@ class CephMonCharm(ops_openstack.core.OSBaseCharm):
 
     def on_install(self, event):
         self._initialise_config()
+        selog.log('Installing packages',
+                  event='sys_packages',
+                  detail='packages_installed')
         self.install_pkgs()
         rm_packages = ceph.determine_packages_to_remove()
         if rm_packages:
@@ -204,6 +208,8 @@ class CephMonCharm(ops_openstack.core.OSBaseCharm):
 
     def __init__(self, *args):
         super().__init__(*args)
+        selog.register_defaults({'appid': 'ceph.mon'})
+        selog.register_log_callback(lambda msg: logger.warn(msg))
         self._stored.is_started = True
 
         if self.is_blocked_insecure_cmr():

@@ -23,6 +23,7 @@ import os
 import subprocess
 
 import charms.operator_libs_linux.v1.systemd as systemd
+import charms_ceph.selog as selog
 
 
 logger = logging.getLogger(__name__)
@@ -40,6 +41,9 @@ def _find_mgr_path(base):
 
 
 def _create_key(entity, event):
+    selog.log('Creating new key for entity %s' % entity,
+              event='authz_%s_key' % entity,
+              detail='%s_key_create' % entity)
     try:
         cmd = ["sudo", "ceph", "auth", "get-or-create-pending",
                entity, "--format=json"]
@@ -67,6 +71,9 @@ def _replace_keyring_file(path, entity, key, event):
 
 
 def _restart_daemon(entity, event):
+    selog.log('Restarting daemon for %s' % entity,
+              event='sys_%s_daemon' % entity,
+              detail='%s_daemon_restart' % entity)
     try:
         systemd.service_restart(entity)
     except systemd.SystemdError as exc:
@@ -234,6 +241,9 @@ def _rotate_all_osds(event, model):
 def rotate_key(event, model=None) -> None:
     """Rotate the key of the specified entity."""
     entity = event.params.get("entity")
+    selog.log('Rotating key for entity %s' % entity,
+              event='authz_%s_key' % entity,
+              detail='%s_key_rotate' % entity)
     if entity.startswith("mgr"):
         if len(entity) > 3:
             if entity[3] != '.':
