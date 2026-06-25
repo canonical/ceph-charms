@@ -17,10 +17,14 @@
 import json
 
 from charmhelpers.core.hookenv import action_get, action_fail, action_set, log
+import charms_ceph.selog as selog
 from subprocess import CalledProcessError, check_output
 
 
 def get_or_create_user():
+    selog.log("Get or create user",
+              event="authn_user",
+              detail="user_get_or_create")
     username = action_get("username")
     client = "client.{}".format(username)
     try:
@@ -54,6 +58,8 @@ def get_or_create_user():
 
 
 def main():
+    selog.register_log_callback(lambda msg: log(msg, "WARNING"))
+    selog.register_defaults({"appid": "ceph.mon"})
     action_set({"message": get_or_create_user()})
 
 
