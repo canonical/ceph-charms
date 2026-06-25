@@ -47,3 +47,4 @@ cosl
 netifaces
 charms.openstack @ git+https://github.com/openstack/charms.openstack.git
 charms.reactive
+git+https://github.com/canonical/ceph-charms#egg=charms_ceph&subdirectory=charms.ceph
