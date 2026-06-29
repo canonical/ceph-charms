@@ -15,6 +15,7 @@
 import sys
 from unittest.mock import MagicMock
 from unittest import mock
+import charms_ceph.selog as selog
 
 sys.path.append('hooks')
 sys.path.append('lib')
@@ -34,3 +35,6 @@ mock.patch(
     return_value={
         'DISTRIB_CODENAME': 'jammy'
     }).start()
+
+selog.register_log_callback(lambda *_: None)
+selog.register_defaults({'appid': 'ceph.osd'})

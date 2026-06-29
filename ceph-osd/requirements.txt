@@ -12,6 +12,8 @@ simplejson>=2.2.0
 netifaces>=0.10.4
 looseversion
 
+git+https://github.com/canonical/ceph-charms#egg=charms.ceph&subdirectory=charms.ceph
+
 # NOTE: newer versions of cryptography require a Rust compiler to build,
 # see
 # * https://github.com/openstack-charmers/zaza/issues/421

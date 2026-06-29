@@ -22,6 +22,8 @@ sys.path.append('hooks')
 import charmhelpers.core.hookenv as hookenv
 import charmhelpers.core.unitdata as unitdata
 
+import charms_ceph.selog as selog
+
 BLACKLIST_KEY = 'osd-blacklist'
 
 
@@ -49,6 +51,9 @@ def blacklist_add():
     Add devices given in 'osd-devices' action parameter to
     unit-local devices blacklist.
     """
+    selog.log('Adding device to blocklist',
+              event='authz_device',
+              detail='device_blocklist_add')
     db = unitdata.kv()
     blacklist = db.get(BLACKLIST_KEY, [])
     for device in get_devices():
@@ -65,6 +70,9 @@ def blacklist_remove():
     Remove devices given in 'osd-devices' action parameter from
     unit-local devices blacklist.
     """
+    selog.log('Removing device from blocklist',
+              event='authz_device',
+              detail='device_blocklist_remove')
     db = unitdata.kv()
     blacklist = db.get(BLACKLIST_KEY, [])
     for device in get_devices():
@@ -85,6 +93,8 @@ ACTIONS = {
 
 def main(args):
     """Main program"""
+    selog.register_log_callback(lambda msg: hookenv.log(msg, "WARNING"))
+    selog.register_defaults({'appid': 'ceph.osd'})
     action_name = os.path.basename(args[0])
     try:
         action = ACTIONS[action_name]
