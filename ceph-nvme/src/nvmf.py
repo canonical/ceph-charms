@@ -46,6 +46,12 @@ def main():
     cpuset = utils.compute_cpuset(config.get('cpuset'))
     args.extend(['-m', str(hex(utils.compute_cpumask(cpuset)))])
 
+    # Start in wait-for-rpc mode so that the proxy can configure
+    # iobuf pool sizes via iobuf_set_options RPC before SPDK
+    # completes initialization.  This is required because SPDK v24.05
+    # does not expose iobuf pool sizing as CLI flags.
+    args.append('--wait-for-rpc')
+
     # Replace the current process with a call to the target.
     os.execv(xname, args)
 
