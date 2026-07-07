@@ -1,5 +1,5 @@
 options:
-  source: &source distro
+  source: &source ppa:johnramsden/noble-ceph-squid
 
 machines:
   '0':

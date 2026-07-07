@@ -22,6 +22,7 @@ applications:
     num_units: 3
     options:
       monitor-count: 3
+      source: ppa:johnramsden/noble-ceph-squid
     to:
       - '0'
       - '1'
@@ -33,6 +34,8 @@ applications:
     channel: latest/edge
     storage:
       osd-devices: 'loop,8G'
+    options:
+      source: ppa:johnramsden/noble-ceph-squid
     to:
       - '3'
       - '4'

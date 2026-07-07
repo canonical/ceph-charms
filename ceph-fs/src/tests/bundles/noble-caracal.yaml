@@ -1,5 +1,6 @@
 variables:
   openstack-origin: &openstack-origin distro
+  source: &source ppa:johnramsden/noble-ceph-squid
 
 series: &series noble
 
@@ -20,7 +21,7 @@ applications:
     channel: latest/edge
     num_units: 1
     options:
-      source: *openstack-origin
+      source: *source
       pool-type: erasure-coded
       ec-profile-k: 4
       ec-profile-m: 2
@@ -34,7 +35,7 @@ applications:
       osd-devices: 'loop,10G'
     options:
       osd-devices: '/dev/test-non-existent'
-      source: *openstack-origin
+      source: *source
     channel: latest/edge
     to:
       - '0'
@@ -46,7 +47,7 @@ applications:
     num_units: 3
     options:
       monitor-count: '3'
-      source: *openstack-origin
+      source: *source
     channel: latest/edge
     to:
       - '3'
