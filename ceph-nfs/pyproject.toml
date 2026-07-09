@@ -1,0 +1,14 @@
+[project]
+name = "ceph-nfs"
+version = "0.0.1"
+requires-python = ">=3.10"
+dependencies = [
+    "ops>=3.7.0",
+    "charms-ceph @ git+https://github.com/canonical/ceph-charms.git#subdirectory=charms.ceph",
+    "charmhelpers @ git+https://github.com/juju/charm-helpers",
+    "interface-ceph-client @ git+https://opendev.org/openstack/charm-ops-interface-ceph-client",
+    "ops-openstack @ git+https://opendev.org/openstack/charm-ops-openstack",
+    "interface-hacluster @ git+https://opendev.org/openstack/charm-interface-hacluster",
+    "netifaces>=0.11.0",
+    "psutil>=5.9.8",
+]
