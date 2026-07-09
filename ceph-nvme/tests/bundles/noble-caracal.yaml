@@ -20,7 +20,7 @@ applications:
     channel: latest/edge
     options:
       monitor-count: 3
-      source: ppa:johnramsden/noble-ceph-squid
+      source: ppa:johnramsden/noble-caracal-ceph-squid
     to:
       - '0'
       - '1'
@@ -43,7 +43,7 @@ applications:
     storage:
       osd-devices: 'loop,10G'
     options:
-      source: ppa:johnramsden/noble-ceph-squid
+      source: ppa:johnramsden/noble-caracal-ceph-squid
     to:
       - '5'
       - '6'

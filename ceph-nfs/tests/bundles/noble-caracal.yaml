@@ -1,5 +1,5 @@
 options:
-  source: &source ppa:johnramsden/noble-ceph-squid
+  source: &source ppa:johnramsden/noble-caracal-ceph-squid
 
 machines:
   '0':
