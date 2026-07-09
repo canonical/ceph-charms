@@ -12,7 +12,7 @@ machines:
     constraints: cores=2 mem=6G root-disk=24G virt-type=virtual-machine
   '6':
     series: jammy
-    constraints: root-disk=12G virt-type=virtual-machine
+    constraints: cores=2 mem=4G root-disk=12G virt-type=virtual-machine
   '7':
 
 applications:
