@@ -109,7 +109,20 @@ jobs:
       - build
     name: Functional tests
     runs-on: [self-hosted, linux, amd64, X64, large, noble]
-    if: ${{ needs.modifiedparts.outputs.parts != '[]' }}
+    # A job that `needs: build` is normally skipped if ANY build failed.
+    # The nightly run dispatched from main builds all nine charms, and
+    # one failed build shouldn't stop the other eight from being tested.
+    # So, run when:
+    # - the run wasn't cancelled, and
+    # - the charm list was computed and isn't empty, and
+    # - either all builds passed (still required for PRs), or this is a
+    #   dispatched/manual run (test what did build; a charm whose build
+    #   failed simply fails here at the artifact download).
+    if: >-
+      ${{ !cancelled() && needs.modifiedparts.result == 'success' &&
+      needs.modifiedparts.outputs.parts != '[]' &&
+      (needs.build.result == 'success' ||
+      github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') }}
     strategy:
       matrix:
         part: ${{ fromJson(needs.modifiedparts.outputs.parts) }}
@@ -195,7 +208,12 @@ jobs:
     name: COS integration (${{ matrix.agent }})
     runs-on: [self-hosted, linux, amd64, X64, large, noble]
     timeout-minutes: 120
-    if: ${{ contains(needs.modifiedparts.outputs.parts, 'ceph-mon') }}
+    # Same rule as functional-test, but only when ceph-mon is in the list
+    if: >-
+      ${{ !cancelled() && needs.modifiedparts.result == 'success' &&
+      contains(needs.modifiedparts.outputs.parts, 'ceph-mon') &&
+      (needs.build.result == 'success' ||
+      github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') }}
     strategy:
       fail-fast: false
       matrix:
