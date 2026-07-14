@@ -155,6 +155,12 @@ class MockSPDK:
     def spdk_kill_instance(self, **kwargs):
         self._init_vars()
 
+    def iobuf_set_options(self, **kwargs):
+        pass
+
+    def framework_start_init(self, **kwargs):
+        pass
+
     def loop(self, timeout=None):
         rd, _, _ = select.select([self.sock], [], [], timeout)
         if not rd:

@@ -7,6 +7,16 @@ options:
       an integer, which specifies the number of cores, or a squared-bracketed
       list of CPU id's. By default, half the CPU cores will be used.
 
+      SPDK iobuf pool sizes are scaled automatically based on the number
+      of cores selected. More cores increase memory consumption but improve
+      throughput. Recommended values by workload:
+        - PoC / low IOPS (<10,000): 4 cores minimum
+        - Moderate IOPS: 8-16 cores
+        - High IOPS (200,000-300,000): 25-30+ cores
+      At least 8 GB of RAM (via nr-hugepages) should be dedicated per
+      gateway instance. When using many cores, ensure nr-hugepages is
+      sized accordingly.
+
   proxy-port:
     type: int
     default: 64321
@@ -23,7 +33,15 @@ options:
     type: int
     default: 2048
     description: |
-      The amount of hugepages to use. If set to 0, don't use them.
+      The number of 2 MB hugepages to reserve. If set to 0, hugepages are
+      disabled and SPDK runs with regular memory (expect reduced performance).
+      At least 8 GB (4096 pages) per gateway instance is recommended.
+
+      Recommended sizing by cpuset scale:
+        - 4 cores: 2048 (4 GB) minimum
+        - 8-16 cores: 4096 (8 GB)
+        - 25-30 cores: 8192-16384 (16-32 GB)
+      Insufficient hugepages may cause SPDK buffer allocation failures.
 
   discovery-port:
     type: int
