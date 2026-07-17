@@ -9,6 +9,9 @@ stestr>=2.2.0
 # https://github.com/mtreinish/stestr/issues/145
 cliff<3.0.0
 
+# setuptools>=82 removed pkg_resources which is used by cliff<3.0.0.
+setuptools<82
+
 requests>=2.18.4
 charms.reactive
 
