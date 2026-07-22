@@ -754,14 +754,6 @@ def _is_int(v):
 
 def get_version():
     """Derive Ceph release from an installed package."""
-    try:
-        import apt_pkg as apt
-    except ImportError:
-        # apt_pkg is not importable from the isolated charm virtualenv on
-        # newer bases. Use charmhelpers' python implementation instead of
-        # vendoring the python3-apt binary extension into the charm venv.
-        from charmhelpers.fetch import ubuntu_apt_pkg as apt
-
     package = "ceph"
 
     current_ver = get_installed_version(package)
@@ -769,6 +761,14 @@ def get_version():
         # package is known, but no version is currently installed.
         e = 'Could not determine version of uninstalled package: %s' % package
         error_out(e)
+
+    try:
+        import apt_pkg as apt
+    except ImportError:
+        # apt_pkg is not importable from the isolated charm virtualenv on
+        # newer bases. Use charmhelpers' python implementation instead of
+        # vendoring the python3-apt binary extension into the charm venv.
+        from charmhelpers.fetch import ubuntu_apt_pkg as apt
 
     vers = apt.upstream_version(current_ver.ver_str)
 
@@ -3477,13 +3477,50 @@ def apply_osd_settings(settings):
     return True
 
 
+def _cmp_pkgrevno_with_dpkg_fallback(package, revno):
+    """Compare package version with a dpkg fallback.
+
+    charmhelpers' pure-Python ``ubuntu_apt_pkg`` fallback parses
+    ``dpkg-query --list`` output.  Newer dpkg versions may alter that
+    human-readable table header, causing ``cmp_pkgrevno`` to find the
+    package but return ``current_ver = None``.  Use machine-readable
+    ``dpkg-query -W`` output as a narrow fallback for those cases.
+    """
+    try:
+        return cmp_pkgrevno(package, revno)
+    except (AttributeError, TypeError) as exc:
+        log(
+            "Unable to compare {} version with cmp_pkgrevno: {}. "
+            "Falling back to dpkg-query.".format(package, exc),
+            WARNING)
+        try:
+            current_ver = subprocess.check_output(
+                ['dpkg-query', '-W', '-f=${Version}', package],
+                universal_newlines=True)
+        except subprocess.CalledProcessError:
+            raise exc
+        if isinstance(current_ver, bytes):
+            current_ver = current_ver.decode('UTF-8')
+        current_ver = current_ver.strip()
+        if not current_ver:
+            raise exc
+        if subprocess.call(
+                ['dpkg', '--compare-versions', current_ver, 'eq', revno]) == 0:
+            return 0
+        if subprocess.call(
+                ['dpkg', '--compare-versions', current_ver, 'gt', revno]) == 0:
+            return 1
+        return -1
+
+
 def enabled_manager_modules():
     """Return a list of enabled manager modules.
 
     :rtype: List[str]
     """
     cmd = ['ceph', 'mgr', 'module', 'ls']
-    quincy_or_later = cmp_pkgrevno('ceph-common', '17.1.0') >= 0
+    quincy_or_later = (
+        _cmp_pkgrevno_with_dpkg_fallback('ceph-common', '17.1.0') >= 0)
     if quincy_or_later:
         cmd.append('--format=json')
     try:

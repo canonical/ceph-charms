@@ -21,6 +21,8 @@ sys.path.append('lib')
 sys.path.append('actions')
 sys.path.append('unit_tests')
 
+import charms_ceph.selog as selog
+
 sys.modules["tabulate"] = MagicMock()
 
 # Patch out lsb_release() and get_platform() as unit tests should be fully
@@ -34,3 +36,6 @@ mock.patch(
     return_value={
         'DISTRIB_CODENAME': 'jammy'
     }).start()
+
+selog.register_log_callback(lambda *_: None)
+selog.register_defaults({'appid': 'ceph.osd'})
