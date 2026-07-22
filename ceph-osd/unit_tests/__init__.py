@@ -15,12 +15,13 @@
 import sys
 from unittest.mock import MagicMock
 from unittest import mock
-import charms_ceph.selog as selog
 
 sys.path.append('hooks')
 sys.path.append('lib')
 sys.path.append('actions')
 sys.path.append('unit_tests')
+
+import charms_ceph.selog as selog
 
 sys.modules["tabulate"] = MagicMock()
 
