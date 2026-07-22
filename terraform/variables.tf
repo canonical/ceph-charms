@@ -135,6 +135,146 @@ variable "ceph_radosgw" {
   }
 }
 
+variable "ceph_fs" {
+  description = "Optional configuration object for ceph-fs deployment. Set to a non-null object to deploy; the charm is wired to ceph-mon:mds."
+  type = object({
+    app_name          = optional(string, "ceph-fs")
+    base              = optional(string, "ubuntu@24.04")
+    channel           = optional(string, "squid/stable")
+    config            = optional(map(string), {})
+    constraints       = optional(string, null)
+    offered_endpoints = optional(list(string), [])
+    resources         = optional(map(string), {})
+    revision          = optional(number)
+    units             = optional(number, 1)
+  })
+  default = null
+
+  validation {
+    condition = alltrue([
+      for alias in var.ceph_fs == null ? [] : var.ceph_fs.offered_endpoints :
+      contains(["cephfs_share", "filesystem"], alias)
+    ])
+    error_message = "ceph_fs.offered_endpoints must only contain ceph-fs provides aliases."
+  }
+}
+
+variable "ceph_nfs" {
+  description = "Optional configuration object for ceph-nfs deployment. Set to a non-null object to deploy; the charm is wired to ceph-mon:client. ceph-nfs has no provides endpoints."
+  type = object({
+    app_name          = optional(string, "ceph-nfs")
+    base              = optional(string, "ubuntu@24.04")
+    channel           = optional(string, "squid/stable")
+    config            = optional(map(string), {})
+    constraints       = optional(string, null)
+    offered_endpoints = optional(list(string), [])
+    resources         = optional(map(string), {})
+    revision          = optional(number)
+    units             = optional(number, 1)
+  })
+  default = null
+
+  validation {
+    condition     = var.ceph_nfs == null || length(var.ceph_nfs.offered_endpoints) == 0
+    error_message = "ceph_nfs has no provides endpoints to offer; offered_endpoints must be empty."
+  }
+}
+
+variable "ceph_nvme" {
+  description = "Optional configuration object for ceph-nvme deployment. Set to a non-null object to deploy; the charm is wired to ceph-mon:client."
+  type = object({
+    app_name          = optional(string, "ceph-nvme")
+    base              = optional(string, "ubuntu@24.04")
+    channel           = optional(string, "squid/stable")
+    config            = optional(map(string), {})
+    constraints       = optional(string, null)
+    offered_endpoints = optional(list(string), [])
+    resources         = optional(map(string), {})
+    revision          = optional(number)
+    units             = optional(number, 1)
+  })
+  default = null
+
+  validation {
+    condition = alltrue([
+      for alias in var.ceph_nvme == null ? [] : var.ceph_nvme.offered_endpoints :
+      contains(["admin_access"], alias)
+    ])
+    error_message = "ceph_nvme.offered_endpoints must only contain ceph-nvme provides aliases."
+  }
+}
+
+variable "ceph_rbd_mirror" {
+  description = "Optional configuration object for ceph-rbd-mirror deployment. Set to a non-null object to deploy; the local cluster is wired to ceph-mon:rbd-mirror."
+  type = object({
+    app_name          = optional(string, "ceph-rbd-mirror")
+    base              = optional(string, "ubuntu@24.04")
+    channel           = optional(string, "squid/stable")
+    config            = optional(map(string), {})
+    constraints       = optional(string, null)
+    offered_endpoints = optional(list(string), [])
+    resources         = optional(map(string), {})
+    revision          = optional(number)
+    units             = optional(number, 1)
+  })
+  default = null
+
+  validation {
+    condition = alltrue([
+      for alias in var.ceph_rbd_mirror == null ? [] : var.ceph_rbd_mirror.offered_endpoints :
+      contains(["nrpe_external_master"], alias)
+    ])
+    error_message = "ceph_rbd_mirror.offered_endpoints must only contain ceph-rbd-mirror provides aliases."
+  }
+}
+
+variable "ceph_dashboard" {
+  description = "Optional configuration object for ceph-dashboard deployment. ceph-dashboard is a subordinate charm colocated with ceph-mon via the dashboard relation; it carries no units of its own."
+  type = object({
+    app_name          = optional(string, "ceph-dashboard")
+    base              = optional(string, "ubuntu@24.04")
+    channel           = optional(string, "squid/stable")
+    config            = optional(map(string), {})
+    constraints       = optional(string, null)
+    offered_endpoints = optional(list(string), [])
+    resources         = optional(map(string), {})
+    revision          = optional(number)
+  })
+  default = null
+
+  validation {
+    condition = alltrue([
+      for alias in var.ceph_dashboard == null ? [] : var.ceph_dashboard.offered_endpoints :
+      contains(["grafana_dashboard"], alias)
+    ])
+    error_message = "ceph_dashboard.offered_endpoints must only contain ceph-dashboard provides aliases."
+  }
+}
+
+variable "ceph_proxy" {
+  description = "Optional configuration object for ceph-proxy deployment. Set to a non-null object to deploy. ceph-proxy is a ceph-mon replacement that fronts an external cluster; it is deployed standalone and not wired to ceph-mon."
+  type = object({
+    app_name          = optional(string, "ceph-proxy")
+    base              = optional(string, "ubuntu@24.04")
+    channel           = optional(string, "squid/stable")
+    config            = optional(map(string), {})
+    constraints       = optional(string, null)
+    offered_endpoints = optional(list(string), [])
+    resources         = optional(map(string), {})
+    revision          = optional(number)
+    units             = optional(number, 1)
+  })
+  default = null
+
+  validation {
+    condition = alltrue([
+      for alias in var.ceph_proxy == null ? [] : var.ceph_proxy.offered_endpoints :
+      contains(["client", "mds", "radosgw"], alias)
+    ])
+    error_message = "ceph_proxy.offered_endpoints must only contain ceph-proxy provides aliases."
+  }
+}
+
 variable "expose_endpoints" {
   description = "Optional list of provided endpoint keys to expose as offers, using the <charm>_<endpoint_alias> format."
   type        = list(string)
@@ -145,6 +285,9 @@ variable "expose_endpoints" {
       for key in var.expose_endpoints :
       contains(
         [
+          "ceph_dashboard_grafana_dashboard",
+          "ceph_fs_cephfs_share",
+          "ceph_fs_filesystem",
           "ceph_mon_admin",
           "ceph_mon_client",
           "ceph_mon_cos_agent",
@@ -156,7 +299,11 @@ variable "expose_endpoints" {
           "ceph_mon_prometheus",
           "ceph_mon_radosgw",
           "ceph_mon_rbd_mirror",
+          "ceph_nvme_admin_access",
           "ceph_osd_nrpe_external_master",
+          "ceph_proxy_client",
+          "ceph_proxy_mds",
+          "ceph_proxy_radosgw",
           "ceph_radosgw_gateway",
           "ceph_radosgw_master",
           "ceph_radosgw_nrpe_external_master",
@@ -164,6 +311,7 @@ variable "expose_endpoints" {
           "ceph_radosgw_primary",
           "ceph_radosgw_radosgw_user",
           "ceph_radosgw_s3",
+          "ceph_rbd_mirror_nrpe_external_master",
         ],
         key,
       )

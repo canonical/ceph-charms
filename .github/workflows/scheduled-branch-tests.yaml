@@ -1,0 +1,31 @@
+name: Scheduled branch tests
+
+# GitHub only runs cron schedules on the default branch, so stable
+# branches never get a nightly test run of their own. This workflow
+# runs on main every night and starts Build/Test on each stable branch
+# listed below. Those runs test every charm (no part input = run all)
+# and feed the CI health dashboard (canonical/ceph-qa) the same way
+# main's own nightly run does.
+on:
+  schedule:
+    # 04:00 UTC, two hours after main's nightly run, so the two full
+    # suites don't compete for the self-hosted runners.
+    - cron: "0 4 * * *"
+  workflow_dispatch:
+
+permissions:
+  actions: write
+
+jobs:
+  dispatch:
+    # Don't run the cron in forks. Manual runs are unaffected.
+    if: ${{ github.event_name != 'schedule' || github.repository == 'canonical/ceph-charms' }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        ref: [stable/squid]
+    steps:
+      - name: Dispatch build-and-test.yml on ${{ matrix.ref }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh workflow run build-and-test.yml --ref "${{ matrix.ref }}" --repo "${{ github.repository }}"

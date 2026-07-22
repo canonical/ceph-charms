@@ -1504,9 +1504,24 @@ def get_lvs(dev):
     :raises subprocess.CalledProcessError: in the event that any supporting
                                            operation failed.
     :returns: list: List of logical volumes provided by the block device
+
+    When the device is a LUKS encrypted volume (e.g. a vaultlocker
+    encrypted bluestore wal/db utility device) the LVM physical volume
+    lives on the decrypted /dev/mapper/crypt-<uuid> device rather than
+    on the raw block device. In that case the PV inspection is redirected
+    to the mapper device so that the logical volumes are correctly
+    enumerated, otherwise get_lvs() would always return an empty list for
+    encrypted devices and all wal/db LVs would be allocated onto a single
+    utility device (LP: #1821454).
     """
     if not lvm.is_lvm_physical_volume(dev):
-        return []
+        luks_uuid = _luks_uuid(dev)
+        if not luks_uuid:
+            return []
+        mapper_dev = '/dev/mapper/crypt-{}'.format(luks_uuid)
+        if not lvm.is_lvm_physical_volume(mapper_dev):
+            return []
+        dev = mapper_dev
     vg_name = lvm.list_lvm_volume_group(dev)
     return lvm.list_logical_volumes('vg_name={}'.format(vg_name))
 

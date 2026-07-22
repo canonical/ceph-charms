@@ -49,20 +49,28 @@ parts:
         echo "commit_date: $(git -C $CRAFT_PROJECT_DIR show -s --format=%cI HEAD)" >> $CRAFT_PART_INSTALL/git-info.txt
       fi
 
-
 platforms:
   ubuntu-26.04-amd64:
     build-on: [ubuntu@26.04:amd64]
     build-for: [ubuntu@26.04:amd64]
+  ubuntu-26.04-arm64:
+    build-on: [ubuntu@26.04:arm64]
+    build-for: [ubuntu@26.04:arm64]
+  ubuntu-26.04-ppc64el:
+    build-on: [ubuntu@26.04:ppc64el]
+    build-for: [ubuntu@26.04:ppc64el]
+  ubuntu-26.04-s390x:
+    build-on: [ubuntu@26.04:s390x]
+    build-for: [ubuntu@26.04:s390x]
   ubuntu-24.04-amd64:
     build-on: [ubuntu@24.04:amd64]
     build-for: [ubuntu@24.04:amd64]
   ubuntu-24.04-arm64:
     build-on: [ubuntu@24.04:arm64]
     build-for: [ubuntu@24.04:arm64]
-  ubuntu-24.04-s390x:
-    build-on: [ubuntu@24.04:s390x]
-    build-for: [ubuntu@24.04:s390x]
   ubuntu-24.04-ppc64el:
     build-on: [ubuntu@24.04:ppc64el]
     build-for: [ubuntu@24.04:ppc64el]
+  ubuntu-24.04-s390x:
+    build-on: [ubuntu@24.04:s390x]
+    build-for: [ubuntu@24.04:s390x]

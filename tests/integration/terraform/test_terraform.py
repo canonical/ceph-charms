@@ -7,24 +7,22 @@ from __future__ import annotations
 
 import json
 import logging
-import os
-import shutil
 import subprocess
-import tempfile
 import time
-from pathlib import Path
 from typing import Any
 
 import jubilant
 import pytest
 
 from tests import helpers
+from tests.integration.terraform.helpers import (
+    COMPONENT_MODULE_SOURCE,
+    TerraformController,
+    planned_resource_addresses as _planned_resource_addresses,
+    workspace_main as _workspace_main,
+)
 
 logger = logging.getLogger(__name__)
-pytestmark = pytest.mark.slow
-
-REPO_ROOT = helpers.find_repo_root(Path(__file__).resolve())
-COMPONENT_MODULE_SOURCE = f"{REPO_ROOT}//terraform"
 
 CORE_APPS = ("ceph-mon", "ceph-osd")
 RGW_APP = "ceph-radosgw"
@@ -45,13 +43,6 @@ RGW_REJECTED_MESSAGES = {
 
 RGW_ATTACH_TIMEOUT = 15 * 60
 POLL_INTERVAL_SECONDS = 10
-
-TF_TIMEOUT_INIT = 10 * 60
-TF_TIMEOUT_PLAN = 10 * 60
-TF_TIMEOUT_SHOW = 5 * 60
-TF_TIMEOUT_APPLY = 45 * 60
-TF_TIMEOUT_DESTROY = 8 * 60
-TF_TIMEOUT_DESTROY_RETRY = 3 * 60
 
 EXPECTED_STATE_RESOURCES = {
     "module.ceph.module.ceph_mon.juju_application.ceph_mon",
@@ -106,8 +97,58 @@ OFFER_EXPOSURE_CASES = (
 )
 
 EXPOSE_ENDPOINTS_VALIDATION_ERROR = "expose_endpoints entries must be valid"
+DISABLED_CHARM_EXPOSURE_ERROR = "expose_endpoints cannot reference an optional charm"
 MODEL_TARGET_VALIDATION_ERROR = "Exactly one model target must be provided"
 TEST_MODEL_UUID = "00000000-0000-0000-0000-000000000001"
+
+# Opt-in charm wiring cases for the additional leaf modules. Each tuple is
+# (var_name, expected_integration_address, expected_application_address).
+ADDITIONAL_CHARM_INTEGRATION_CASES = (
+    (
+        "ceph_fs",
+        "module.ceph.juju_integration.ceph_mon_to_ceph_fs[0]",
+        "module.ceph.module.ceph_fs[0].juju_application.ceph_fs",
+    ),
+    (
+        "ceph_nfs",
+        "module.ceph.juju_integration.ceph_mon_to_ceph_nfs[0]",
+        "module.ceph.module.ceph_nfs[0].juju_application.ceph_nfs",
+    ),
+    (
+        "ceph_nvme",
+        "module.ceph.juju_integration.ceph_mon_to_ceph_nvme[0]",
+        "module.ceph.module.ceph_nvme[0].juju_application.ceph_nvme",
+    ),
+    (
+        "ceph_rbd_mirror",
+        "module.ceph.juju_integration.ceph_mon_to_ceph_rbd_mirror[0]",
+        "module.ceph.module.ceph_rbd_mirror[0].juju_application.ceph_rbd_mirror",
+    ),
+    (
+        "ceph_dashboard",
+        "module.ceph.juju_integration.ceph_mon_to_ceph_dashboard[0]",
+        "module.ceph.module.ceph_dashboard[0].juju_application.ceph_dashboard",
+    ),
+)
+
+# Additional charm applications and their ceph-mon integrations must not be
+# planned unless the corresponding object input is non-null.
+ADDITIONAL_CHARM_DEFAULT_ABSENT = (
+    "module.ceph.module.ceph_fs[0].juju_application.ceph_fs",
+    "module.ceph.module.ceph_nfs[0].juju_application.ceph_nfs",
+    "module.ceph.module.ceph_nvme[0].juju_application.ceph_nvme",
+    "module.ceph.module.ceph_rbd_mirror[0].juju_application.ceph_rbd_mirror",
+    "module.ceph.module.ceph_dashboard[0].juju_application.ceph_dashboard",
+    "module.ceph.module.ceph_proxy[0].juju_application.ceph_proxy",
+    "module.ceph.juju_integration.ceph_mon_to_ceph_fs[0]",
+    "module.ceph.juju_integration.ceph_mon_to_ceph_nfs[0]",
+    "module.ceph.juju_integration.ceph_mon_to_ceph_nvme[0]",
+    "module.ceph.juju_integration.ceph_mon_to_ceph_rbd_mirror[0]",
+    "module.ceph.juju_integration.ceph_mon_to_ceph_dashboard[0]",
+)
+
+CEPH_PROXY_APP_ADDRESS = "module.ceph.module.ceph_proxy[0].juju_application.ceph_proxy"
+CEPH_FS_OFFER_ADDRESS = 'module.ceph.module.ceph_fs[0].juju_offer.offers["cephfs_share"]'
 
 
 def _radosgw_related_to_mon(status: jubilant.Status) -> bool:
@@ -149,12 +190,12 @@ def _status_diagnostics(status: jubilant.Status) -> str:
     return " | ".join(app_summaries)
 
 
-def _wait_for_core_apps_or_skip_storage_constraints(
+def _wait_for_core_apps(
     juju: jubilant.Juju,
     *apps: str,
     timeout: int = helpers.DEFAULT_TIMEOUT,
 ) -> jubilant.Status:
-    """Wait for core apps to become active, skipping known host storage constraints."""
+    """Wait for core apps to become active and fail on storage exhaustion."""
     deadline = time.time() + timeout
 
     while time.time() < deadline:
@@ -162,7 +203,7 @@ def _wait_for_core_apps_or_skip_storage_constraints(
         if jubilant.all_active(status, *apps):
             return status
         if helpers.has_storage_error(status, LOOP_DEVICE_ERROR):
-            pytest.skip("Runner has no free loop devices for ceph-osd storage directives")
+            raise AssertionError("Runner has no free loop devices for ceph-osd storage directives")
         if jubilant.any_error(status):
             raise AssertionError(f"Juju reported an error status: {_status_diagnostics(status)}")
         time.sleep(POLL_INTERVAL_SECONDS)
@@ -215,335 +256,24 @@ def _wait_for_radosgw_usable(
     )
 
 
-def _collect_plan_addresses(module: dict[str, Any], addresses: set[str]) -> None:
-    for resource in module.get("resources", []):
-        address = resource.get("address")
-        if isinstance(address, str):
-            addresses.add(address)
-
-    for child in module.get("child_modules", []):
-        if isinstance(child, dict):
-            _collect_plan_addresses(child, addresses)
-
-
-def _planned_resource_addresses(plan_json: dict[str, Any]) -> set[str]:
-    addresses: set[str] = set()
-    planned_values = plan_json.get("planned_values", {})
-    root_module = planned_values.get("root_module", {})
-    if isinstance(root_module, dict):
-        _collect_plan_addresses(root_module, addresses)
-    return addresses
-
-
-def _planned_output_value(plan_json: dict[str, Any], output_name: str) -> Any:
-    planned_values = plan_json.get("planned_values", {})
-    outputs = planned_values.get("outputs", {})
-    if isinstance(outputs, dict):
-        output = outputs.get(output_name, {})
-        if isinstance(output, dict) and "value" in output:
-            return output["value"]
-
-    output_changes = plan_json.get("output_changes", {})
-    if isinstance(output_changes, dict):
-        output = output_changes.get(output_name, {})
-        if isinstance(output, dict) and "after" in output:
-            return output["after"]
-
-    raise KeyError(f"Planned output {output_name!r} not found in terraform plan JSON")
-
-
-def _workspace_main(module_source: str) -> str:
-    # Keep test workspace minimal and self-contained so each module test run can
-    # pass optional relation descriptors via plain JSON `-var` arguments.
-    # The source is a package root + subdir (`<repo>//terraform`) so nested
-    # leaf-module relative paths remain inside the same Terraform module package.
-    return f'''
-terraform {{
-  required_version = ">= 1.6"
-
-  required_providers {{
-    juju = {{
-      source  = "juju/juju"
-      version = ">= 1.0.0"
-    }}
-  }}
-}}
-
-provider "juju" {{}}
-
-variable "model_name" {{
-  type    = string
-  default = null
-}}
-
-variable "model_uuid" {{
-  type    = string
-  default = null
-}}
-
-variable "charm_channel" {{
-  type    = string
-  default = null
-}}
-
-variable "bootstrap_source" {{
-  type    = any
-  default = null
-}}
-
-variable "secrets_storage" {{
-  type    = any
-  default = null
-}}
-
-variable "expose_endpoints" {{
-  type    = list(string)
-  default = []
-}}
-
-variable "ceph_radosgw" {{
-  type    = any
-  default = {{}}
-}}
-
-module "ceph" {{
-  source = {json.dumps(str(module_source))}
-
-  model_name       = var.model_name
-  model_uuid       = var.model_uuid
-  bootstrap_source = var.bootstrap_source
-  secrets_storage  = var.secrets_storage
-  expose_endpoints = var.expose_endpoints
-
-  ceph_mon = merge({{
-    units = 3
-    config = {{
-      "expected-osd-count" = "3"
-      "monitor-count"      = "3"
-    }}
-  }}, var.charm_channel == null ? {{}} : {{
-    channel = var.charm_channel
-  }})
-
-  ceph_osd = merge({{
-    units = 3
-    storage_directives = {{
-      "osd-devices" = "1G,1"
-    }}
-  }}, var.charm_channel == null ? {{}} : {{
-    channel = var.charm_channel
-  }})
-
-  ceph_radosgw = merge(
-    var.ceph_radosgw,
-    var.charm_channel == null ? {{}} : {{
-      channel = var.charm_channel
-    }},
-  )
-}}
-
-output "components" {{
-  value = module.ceph.components
-}}
-
-output "components_map" {{
-  value = module.ceph.components_map
-}}
-
-output "offers" {{
-  value = module.ceph.offers
-}}
-
-output "provides" {{
-  value = module.ceph.provides
-}}
-
-output "requires" {{
-  value = module.ceph.requires
-}}
-'''
-
-
-class TerraformController:
-    """Convenience wrapper around Terraform CLI operations for this test suite."""
-
-    def __init__(self, workspace: Path, env: dict[str, str]):
-        self._workspace = workspace
-        self._env = env
-
-    @property
-    def workspace(self) -> Path:
-        return self._workspace
-
-    def _run(
-        self,
-        *args: str,
-        check: bool = True,
-        timeout: int | None = None,
-        log_output: bool = True,
-    ) -> subprocess.CompletedProcess[str]:
-        command = ["terraform", *args]
-
-        try:
-            result = subprocess.run(
-                command,
-                cwd=self._workspace,
-                env=self._env,
-                check=False,
-                capture_output=True,
-                text=True,
-                timeout=timeout,
-            )
-        except subprocess.TimeoutExpired as exc:
-            stdout = exc.stdout or ""
-            stderr = exc.stderr or ""
-            if stdout:
-                logger.info(stdout)
-            if stderr:
-                logger.warning(stderr)
-            logger.warning(
-                "Terraform command timed out after %ss: %s",
-                timeout,
-                " ".join(command),
-            )
-            raise
-
-        if log_output and result.stdout:
-            logger.info(result.stdout)
-        if log_output and result.stderr:
-            logger.warning(result.stderr)
-        if check and result.returncode != 0:
-            raise subprocess.CalledProcessError(
-                returncode=result.returncode,
-                cmd=command,
-                output=result.stdout,
-                stderr=result.stderr,
-            )
-        return result
-
-    def init(self) -> None:
-        self._run("init", "-input=false", "-no-color", timeout=TF_TIMEOUT_INIT)
-
-    def plan(self, *, out: str = "tfplan", extra_args: list[str] | None = None) -> None:
-        args = ["plan", "-input=false", "-no-color", "-out", out]
-        if extra_args:
-            args.extend(extra_args)
-        self._run(*args, timeout=TF_TIMEOUT_PLAN)
-
-    def show_plan(self, plan_file: str = "tfplan") -> None:
-        self._run("show", "-no-color", plan_file, timeout=TF_TIMEOUT_SHOW)
-
-    def show_plan_json(self, plan_file: str = "tfplan") -> dict[str, Any]:
-        result = self._run(
-            "show",
-            "-json",
-            plan_file,
-            timeout=TF_TIMEOUT_SHOW,
-            log_output=False,
-        )
-        return json.loads(result.stdout)
-
-    def apply(self) -> None:
-        self.plan(out="tfplan")
-        self._run(
-            "apply",
-            "-input=false",
-            "-no-color",
-            "-auto-approve",
-            "tfplan",
-            timeout=TF_TIMEOUT_APPLY,
-        )
-
-    def destroy(self) -> None:
-        try:
-            result = self._run(
-                "destroy",
-                "-input=false",
-                "-no-color",
-                "-auto-approve",
-                check=False,
-                timeout=TF_TIMEOUT_DESTROY,
-            )
-        except subprocess.TimeoutExpired:
-            logger.warning("terraform destroy timed out")
-            return
-
-        if result.returncode == 0:
-            return
-
-        logger.warning("terraform destroy exited with %s; retrying once", result.returncode)
-
-        try:
-            retry_result = self._run(
-                "destroy",
-                "-input=false",
-                "-no-color",
-                "-auto-approve",
-                check=False,
-                timeout=TF_TIMEOUT_DESTROY_RETRY,
-            )
-        except subprocess.TimeoutExpired:
-            logger.warning("terraform destroy retry timed out")
-            return
-
-        if retry_result.returncode != 0:
-            logger.warning("terraform destroy retry exited with %s", retry_result.returncode)
-
-    def state_list(self) -> set[str]:
-        result = self._run("state", "list", timeout=TF_TIMEOUT_SHOW)
-        return {line.strip() for line in result.stdout.splitlines() if line.strip()}
-
-    def outputs(self) -> dict[str, Any]:
-        result = self._run("output", "-json", timeout=TF_TIMEOUT_SHOW)
-        return json.loads(result.stdout)
+@pytest.fixture(scope="module")
+def terraform_controller(terraform_controller_factory) -> TerraformController:
+    """Provision the default component workspace for the core-stack tests."""
+    return terraform_controller_factory(
+        _workspace_main(COMPONENT_MODULE_SOURCE),
+        prefix="ceph-terraform-core-",
+    )
 
 
 @pytest.fixture(scope="module")
-def terraform_controller(
-    juju: jubilant.Juju, request: pytest.FixtureRequest
-) -> TerraformController:
-    """Provision an isolated Terraform workspace tied to the temporary Juju model."""
-    model_name = juju.model
-    if not model_name:
-        raise ValueError("Juju model name unavailable")
-
-    workspace = Path(tempfile.mkdtemp(prefix="ceph-terraform-it-"))
-
-    (workspace / "main.tf").write_text(_workspace_main(COMPONENT_MODULE_SOURCE))
-
-    env = os.environ.copy()
-    env["TF_IN_AUTOMATION"] = "1"
-    env["JUJU_MODEL"] = model_name
-    env["TF_VAR_model_name"] = model_name
-
-    controller = TerraformController(workspace, env)
-    controller.init()
-
-    keep_models = bool(request.config.getoption("--keep-models"))
-    keep_workspace = bool(request.config.getoption("--keep-terraform-workspace"))
-
-    yield controller
-
-    if request.session.testsfailed:
-        subprocess.run(["juju", "status", "-m", model_name], check=False)
-
-    if keep_models:
-        logger.info("Keeping model %s and Terraform resources for debugging", model_name)
-    else:
-        controller.destroy()
-
-    if keep_models or keep_workspace:
-        logger.info("Keeping Terraform workspace at %s", workspace)
-    else:
-        shutil.rmtree(workspace, ignore_errors=True)
-
-
-@pytest.fixture(scope="module")
-def applied_stack(terraform_controller: TerraformController, juju: jubilant.Juju) -> jubilant.Status:
+def applied_stack(
+    terraform_controller: TerraformController,
+    juju: jubilant.Juju,
+) -> jubilant.Status:
     """Apply the default Terraform stack and wait for expected readiness."""
     terraform_controller.apply()
 
-    _wait_for_core_apps_or_skip_storage_constraints(juju, *CORE_APPS)
+    _wait_for_core_apps(juju, *CORE_APPS)
     return _wait_for_radosgw_usable(juju)
 
 
@@ -609,7 +339,7 @@ class TestTerraformModule:
 
         osd_storage_directives = components_map["ceph_osd"]["storage_directives"] or {}
         assert set(osd_storage_directives) == {"osd-devices"}
-        assert osd_storage_directives["osd-devices"] == "1G,1"
+        assert osd_storage_directives["osd-devices"] == "10G,1"
 
         provides = outputs["provides"]["value"]
         for key in ("ceph_mon_osd", "ceph_mon_radosgw", "ceph_radosgw_s3"):
@@ -725,3 +455,94 @@ class TestTerraformOptionalInputWiring:
 
         details = f"{exc_info.value.output or ''}\n{exc_info.value.stderr or ''}"
         assert MODEL_TARGET_VALIDATION_ERROR in details
+
+
+@pytest.mark.slow
+class TestAdditionalCharmWiring:
+    """Plan-time wiring for the opt-in ceph-fs/nfs/nvme/rbd-mirror/dashboard/proxy modules."""
+
+    def test_additional_charms_absent_by_default(
+        self,
+        terraform_controller: TerraformController,
+    ) -> None:
+        """Opt-in charms and their integrations must not be planned by default."""
+        terraform_controller.plan(out="default-no-additional.tfplan")
+        addresses = _planned_resource_addresses(
+            terraform_controller.show_plan_json("default-no-additional.tfplan")
+        )
+        for address in ADDITIONAL_CHARM_DEFAULT_ABSENT:
+            assert address not in addresses, f"{address} should not be planned by default"
+
+    @pytest.mark.parametrize(
+        "var_name,expected_integration,expected_app",
+        ADDITIONAL_CHARM_INTEGRATION_CASES,
+    )
+    def test_additional_charm_integration_plan_wiring(
+        self,
+        terraform_controller: TerraformController,
+        var_name: str,
+        expected_integration: str,
+        expected_app: str,
+    ) -> None:
+        """Enabling an opt-in charm should plan its app and ceph-mon integration."""
+        plan_file = f"additional-{var_name}.tfplan"
+        terraform_controller.plan(
+            out=plan_file,
+            extra_args=["-var", f"{var_name}={json.dumps({})}"],
+        )
+        addresses = _planned_resource_addresses(terraform_controller.show_plan_json(plan_file))
+        assert expected_app in addresses, f"{expected_app} not planned when {var_name} is set"
+        assert expected_integration in addresses, (
+            f"{expected_integration} not planned when {var_name} is set"
+        )
+
+    def test_expose_disabled_charm_fails_validation(
+        self,
+        terraform_controller: TerraformController,
+    ) -> None:
+        """An offer cannot be requested for an optional charm that is disabled."""
+        with pytest.raises(subprocess.CalledProcessError) as exc_info:
+            terraform_controller.plan(
+                out="invalid-disabled-charm-offer.tfplan",
+                extra_args=[
+                    "-var",
+                    f"expose_endpoints={json.dumps(['ceph_fs_cephfs_share'])}",
+                ],
+            )
+
+        details = f"{exc_info.value.output or ''}\n{exc_info.value.stderr or ''}"
+        assert DISABLED_CHARM_EXPOSURE_ERROR in details
+
+    def test_ceph_proxy_deploys_without_integration(
+        self,
+        terraform_controller: TerraformController,
+    ) -> None:
+        """ceph-proxy is a mon replacement and must not be wired to ceph-mon."""
+        plan_file = "additional-ceph_proxy.tfplan"
+        terraform_controller.plan(
+            out=plan_file,
+            extra_args=["-var", f"ceph_proxy={json.dumps({})}"],
+        )
+        addresses = _planned_resource_addresses(terraform_controller.show_plan_json(plan_file))
+        assert CEPH_PROXY_APP_ADDRESS in addresses
+        assert not any("ceph_mon_to_ceph_proxy" in addr for addr in addresses), (
+            "ceph-proxy must not be wired to ceph-mon"
+        )
+
+    def test_expose_ceph_fs_offer(
+        self,
+        terraform_controller: TerraformController,
+    ) -> None:
+        """Deploying ceph-fs and exposing cephfs_share should publish a Juju offer."""
+        plan_file = "additional-ceph-fs-offer.tfplan"
+        terraform_controller.plan(
+            out=plan_file,
+            extra_args=[
+                "-var",
+                f"ceph_fs={json.dumps({})}",
+                "-var",
+                f"expose_endpoints={json.dumps(['ceph_fs_cephfs_share'])}",
+            ],
+        )
+        addresses = _planned_resource_addresses(terraform_controller.show_plan_json(plan_file))
+        assert CEPH_FS_OFFER_ADDRESS in addresses

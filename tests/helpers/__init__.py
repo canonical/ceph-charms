@@ -97,7 +97,16 @@ def wait_for_apps_active(
         status = juju.status()
         if jubilant.all_active(status, *apps):
             return status
-        if jubilant.any_error(status):
+        target_error = any(
+            app_status.app_status.current == "error"
+            or any(
+                unit_status.workload_status.current == "error"
+                for unit_status in app_status.units.values()
+            )
+            for app in apps
+            if (app_status := status.apps.get(app)) is not None
+        )
+        if target_error or jubilant.any_error(status):
             raise AssertionError(f"Juju reported an error status: {status}")
         time.sleep(poll_interval)
 

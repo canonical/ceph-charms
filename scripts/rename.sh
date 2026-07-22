@@ -42,5 +42,18 @@ if [[ -n "${generic_platform}" ]]; then
 elif [[ -e "${charm}_ubuntu-26.04-amd64.charm" ]]; then
     default_artifact="${charm}_ubuntu-26.04-amd64.charm"
 fi
+# Guard against silently shipping an empty/incomplete charm (e.g. a reactive
+# build where charm-tools was unavailable): the chosen generic artifact must
+# contain a dispatch file or hooks. Fail loudly instead of uploading junk.
+# (Disable pipefail here: grep -q closes the pipe early and unzip would otherwise
+# surface SIGPIPE 141 as a false failure.)
+set +o pipefail
+if ! unzip -l "${default_artifact}" 2>/dev/null | grep -qE 'hooks/|[[:space:]]dispatch$'; then
+    set -o pipefail
+    echo "ERROR: ${default_artifact} has no dispatch file nor hooks; refusing to promote as ${charm}.charm" >&2
+    echo "       The build likely failed to run charm-tools (charm build)." >&2
+    exit 1
+fi
+set -o pipefail
 cp "${default_artifact}" "${charm}.charm"
 cp "${charm}.charm" ../

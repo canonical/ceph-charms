@@ -1978,6 +1978,46 @@ class CephFindLeastUsedDeviceTestCase(unittest.TestCase):
         )
         _get_lvs.assert_called()
 
+    @patch.object(utils, '_luks_uuid')
+    @patch.object(utils, 'lvm')
+    def test_find_least_used_utility_device_luks_lvs(self, _lvm, _luks_uuid):
+        # Regression test for LP: #1821454. With vaultlocker encrypted
+        # utility devices the PV lives on the mapper device, so get_lvs()
+        # must follow the raw->mapper redirect. Without it every device
+        # reports zero LVs and find_least_used_utility_device() always
+        # returns the first device, collapsing all wal/db LVs onto one
+        # utility device.
+        uuids = {
+            '/dev/sdb': 'uuid-sdb',
+            '/dev/sdc': 'uuid-sdc',
+            '/dev/sdd': 'uuid-sdd',
+        }
+        # NOTE: list_logical_volumes is invoked with a 'vg_name=<vg>'
+        # select string and the existing test convention strips that prefix
+        # with str.lstrip('vg_name=') which strips *characters*, so vg names
+        # must not start with any of v/g/_/n/a/m/e/=.
+        vgs = {
+            '/dev/mapper/crypt-uuid-sdb': 'cephdbsdb',
+            '/dev/mapper/crypt-uuid-sdc': 'cephdbsc',
+            '/dev/mapper/crypt-uuid-sdd': 'cephdbsdd',
+        }
+        lv_lists = {
+            'cephdbsdb': ['lv', 'lv', 'lv'],
+            'cephdbsc': [],
+            'cephdbsdd': ['lv'],
+        }
+        _luks_uuid.side_effect = lambda d: uuids.get(d)
+        _lvm.is_lvm_physical_volume.side_effect = lambda d: d in vgs
+        _lvm.list_lvm_volume_group.side_effect = lambda d: vgs.get(d)
+        _lvm.list_logical_volumes.side_effect = (
+            lambda sel: lv_lists.get(sel.lstrip('vg_name='), []))
+        # sdc has zero LVs and must be selected; without the fix sdb (the
+        # first device, with 3 LVs) would always be returned.
+        self.assertEqual(
+            utils.find_least_used_utility_device(
+                ['/dev/sdb', '/dev/sdc', '/dev/sdd'], lvs=True),
+            '/dev/sdc')
+
 
 class CephGetLVSTestCase(unittest.TestCase):
 
@@ -2018,13 +2058,48 @@ class CephGetLVSTestCase(unittest.TestCase):
         )
         _lvm.list_logical_volumes.assert_called_with('vg_name=missingvg')
 
+    @patch.object(utils, '_luks_uuid')
     @patch.object(utils, 'lvm')
-    def test_get_lvs_no_pv(self, _lvm):
+    def test_get_lvs_no_pv(self, _lvm, _luks_uuid):
+        _lvm.is_lvm_physical_volume.return_value = False
+        _luks_uuid.return_value = None
+        self.assertEqual(utils.get_lvs('/dev/sdb'), [])
+        _lvm.is_lvm_physical_volume.assert_called_with('/dev/sdb')
+        _luks_uuid.assert_called_with('/dev/sdb')
+
+    @patch.object(utils, '_luks_uuid')
+    @patch.object(utils, 'lvm')
+    def test_get_lvs_luks_encrypted(self, _lvm, _luks_uuid):
+        # A vaultlocker encrypted utility device: the raw device is not a PV
+        # but the LVM PV/VG/LVs live on the decrypted mapper device.
+        luks_uuid = '5e1e4c89-4f68-4b9a-bd93-e25eec34e80f'
+        mapper_dev = '/dev/mapper/crypt-{}'.format(luks_uuid)
+        _luks_uuid.return_value = luks_uuid
+        _lvm.is_lvm_physical_volume.side_effect = lambda d: d == mapper_dev
+        _lvm.list_lvm_volume_group.return_value = 'testvg'
+        _lvm.list_logical_volumes.side_effect = (
+            lambda vg: self._lvs.get(vg.lstrip('vg_name='), [])
+        )
+        self.assertEqual(utils.get_lvs('/dev/sdb'), self._lvs['testvg'])
+        # PV is inspected on the raw device first, then on the mapper.
+        _lvm.is_lvm_physical_volume.assert_has_calls(
+            [call('/dev/sdb'), call(mapper_dev)])
+        _luks_uuid.assert_called_with('/dev/sdb')
+        _lvm.list_lvm_volume_group.assert_called_with(mapper_dev)
+        _lvm.list_logical_volumes.assert_called_with('vg_name=testvg')
+
+    @patch.object(utils, '_luks_uuid')
+    @patch.object(utils, 'lvm')
+    def test_get_lvs_luks_not_yet_pv(self, _lvm, _luks_uuid):
+        # LUKS device whose mapper has not been initialised as a PV yet.
+        luks_uuid = '5e1e4c89-4f68-4b9a-bd93-e25eec34e80f'
+        mapper_dev = '/dev/mapper/crypt-{}'.format(luks_uuid)
+        _luks_uuid.return_value = luks_uuid
         _lvm.is_lvm_physical_volume.return_value = False
         self.assertEqual(utils.get_lvs('/dev/sdb'), [])
-        _lvm.is_lvm_physical_volume.assert_called_with(
-            '/dev/sdb'
-        )
+        _lvm.is_lvm_physical_volume.assert_has_calls(
+            [call('/dev/sdb'), call(mapper_dev)])
+        _luks_uuid.assert_called_with('/dev/sdb')
 
     @patch.object(utils, 'log')
     def test_is_pristine_disk(self, _log):

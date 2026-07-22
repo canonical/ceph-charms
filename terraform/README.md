@@ -4,8 +4,21 @@ This module deploys the `ceph-mon`, `ceph-osd`, and `ceph-radosgw` charms into a
 - `ceph-mon:osd` ↔ `ceph-osd:mon`
 - `ceph-mon:radosgw` ↔ `ceph-radosgw:mon`
 
+The remaining charms in this repo are available as opt-in additions. Each deploys
+only when its configuration object is non-null, keeping the default
+core topology unchanged. When enabled, the monitor-consuming charms are
+wired to `ceph-mon` automatically:
+- `ceph-fs:ceph-mds` ↔ `ceph-mon:mds`
+- `ceph-nfs:ceph-client` ↔ `ceph-mon:client`
+- `ceph-nvme:ceph-client` ↔ `ceph-mon:client`
+- `ceph-rbd-mirror:ceph-local` ↔ `ceph-mon:rbd-mirror`
+- `ceph-dashboard:dashboard` ↔ `ceph-mon:dashboard` (subordinate, colocated)
+
+`ceph-proxy` is a `ceph-mon` replacement that fronts an external cluster; it is
+deployed standalone and intentionally **not** wired to `ceph-mon`.
+
 Implementation model:
-- charm deployments are delegated to leaf modules (`../ceph-mon/terraform`, `../ceph-osd/terraform`, `../ceph-radosgw/terraform`)
+- charm deployments are delegated to leaf modules (`../ceph-mon/terraform`, `../ceph-osd/terraform`, `../ceph-radosgw/terraform`, and `../ceph-fs/terraform`, `../ceph-nfs/terraform`, `../ceph-nvme/terraform`, `../ceph-rbd-mirror/terraform`, `../ceph-dashboard/terraform`, `../ceph-proxy/terraform`)
 - this top-level module is responsible for cross-charm integrations and aggregated outputs
 
 It follows the CC008 component-module style with:
@@ -80,8 +93,14 @@ Exactly one non-empty model target must be provided: `model_uuid` or `model_name
 | `bootstrap_source` | `object` | DEPRECATED: External integration descriptor for `ceph-mon:bootstrap-source` (`kind = endpoint|offer`). This input will be removed in the Umbrella release. |
 | `secrets_storage` | `object` | External integration descriptor for `ceph-osd:secrets-storage` (`kind = endpoint|offer`). |
 | `expose_endpoints` | `list(string)` | List of `<charm>_<endpoint_alias>` keys from `provides` to publish as Juju offers. |
+| `ceph_fs` | `object` | Optional `ceph-fs` deployment. Set to a non-null object to deploy; wired to `ceph-mon:mds`. |
+| `ceph_nfs` | `object` | Optional `ceph-nfs` deployment. Set to a non-null object to deploy; wired to `ceph-mon:client`. `ceph-nfs` has no provides endpoints. |
+| `ceph_nvme` | `object` | Optional `ceph-nvme` deployment. Set to a non-null object to deploy; wired to `ceph-mon:client`. |
+| `ceph_rbd_mirror` | `object` | Optional `ceph-rbd-mirror` deployment. Set to a non-null object to deploy; its local cluster is wired to `ceph-mon:rbd-mirror`. |
+| `ceph_dashboard` | `object` | Optional `ceph-dashboard` deployment. Subordinate: colocated with `ceph-mon` via the `dashboard` relation; carries no units. |
+| `ceph_proxy` | `object` | Optional `ceph-proxy` deployment. A `ceph-mon` replacement fronting an external cluster; deployed standalone and not wired to `ceph-mon`. |
 
-Offer publication is enabled when either a charm's `offered_endpoints` list or this top-level `expose_endpoints` list includes a provided endpoint.
+Offer publication is enabled when either a charm's `offered_endpoints` list or this top-level `expose_endpoints` list includes a provided endpoint. An `expose_endpoints` entry for an opt-in charm is valid only when that charm's configuration object is non-null.
 
 > **Warning**: The `bootstrap_source` Terraform input maps to ceph-mon's
 > deprecated `bootstrap-source` relation and will be removed in the Umbrella
@@ -143,5 +162,38 @@ module "ceph_component" {
     base    = "ubuntu@24.04"
     units   = 1
   }
+}
+```
+
+## Example (core cluster + ceph-fs and ceph-dashboard)
+
+Opt-in charms are enabled by setting their object to a non-null value (an empty
+object `{}` deploys with defaults). They are wired to `ceph-mon` automatically:
+
+```hcl
+module "ceph_component" {
+  source = "../terraform"
+
+  model_uuid = "00000000-0000-0000-0000-000000000000"
+
+  ceph_mon = {
+    units = 3
+    config = {
+      "monitor-count"      = "3"
+      "expected-osd-count" = "3"
+    }
+  }
+
+  ceph_osd = {
+    units = 3
+    storage_directives = {
+      "osd-devices" = "1G,1"
+    }
+  }
+
+  # Deploy ceph-fs (wired to ceph-mon:mds) and the subordinate ceph-dashboard
+  # (colocated with ceph-mon via the dashboard relation).
+  ceph_fs        = {}
+  ceph_dashboard = {}
 }
 ```

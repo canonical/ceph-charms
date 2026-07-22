@@ -1,0 +1,100 @@
+# Copyright 2026 Canonical Ltd.
+# See LICENSE file for licensing details.
+
+terraform {
+  required_version = ">= 1.6"
+
+  required_providers {
+    juju = {
+      source  = "juju/juju"
+      version = ">= 1.0.0"
+    }
+  }
+}
+
+provider "juju" {}
+
+variable "model_name" {
+  type = string
+}
+
+variable "charm_channel" {
+  type    = string
+  default = null
+}
+
+variable "juju_base" {
+  type    = string
+  default = null
+}
+
+variable "proxy_config" {
+  type    = map(string)
+  default = null
+}
+
+data "juju_model" "target" {
+  name  = var.model_name
+  owner = "admin"
+}
+
+locals {
+  charm_overrides = merge(
+    var.charm_channel == null ? {} : { channel = var.charm_channel },
+    var.juju_base == null ? {} : { base = var.juju_base },
+  )
+}
+
+module "source" {
+  source = "__COMPONENT_MODULE_SOURCE__"
+
+  model_uuid = data.juju_model.target.uuid
+
+  ceph_mon = merge({
+    units = 3
+    config = {
+      "expected-osd-count" = "3"
+      "monitor-count"      = "3"
+    }
+  }, local.charm_overrides)
+
+  ceph_osd = merge({
+    units = 3
+    storage_directives = {
+      "osd-devices" = "10G,1"
+    }
+  }, local.charm_overrides)
+
+  ceph_radosgw = local.charm_overrides
+
+  ceph_proxy = var.proxy_config == null ? null : merge({
+    config = var.proxy_config
+  }, local.charm_overrides)
+}
+
+module "proxy_ceph_fs" {
+  count  = var.proxy_config == null ? 0 : 1
+  source = "__CEPH_FS_MODULE_SOURCE__"
+
+  app_name   = "proxy-ceph-fs"
+  base       = coalesce(var.juju_base, "ubuntu@24.04")
+  channel    = coalesce(var.charm_channel, "squid/stable")
+  model_uuid = data.juju_model.target.uuid
+}
+
+resource "juju_integration" "proxy_to_ceph_fs" {
+  count      = var.proxy_config == null ? 0 : 1
+  model_uuid = data.juju_model.target.uuid
+
+  application {
+    name     = "ceph-proxy"
+    endpoint = "mds"
+  }
+
+  application {
+    name     = module.proxy_ceph_fs[0].application.name
+    endpoint = "ceph-mds"
+  }
+
+  depends_on = [module.source]
+}

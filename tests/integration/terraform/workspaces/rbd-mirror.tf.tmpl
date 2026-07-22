@@ -1,0 +1,143 @@
+# Copyright 2026 Canonical Ltd.
+# See LICENSE file for licensing details.
+
+terraform {
+  required_version = ">= 1.6"
+
+  required_providers {
+    juju = {
+      source  = "juju/juju"
+      version = ">= 1.0.0"
+    }
+  }
+}
+
+provider "juju" {}
+
+variable "model_name" {
+  type = string
+}
+
+variable "charm_channel" {
+  type    = string
+  default = null
+}
+
+variable "juju_base" {
+  type    = string
+  default = null
+}
+
+data "juju_model" "target" {
+  name  = var.model_name
+  owner = "admin"
+}
+
+locals {
+  charm_overrides = merge(
+    var.charm_channel == null ? {} : { channel = var.charm_channel },
+    var.juju_base == null ? {} : { base = var.juju_base },
+  )
+}
+
+module "site_a" {
+  source = "__COMPONENT_MODULE_SOURCE__"
+
+  model_uuid = data.juju_model.target.uuid
+
+  ceph_mon = merge({
+    app_name = "ceph-mon-a"
+    units    = 3
+    config = {
+      "expected-osd-count" = "3"
+      "monitor-count"      = "3"
+    }
+  }, local.charm_overrides)
+
+  ceph_osd = merge({
+    app_name = "ceph-osd-a"
+    units    = 3
+    storage_directives = {
+      "osd-devices" = "10G,1"
+    }
+  }, local.charm_overrides)
+
+  ceph_radosgw = merge({
+    app_name = "ceph-radosgw-a"
+  }, local.charm_overrides)
+
+  ceph_rbd_mirror = merge({
+    app_name = "ceph-rbd-mirror-a"
+  }, local.charm_overrides)
+}
+
+module "site_b" {
+  source = "__COMPONENT_MODULE_SOURCE__"
+
+  model_uuid = data.juju_model.target.uuid
+
+  ceph_mon = merge({
+    app_name = "ceph-mon-b"
+    units    = 3
+    config = {
+      "expected-osd-count" = "3"
+      "monitor-count"      = "3"
+    }
+  }, local.charm_overrides)
+
+  ceph_osd = merge({
+    app_name = "ceph-osd-b"
+    units    = 3
+    storage_directives = {
+      "osd-devices" = "10G,1"
+    }
+  }, local.charm_overrides)
+
+  ceph_radosgw = merge({
+    app_name = "ceph-radosgw-b"
+  }, local.charm_overrides)
+
+  ceph_rbd_mirror = merge({
+    app_name = "ceph-rbd-mirror-b"
+  }, local.charm_overrides)
+}
+
+resource "juju_integration" "mirror_a_remote" {
+  model_uuid = data.juju_model.target.uuid
+
+  application {
+    name     = "ceph-rbd-mirror-a"
+    endpoint = "ceph-remote"
+  }
+
+  application {
+    name     = "ceph-mon-b"
+    endpoint = "rbd-mirror"
+  }
+
+  depends_on = [module.site_a, module.site_b]
+}
+
+resource "juju_integration" "mirror_b_remote" {
+  model_uuid = data.juju_model.target.uuid
+
+  application {
+    name     = "ceph-rbd-mirror-b"
+    endpoint = "ceph-remote"
+  }
+
+  application {
+    name     = "ceph-mon-a"
+    endpoint = "rbd-mirror"
+  }
+
+  depends_on = [module.site_a, module.site_b]
+}
+
+output "site_a_components" {
+  value = module.site_a.components_map
+}
+
+output "site_b_components" {
+  value = module.site_b.components_map
+}

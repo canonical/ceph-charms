@@ -99,16 +99,20 @@ class ProxyCreateEndpoint:
             self._check_reply(payload, proxy)
             cleanup.append(rpc.nvmf_delete_subsystem(nqn=nqn))
 
+            # Add namespace before listener so the subsystem is not yet
+            # in active/listening state, which causes add_ns to fail on
+            # some SPDK versions.
+            payload = rpc.nvmf_subsystem_add_ns(
+                nqn=nqn,
+                namespace=proxy.ns_dict(self.bdev_name, nqn))
+            self._check_reply(payload, proxy)
+
             self._add_listener(
                 proxy, cleanup,
                 nqn=nqn,
                 listen_address=dict(trtype='tcp', traddr=self.msg['addr'],
                                     trsvcid=self.msg.get('port')))
-
-            payload = rpc.nvmf_subsystem_add_ns(
-                nqn=nqn,
-                namespace=proxy.ns_dict(self.bdev_name, nqn))
-            return self._check_reply(payload, proxy)
+            return payload
         except Exception:
             for call in reversed(cleanup):
                 proxy.msgloop(call)
@@ -204,6 +208,7 @@ class Proxy:
         self.receiver = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.receiver.bind(('0.0.0.0', config['proxy-port']))
         self._connect(rpc_path)
+        self._startup_init(config)
         wdir = os.path.dirname(config_path)
         self.key_dir = os.path.join(wdir, 'keys')
         self.local_state = self._read_local_state(wdir)
@@ -250,6 +255,29 @@ class Proxy:
                 return
 
             time.sleep(0.1)
+
+    def _startup_init(self, config):
+        """Configure iobuf pools and complete SPDK initialization.
+
+        nvmf_tgt is started with --wait-for-rpc, so we must call
+        iobuf_set_options (a startup-only RPC) before framework_start_init.
+        """
+        cpuset = utils.compute_cpuset(config.get('cpuset', ''))
+        num_cores = len(cpuset)
+        # SPDK defaults (1024 large, 8192 small) work reliably at 8 cores.
+        # Per-core ratios: 1024/8 = 128 large, 8192/8 = 1024 small.
+        large_pool = max(1024, num_cores * 128)
+        small_pool = max(8192, num_cores * 1024)
+
+        reply = self.msgloop(self.rpc.iobuf_set_options(
+            small_pool_count=small_pool,
+            large_pool_count=large_pool))
+        if self.is_error(reply):
+            logger.warning('iobuf_set_options failed: %s', reply)
+
+        reply = self.msgloop(self.rpc.framework_start_init())
+        if self.is_error(reply):
+            raise RuntimeError('framework_start_init failed: %s' % reply)
 
     def _read_local_state(self, wdir):
         fname = os.path.join(wdir, 'local.json')

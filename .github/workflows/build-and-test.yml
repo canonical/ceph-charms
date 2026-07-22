@@ -2,6 +2,12 @@ name: Build/Test
 
 on:
   workflow_call:
+  # Nightly full run of every charm on main. The CI health dashboard
+  # (canonical/ceph-qa) tracks how often tests fail on merged code, and
+  # it ignores PR runs -- which are the only time this workflow normally
+  # runs -- so this schedule is what feeds it.
+  schedule:
+    - cron: "0 2 * * *" # 02:00 UTC every night
   workflow_dispatch:
     inputs:
       part:
@@ -11,6 +17,9 @@ on:
 
 jobs:
   modifiedparts:
+    # Don't run the nightly schedule in forks. PRs and manual runs are
+    # unaffected.
+    if: ${{ github.event_name != 'schedule' || github.repository == 'canonical/ceph-charms' }}
     runs-on: ubuntu-latest
     outputs:
       parts: ${{ steps.determine-parts.outputs.parts }}
@@ -18,10 +27,12 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # For non-manual triggered runs
+      # Only needed for runs triggered by a code change (PRs). Manual
+      # and nightly runs pick charms without a diff -- all charms, or
+      # just the `part` input.
       - name: Get modified files
         id: changed-files
-        if: ${{ github.event_name != 'workflow_dispatch' }}
+        if: ${{ github.event_name != 'workflow_dispatch' && github.event_name != 'schedule' }}
         uses: tj-actions/changed-files@823fcebdb31bb35fdf2229d9f769b400309430d0 # v46.0.3
 
       - name: Determine charms to build/test
@@ -31,12 +42,12 @@ jobs:
           GITHUB_EVENT_NAME: ${{ github.event_name }}
           ALL_MOD_FILES: ${{ steps.changed-files.outputs.all_modified_files }}
         run: |
-          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
+          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ] || [ "$GITHUB_EVENT_NAME" = "schedule" ]; then
             if [ -n "$INPUT_PART" ]; then
               # Manual run with a specified charm
               components=($INPUT_PART)
             else
-              # Manual run, no charm specified -> run all
+              # Manual or scheduled run, no charm specified -> run all
               components=($(find . -maxdepth 1 -type d ! -path '.' -exec bash -c '[[ -f "$0/charmcraft.yaml" ]] && basename "$0"' {} \; | sort))
             fi
           else
@@ -109,7 +120,19 @@ jobs:
       - build
     name: Functional tests
     runs-on: [self-hosted, linux, amd64, X64, large, noble]
-    if: ${{ needs.modifiedparts.outputs.parts != '[]' }}
+    # A job that `needs: build` is normally skipped if ANY build failed.
+    # Nightly/manual runs build all nine charms, and one failed build
+    # shouldn't stop the other eight from being tested. So, run when:
+    # - the run wasn't cancelled, and
+    # - the charm list was computed and isn't empty, and
+    # - either all builds passed (still required for PRs), or this is a
+    #   nightly/manual run (test what did build; a charm whose build
+    #   failed simply fails here at the artifact download).
+    if: >-
+      ${{ !cancelled() && needs.modifiedparts.result == 'success' &&
+      needs.modifiedparts.outputs.parts != '[]' &&
+      (needs.build.result == 'success' ||
+      github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') }}
     strategy:
       matrix:
         part: ${{ fromJson(needs.modifiedparts.outputs.parts) }}
@@ -195,7 +218,12 @@ jobs:
     name: COS integration (${{ matrix.agent }})
     runs-on: [self-hosted, linux, amd64, X64, large, noble]
     timeout-minutes: 120
-    if: ${{ contains(needs.modifiedparts.outputs.parts, 'ceph-mon') }}
+    # Same rule as functional-test, but only when ceph-mon is in the list
+    if: >-
+      ${{ !cancelled() && needs.modifiedparts.result == 'success' &&
+      contains(needs.modifiedparts.outputs.parts, 'ceph-mon') &&
+      (needs.build.result == 'success' ||
+      github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') }}
     strategy:
       fail-fast: false
       matrix:
