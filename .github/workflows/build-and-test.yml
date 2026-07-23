@@ -186,3 +186,159 @@ jobs:
           for model in $models; do
             juju destroy-model --no-prompt --force --destroy-storage $model
           done
+
+  cos-integration-test:
+    needs:
+      - modifiedparts
+      - build
+    name: COS integration (grafana-agent)
+    runs-on: [self-hosted, linux, amd64, X64, large, noble]
+    timeout-minutes: 120
+    # Same rule as functional-test, but only when ceph-mon is in the list
+    if: >-
+      ${{ !cancelled() && needs.modifiedparts.result == 'success' &&
+      contains(needs.modifiedparts.outputs.parts, 'ceph-mon') &&
+      (needs.build.result == 'success' ||
+      github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') }}
+    steps:
+      - name: Download charm
+        uses: actions/download-artifact@v4
+        with:
+          name: charm-artifact-ceph-mon
+          pattern: charm-artifact-*
+          merge-multiple: true
+          path: ~/artifacts/
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup LXD
+        uses: canonical/setup-lxd@v0.1.1
+        with:
+          channel: 5.21/stable
+
+      - name: Install Juju
+        run: sudo snap install juju --channel 3.6/stable
+
+      - name: Install dependencies
+        run: sudo apt-get -qq install jq
+
+      - name: Cleanup Docker
+        run: bash ./ceph-mon/tests/workflow_assets/ci_helpers.sh cleanup_docker
+
+      - name: Setup LXD VM
+        run: bash ./ceph-mon/tests/workflow_assets/k8s/01-setup-lxd-vm.sh
+
+      - name: Deploy k8s
+        run: bash ./ceph-mon/tests/workflow_assets/k8s/02-deploy-k8s.sh
+
+      - name: Add Juju cloud and bootstrap controller
+        timeout-minutes: 10
+        run: bash ./ceph-mon/tests/workflow_assets/k8s/03-juju-add-cloud.sh
+
+      - name: Deploy COS Lite
+        timeout-minutes: 30
+        run: bash ./ceph-mon/tests/workflow_assets/k8s/04-deploy-cos-lite.sh
+
+      - name: Bootstrap localhost controller
+        run: |
+          set -eux
+          juju bootstrap localhost lxd
+
+      - name: Deploy Ceph cluster over LXD
+        run: |
+          set -eux
+          mv ~/artifacts/ceph-mon.charm ./ceph-mon.charm
+          juju add-model ceph-cos-test
+          juju deploy ./ceph-mon/tests/workflow_assets/ceph-cos.yaml
+          juju wait-for application ceph-mon --query='forEach(units, unit => unit.workload-status=="active" && unit.agent-status=="idle")' --timeout=20m
+          juju wait-for application ceph-osd --query='forEach(units, unit => unit.workload-status=="active" && unit.agent-status=="idle")' --timeout=20m
+          juju status
+
+      - name: Integrate Ceph with COS via grafana-agent
+        run: |
+          set -eux
+          # Switch to cos-lite model and offer endpoints
+          juju switch ck8s-cloud:cos-lite
+          juju offer prometheus:receive-remote-write
+          juju offer loki:logging
+          juju offer grafana:grafana-dashboard
+
+          # Switch to ceph model on the LXD controller
+          juju switch lxd:ceph-cos-test
+
+          # Deploy the COS agent (jammy) and integrate with Ceph
+          juju deploy grafana-agent --base ubuntu@22.04
+          juju integrate grafana-agent ceph-mon
+          juju integrate grafana-agent:juju-info ceph-mon:juju-info
+
+          # Consume cross-controller offers from the k8s controller
+          juju consume ck8s-cloud:admin/cos-lite.prometheus
+          juju consume ck8s-cloud:admin/cos-lite.loki
+          juju consume ck8s-cloud:admin/cos-lite.grafana
+
+          # Integrate agent with consumed offers
+          juju integrate grafana-agent prometheus
+          juju integrate grafana-agent loki
+          juju integrate grafana-agent grafana
+
+          juju wait-for application ceph-mon --query='forEach(units, unit => unit.workload-status=="active" && unit.agent-status=="idle")' --timeout=20m
+
+          # Wait for agent to be fully initialized
+          juju wait-for application grafana-agent --query='forEach(units, unit => unit.workload-status=="active" && unit.agent-status=="idle")' --timeout=20m
+
+      - name: Verify Prometheus metrics, Grafana dashboards and Loki logs
+        run: bash ./ceph-mon/tests/workflow_assets/k8s/05-verify-cos.sh
+        env:
+          COS_MODEL: ck8s-cloud:cos-lite
+          EXPECTED_DASHBOARDS_FILE: ./ceph-mon/tests/workflow_assets/expected_dashboard.txt
+          LOKI_APPLICATION: grafana-agent
+          LOKI_LOG_FILTER: ceph
+
+      - name: Show Juju status
+        if: always()
+        run: |
+          set -eux
+          juju status -m lxd:ceph-cos-test || true
+          juju status -m ck8s-cloud:cos-lite || true
+          echo "==> k8s pods in cos-lite namespace:"
+          lxc exec k8s-node -- k8s kubectl get pods -n cos-lite -o wide || true
+
+      - name: Collect logs
+        if: failure()
+        run: |
+          set -x
+          mkdir -p logs
+
+          echo "==> COS Lite Juju status"
+          juju status -m ck8s-cloud:cos-lite -o logs/cos-lite-status.yaml || true
+          cat logs/cos-lite-status.yaml || true
+
+          echo "==> COS Lite Juju debug-log (last 100 lines)"
+          juju debug-log -m ck8s-cloud:cos-lite --replay --tail 100 --no-tail > logs/cos-lite-debug-log.txt 2>&1 || true
+
+          echo "==> k8s pod status in cos-lite namespace"
+          lxc exec k8s-node -- k8s kubectl get pods -n cos-lite -o wide > logs/k8s-pods.txt 2>&1 || true
+          cat logs/k8s-pods.txt || true
+
+          echo "==> k8s events in cos-lite namespace"
+          lxc exec k8s-node -- k8s kubectl get events -n cos-lite --sort-by='.lastTimestamp' > logs/k8s-events.txt 2>&1 || true
+          tail -30 logs/k8s-events.txt || true
+
+          echo "==> k8s node resource allocation"
+          lxc exec k8s-node -- k8s kubectl describe nodes > logs/k8s-nodes.txt 2>&1 || true
+          grep -A 15 "Allocated resources" logs/k8s-nodes.txt || true
+
+      - name: Upload logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cos-integration-logs
+          path: logs
+          retention-days: 30
+
+      - name: Setup tmate session
+        if: ${{ (failure() || cancelled()) && runner.debug }}
+        uses: canonical/action-tmate@main
