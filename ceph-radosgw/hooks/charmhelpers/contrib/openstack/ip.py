@@ -243,6 +243,61 @@ def resolve_address(endpoint_type=PUBLIC, override=True):
     return resolved_address
 
 
+def resolve_addresses(endpoint_type=PUBLIC, override=True):
+    """Return all resolved addresses for an endpoint type.
+
+    This behaves like ``resolve_address`` but, when clustered with multiple
+    configured VIPs, it returns all matching VIPs in configured order.
+
+    If no multi-address match can be made, it falls back to the single address
+    from ``resolve_address`` to preserve legacy behaviour.
+
+    :param endpoint_type: Network endpoint type
+    :param override: Accept hostname overrides or not
+    :returns: List of resolved addresses
+    :rtype: list
+    """
+    if override:
+        resolved_override = _get_address_override(endpoint_type)
+        if resolved_override:
+            return [resolved_override]
+
+    vips = config('vip')
+    if vips:
+        vips = vips.split()
+    else:
+        vips = []
+
+    net_type = ADDRESS_MAP[endpoint_type]['config']
+    net_addr = config(net_type)
+    binding = ADDRESS_MAP[endpoint_type]['binding']
+
+    if is_clustered() and vips:
+        matching_vips = []
+        if net_addr:
+            matching_vips = [
+                vip for vip in vips if is_address_in_network(net_addr, vip)
+            ]
+        else:
+            try:
+                bound_cidr = resolve_network_cidr(
+                    network_get_primary_address(binding)
+                )
+                matching_vips = [
+                    vip for vip in vips
+                    if is_address_in_network(bound_cidr, vip)
+                ]
+            except (NotImplementedError, NoNetworkBinding):
+                # Fallback to legacy behaviour when network binding info
+                # is unavailable.
+                matching_vips = vips[:1]
+
+        if matching_vips:
+            return matching_vips
+
+    return [resolve_address(endpoint_type=endpoint_type, override=override)]
+
+
 def get_vip_in_network(network):
     matching_vip = None
     vips = config('vip')

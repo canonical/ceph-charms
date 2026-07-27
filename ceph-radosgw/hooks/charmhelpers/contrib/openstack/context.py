@@ -99,6 +99,7 @@ from charmhelpers.contrib.openstack.neutron import (
 )
 from charmhelpers.contrib.openstack.ip import (
     resolve_address,
+    resolve_addresses,
     INTERNAL,
     ADMIN,
     PUBLIC,
@@ -111,9 +112,11 @@ from charmhelpers.contrib.network.ip import (
     get_ipv6_addr,
     get_netmask_for_address,
     format_ipv6_addr,
+    is_address_in_network,
     is_bridge_member,
     is_ipv6_disabled,
     get_relation_ip,
+    resolve_network_cidr,
 )
 from charmhelpers.contrib.openstack.utils import (
     config_flags_parser,
@@ -1191,31 +1194,102 @@ class ApacheSSLContext(OSContextGenerator):
              ...]
         """
         addresses = []
+        vips_config = config('vip')
+        vip_set = set(vips_config.split()) if vips_config else set()
+        fallback = local_address(unit_get_fallback="private-address")
+
         for net_type in [INTERNAL, ADMIN, PUBLIC]:
             net_config = config(ADDRESS_MAP[net_type]['config'])
+            binding = ADDRESS_MAP[net_type]['binding']
             # NOTE(jamespage): Fallback must always be private address
             #                  as this is used to bind services on the
             #                  local unit.
-            fallback = local_address(unit_get_fallback="private-address")
             if net_config:
                 addr = get_address_in_network(net_config,
                                               fallback)
             else:
                 try:
-                    addr = network_get_primary_address(
-                        ADDRESS_MAP[net_type]['binding']
-                    )
+                    addr = network_get_primary_address(binding)
                 except (NotImplementedError, NoNetworkBinding):
                     addr = fallback
 
-            endpoint = resolve_address(net_type)
-            addresses.append((addr, endpoint))
+            # If get_address_in_network picked up a Pacemaker-managed VIP
+            # (secondary address on the interface), fall back to the Juju
+            # binding primary address which is always the unit's own stable
+            # local IP.  HAProxy forwards to local IPs, not VIPs.
+            if addr in vip_set:
+                try:
+                    addr = network_get_primary_address(binding)
+                except (NotImplementedError, NoNetworkBinding):
+                    addr = fallback
 
-        # Log the set of addresses to have a trail log and capture if tuples
-        # change over time in the same unit (LP: #1952414).
-        sorted_addresses = sorted(set(addresses))
-        log('get_network_addresses: {}'.format(sorted_addresses))
-        return sorted_addresses
+            endpoint_addresses = resolve_addresses(net_type)
+            if endpoint_addresses:
+                for endpoint_address in endpoint_addresses:
+                    addresses.append((addr, endpoint_address))
+            else:
+                endpoint = resolve_address(net_type)
+                addresses.append((addr, endpoint))
+
+        # Ensure ALL configured VIPs have a VirtualHost entry even when
+        # their network is not associated with any endpoint type binding
+        # or os-*-network config.  This covers environments where the
+        # number of VIPs exceeds the number of endpoint types.
+        if vip_set and is_clustered():
+            covered_endpoints = {ep for _, ep in addresses}
+            for vip in sorted(vip_set - covered_endpoints):
+                bind_addr = None
+                # Check if VIP belongs to an explicitly configured network
+                for net_type in [INTERNAL, ADMIN, PUBLIC]:
+                    net_config = config(ADDRESS_MAP[net_type]['config'])
+                    if net_config and is_address_in_network(
+                            net_config, vip):
+                        bind_addr = get_address_in_network(
+                            net_config, fallback)
+                        if bind_addr in vip_set:
+                            try:
+                                bind_addr = network_get_primary_address(
+                                    ADDRESS_MAP[net_type]['binding'])
+                            except (NotImplementedError, NoNetworkBinding):
+                                bind_addr = fallback
+                        break
+                # Otherwise try each Juju binding to find a matching one
+                if not bind_addr:
+                    for net_type in [INTERNAL, ADMIN, PUBLIC]:
+                        try:
+                            candidate = network_get_primary_address(
+                                ADDRESS_MAP[net_type]['binding'])
+                            candidate_cidr = resolve_network_cidr(
+                                candidate)
+                            if is_address_in_network(
+                                    candidate_cidr, vip):
+                                bind_addr = candidate
+                                break
+                        except (NotImplementedError, NoNetworkBinding):
+                            continue
+                # Last resort: resolve the VIP's own network CIDR and
+                # find a local (non-VIP) address on that network.
+                if not bind_addr:
+                    try:
+                        vip_cidr = resolve_network_cidr(vip)
+                        candidate = get_address_in_network(
+                            vip_cidr, fallback)
+                        if candidate not in vip_set:
+                            bind_addr = candidate
+                    except Exception:
+                        pass
+                if not bind_addr:
+                    bind_addr = fallback
+                addresses.append((bind_addr, vip))
+
+        # Preserve insertion order for deterministic rendering while
+        # removing duplicates.
+        unique_addresses = list(dict.fromkeys(addresses))
+
+        # Log the set of addresses to have a trail log and capture if
+        # tuples change over time in the same unit (LP: #1952414).
+        log('get_network_addresses: {}'.format(unique_addresses))
+        return unique_addresses
 
     def __call__(self):
         if isinstance(self.external_ports, str):
@@ -1245,10 +1319,22 @@ class ApacheSSLContext(OSContextGenerator):
                     self.configure_cert(cn)
             else:
                 # Expect cert/key provided in config (currently assumed that ca
-                # uses ip for cn)
+                # uses ip for cn).  Configure certs for all resolved
+                # addresses and all configured VIPs so that every
+                # advertised address gets a certificate.
+                cns_done = set()
                 for net_type in (INTERNAL, ADMIN, PUBLIC):
-                    cn = resolve_address(endpoint_type=net_type)
-                    self.configure_cert(cn)
+                    for cn in resolve_addresses(endpoint_type=net_type):
+                        if cn not in cns_done:
+                            self.configure_cert(cn)
+                            cns_done.add(cn)
+                # Also cover VIPs not matched by any endpoint type.
+                vips_config = config('vip')
+                if vips_config:
+                    for cn in vips_config.split():
+                        if cn not in cns_done:
+                            self.configure_cert(cn)
+                            cns_done.add(cn)
 
         addresses = self.get_network_addresses()
         for address, endpoint in addresses:
