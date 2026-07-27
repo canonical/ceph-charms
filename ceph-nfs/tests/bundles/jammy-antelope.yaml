@@ -1,5 +1,5 @@
 options:
-  source: &source cloud:jammy-antelope
+  source: &source proposed
 
 machines:
   '0':
