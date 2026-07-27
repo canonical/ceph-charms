@@ -29,6 +29,7 @@ import interface_ceph_iscsi_admin_access.admin_access as admin_access
 import ops
 
 import utils
+import charms_ceph.selog as selog
 
 logger = logging.getLogger(__name__)
 
@@ -65,6 +66,8 @@ class CephNVMECharm(ops.CharmBase):
 
     def __init__(self, *args):
         super().__init__(*args)
+        selog.register_log_callback(lambda msg: logger.warn(msg))
+        selog.register_defaults({'appid': 'ceph.nvme'})
         self.client = ceph_client.CephClientRequires(self, 'ceph-client')
         self.admin_access = admin_access.CephISCSIAdminAccessProvides(
             self, 'admin-access')
@@ -312,6 +315,9 @@ class CephNVMECharm(ops.CharmBase):
             event.fail('no Ceph relation found')
             return
 
+        selog.log('Creating endpoint',
+                  event='authn_nvme_endpoint',
+                  detail='nvme_endpoint_create')
         pool = event.params.get('rbd-pool')
         image = event.params.get('rbd-image')
         cluster = 'ceph.%s' % next(iter(relations)).id
@@ -351,6 +357,9 @@ class CephNVMECharm(ops.CharmBase):
 
     def on_delete_endpoint_action(self, event):
         """Handle endpoint deletion."""
+        selog.log('Deleting endpoint',
+                  event='authn_nvme_endpoint',
+                  detail='nvme_endpoint_delete')
         nqn = event.params.get('nqn')
         sock = self._rpc_sock()
         elem = self._msgloop(self.rpc.find(nqn=nqn), sock=sock)
@@ -474,6 +483,9 @@ class CephNVMECharm(ops.CharmBase):
         event.set_results({'endpoints': elems})
 
     def on_add_host_action(self, event):
+        selog.log('Adding host',
+                  event='authn_nvme_host',
+                  detail='nvme_host_add')
         nqn = event.params.get('nqn')
         key = event.params.get('dhchap-key')
         kwargs = dict(nqn=nqn, host=event.params.get('hostnqn'))
@@ -493,6 +505,9 @@ class CephNVMECharm(ops.CharmBase):
         event.set_results({'message': 'success'})
 
     def on_delete_host_action(self, event):
+        selog.log('Deleting host',
+                  event='authn_nvme_host',
+                  detail='nvme_host_delete')
         nqn = event.params.get('nqn')
         host = event.params.get('hostnqn')
         msg = self.rpc.host_del(nqn=nqn, host=host)
@@ -575,6 +590,9 @@ class CephNVMECharm(ops.CharmBase):
         self._render_config()
 
     def _install_systemd_services(self):
+        selog.log('Installing packages',
+                  event='sys_nvme_package',
+                  detail='nvme_package_install')
         self._install_packages(self.PACKAGES)
         config_path = self._render_config()
         utils.setup_hugepages(int(self.config['nr-hugepages']))
@@ -582,12 +600,18 @@ class CephNVMECharm(ops.CharmBase):
         charm_dir = os.environ.get('JUJU_CHARM_DIR', './')
         nvmf_path = os.path.realpath(charm_dir + '/spdk/build/bin/nvmf_tgt')
         nvmf_tgt = os.path.realpath(charm_dir + '/src/nvmf.py')
+        selog.log('Starting NVMe-oF target service',
+                  event='sys_nvme_daemon',
+                  detail='nvme_daemon_target_start')
         utils.create_systemd_svc(SPDK_TGT_FILE, SYSTEMD_TEMPLATE,
                                  description='NVMe-oF target',
                                  path=nvmf_tgt,
                                  args=' '.join([nvmf_path, config_path]))
 
         proxy_path = os.path.realpath(charm_dir + '/src/proxy.py')
+        selog.log('Starting Proxy service',
+                  event='sys_nvme_daemon',
+                  detail='nvme_daemon_proxy_start')
         utils.create_systemd_svc(PROXY_FILE, SYSTEMD_TEMPLATE,
                                  description='proxy server for target',
                                  path=proxy_path,

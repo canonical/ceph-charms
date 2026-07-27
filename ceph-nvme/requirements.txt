@@ -1,5 +1,6 @@
 importlib-resources
 ops >= 1.2.0
+git+https://github.com/canonical/ceph-charms#egg=charms.ceph&subdirectory=charms.ceph
 git+https://opendev.org/openstack/charm-ops-openstack#egg=ops_openstack
 git+https://opendev.org/openstack/charm-ops-interface-ceph-client#egg=interface_ceph_client
 git+https://github.com/openstack-charmers/ops-interface-ceph-iscsi-admin-access#egg=interface_ceph_iscsi_admin_access
