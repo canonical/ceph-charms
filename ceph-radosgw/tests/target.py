@@ -21,6 +21,9 @@ import pprint
 import requests
 from requests.adapters import HTTPAdapter
 import boto3
+import botocore.auth
+import botocore.awsrequest
+import botocore.credentials
 import botocore.exceptions
 import urllib3
 
@@ -715,6 +718,119 @@ class CephRGWTest(test_utils.BaseCharmTest):
             }
         )
         zaza_model.wait_for_unit_idle(self.primary_rgw_unit)
+
+    def signed_admin_get(self, endpoint, access_key, secret_key, params):
+        """Send a SigV4 signed GET to the RGW admin API.
+
+        Equivalent of `curl --aws-sigv4 "aws:amz:us-east-1:s3"`. The region
+        only has to be self consistent, since RGW recomputes the signature
+        from the scope in the Authorization header it is given.
+
+        :param endpoint: RGW endpoint URL, as get_rgw_endpoint returns.
+        :type endpoint: str
+        :param access_key: S3 access key for the signing user.
+        :type access_key: str
+        :param secret_key: S3 secret key for the signing user.
+        :type secret_key: str
+        :param params: Query string arguments for /admin/log.
+        :type params: dict
+        :returns: The HTTP response.
+        :rtype: requests.Response
+        """
+        credentials = botocore.credentials.Credentials(access_key, secret_key)
+        request = botocore.awsrequest.AWSRequest(
+            method='GET', url=endpoint + '/admin/log', params=params
+        )
+        botocore.auth.SigV4Auth(credentials, 's3', 'us-east-1').add_auth(
+            request
+        )
+        prepared = request.prepare()
+        return requests.get(
+            prepared.url, headers=dict(prepared.headers), verify=False
+        )
+
+    def test_005_admin_datalog_shard_info(self):
+        """Verify a successful admin datalog shard-info request.
+
+        Regression test for canonical/microceph#810. Ceph 20.2.1 built
+        against boost 1.83 (Noble's system boost, below upstream's 1.87
+        floor) crashes radosgw on requests that *succeed*: rgw::run_coro<>
+        in src/rgw/async_utils.h hands the coroutine completion straight to
+        the yield context, and boost 1.83's spawn.hpp on_resume() checks
+        whether the exception_ptr is set rather than what it holds, so it
+        rethrows on every completion including the ones with no exception
+        stored. A request that genuinely fails stores a real exception and
+        returns cleanly, so only the working requests segfault.
+
+        RGWOp_DATALog_ShardInfo::execute() is one such call site. RGW
+        multisite data sync polls it on its peer every sync cycle, which is
+        how the bug surfaced, but it needs neither a peer zone nor any user
+        data to reproduce, so this does not gate on self.multisite.
+        """
+        unit_name = self.primary_rgw_unit
+        endpoint = self.get_rgw_endpoint(unit_name)
+        self.assertIsNotNone(endpoint)
+
+        # Reuse the boto3 user and grant it the one extra admin cap this
+        # needs. Adding a cap is idempotent and does not affect its S3 use.
+        access_key, secret_key = self.get_client_keys()
+        cmd = self.get_rgwadmin_cmd_skeleton(unit_name)
+        zaza_model.run_on_unit(
+            unit_name, cmd + 'caps add --uid=botoclient --caps="datalog=read"'
+        )
+
+        # Baseline: the shard count is served without entering the coroutine
+        # path at all, so it confirms endpoint, keys and caps are good before
+        # anything is concluded from a failure below.
+        logging.info('Checking admin datalog shard count')
+        response = self.signed_admin_get(
+            endpoint, access_key, secret_key, {'type': 'data'}
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('num_objects', response.json())
+
+        # Negative control: an out of range shard fails inside the same
+        # coroutine, which stores a real exception and unwinds correctly.
+        # Only that it answers at all matters here, so do not pin the status.
+        logging.info('Checking admin datalog shard info for a bad shard')
+        response = self.signed_admin_get(
+            endpoint, access_key, secret_key,
+            {'type': 'data', 'id': '999', 'info': ''}
+        )
+        logging.info('Bad shard returned HTTP {}'.format(
+            response.status_code))
+        self.assertLess(response.status_code, 500)
+
+        pids_before = zaza_utils.get_unit_process_ids(
+            {unit_name: {'radosgw': 1}}
+        )
+
+        # The regression itself: a shard-info lookup that succeeds. Against
+        # an affected build radosgw dies mid-request, which surfaces as a
+        # connection error rather than an HTTP status.
+        logging.info('Checking admin datalog shard info for shard 0')
+        try:
+            response = self.signed_admin_get(
+                endpoint, access_key, secret_key,
+                {'type': 'data', 'id': '0', 'info': ''}
+            )
+        except requests.exceptions.RequestException as e:
+            self.fail(
+                'radosgw did not answer a successful admin datalog '
+                'shard-info request: {}. This is the signature of '
+                'canonical/microceph#810, where Ceph 20.2.1 built against '
+                'boost 1.83 crashes on successful coroutine '
+                'completions.'.format(e)
+            )
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('marker', response.json())
+
+        # An affected radosgw that was restarted behind haproxy could still
+        # answer, so confirm the daemon is the one that started the test.
+        pids_after = zaza_utils.get_unit_process_ids(
+            {unit_name: {'radosgw': 1}}
+        )
+        self.assertEqual(pids_before, pids_after)
 
     def test_100_migration_and_multisite_failover(self):
         """Perform multisite migration and verify failover."""
