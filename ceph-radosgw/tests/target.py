@@ -18,6 +18,7 @@ import unittest
 import json
 import logging
 import pprint
+import re
 import requests
 from requests.adapters import HTTPAdapter
 import boto3
@@ -35,7 +36,6 @@ import zaza.openstack.utilities.ceph as zaza_ceph
 import zaza.openstack.utilities.generic as zaza_utils
 import zaza.utilities.networking as network_utils
 import zaza.utilities.juju as juju_utils
-import zaza.openstack.utilities.openstack as zaza_openstack
 import zaza.openstack.utilities.generic as generic_utils
 import zaza.openstack.utilities.openstack as openstack_utils
 
@@ -1088,13 +1088,37 @@ class CephRGWTest(test_utils.BaseCharmTest):
         self.purge_bucket(self.secondary_rgw_app, 'zaza-container')
         self.purge_bucket(self.secondary_rgw_app, 'failover-container')
 
+    def ceph_release_number(self, unit_name='ceph-mon/0'):
+        """Return the installed Ceph major version number.
+
+        Read straight from `ceph --version` rather than through zaza's
+        OpenStack codename tables, which map only the ceph releases zaza
+        knows about and raise KeyError on newer ones (e.g. tentacle, 20).
+        The daemon version is enough for the reef/squid/tentacle gates the
+        tests need and does not depend on cluster access.
+
+        :param unit_name: Unit to read the version from.
+        :type unit_name: str
+        :returns: The Ceph major version, e.g. 19 for squid or 20 for
+            tentacle.
+        :rtype: int
+        """
+        stdout = zaza_model.run_on_unit(
+            unit_name, 'ceph --version'
+        ).get('Stdout', '')
+        # e.g. "ceph version 20.2.1 (...) tentacle (stable)"
+        match = re.search(r'ceph version (\d+)\.', stdout)
+        if match is None:
+            raise AssertionError(
+                'could not parse ceph version from: {}'.format(stdout))
+        return int(match.group(1))
+
     def test_101_virtual_hosted_bucket(self):
         """Test virtual hosted bucket."""
-        # skip if quincy or older
-        current_release = zaza_openstack.get_os_release(
-            application='ceph-mon')
-        reef = zaza_openstack.get_os_release('jammy_bobcat')
-        if current_release < reef:
+        # Virtual hosted buckets need reef (Ceph 18) or newer. Gate on the
+        # Ceph version directly; zaza's get_os_release raises on releases
+        # newer than it knows, which would break this on tentacle.
+        if self.ceph_release_number() < 18:
             raise unittest.SkipTest(
                 'Virtual hosted bucket not supported in quincy or older')
 
