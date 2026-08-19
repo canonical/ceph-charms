@@ -1,5 +1,5 @@
 options:
-  source: &source ppa:johnramsden/noble-caracal-ceph-tentacle-rc
+  source: &source ppa:johnramsden/noble-caracal-ceph-tentacle
 
 series: noble
 
