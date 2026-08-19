@@ -100,4 +100,4 @@ relations:
     - 'vault:certificates'
 
   - - 'ceph-radosgw:identity-service'
-    - 'keystone:identity-service' 
+    - 'keystone:identity-service'

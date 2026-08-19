@@ -18,9 +18,13 @@ import unittest
 import json
 import logging
 import pprint
+import re
 import requests
 from requests.adapters import HTTPAdapter
 import boto3
+import botocore.auth
+import botocore.awsrequest
+import botocore.credentials
 import botocore.exceptions
 import urllib3
 
@@ -32,7 +36,6 @@ import zaza.openstack.utilities.ceph as zaza_ceph
 import zaza.openstack.utilities.generic as zaza_utils
 import zaza.utilities.networking as network_utils
 import zaza.utilities.juju as juju_utils
-import zaza.openstack.utilities.openstack as zaza_openstack
 import zaza.openstack.utilities.generic as generic_utils
 import zaza.openstack.utilities.openstack as openstack_utils
 
@@ -717,6 +720,228 @@ class CephRGWTest(test_utils.BaseCharmTest):
         )
         zaza_model.wait_for_unit_idle(self.primary_rgw_unit)
 
+    def run_rgwadmin(self, unit_name, args):
+        """Run a radosgw-admin subcommand on a unit and check it succeeded.
+
+        :param unit_name: Unit to run the command on.
+        :type unit_name: str
+        :param args: radosgw-admin arguments, without the command name.
+        :type args: str
+        :returns: Command stdout.
+        :rtype: str
+        """
+        cmd = self.get_rgwadmin_cmd_skeleton(unit_name) + args
+        result = zaza_model.run_on_unit(unit_name, cmd)
+        self.assertEqual(
+            int(result.get('Code')), 0,
+            'command failed: {}\nstdout: {}\nstderr: {}'.format(
+                cmd, result.get('Stdout'), result.get('Stderr')
+            )
+        )
+        return result.get('Stdout', '')
+
+    def create_datalog_reader(self, unit_name):
+        """Create an RGW user holding the datalog read cap.
+
+        A dedicated user is created rather than adding the cap to the
+        existing boto3 user, because RGW caches user info and that user has
+        already been used for S3 by the time this runs, so a cap added to it
+        is not necessarily live yet.
+
+        :param unit_name: RGW unit to create the user on.
+        :type unit_name: str
+        :returns: access_key and secret_key for the new user.
+        :rtype: (str, str)
+        """
+        user_name = 'zaza-datalog'
+        users = json.loads(self.run_rgwadmin(unit_name, 'user list'))
+        if user_name not in users:
+            self.run_rgwadmin(
+                unit_name,
+                'user create --uid={} --display-name={} '
+                '--caps="datalog=read"'.format(user_name, user_name)
+            )
+        else:
+            self.run_rgwadmin(
+                unit_name,
+                'caps add --uid={} --caps="datalog=read"'.format(user_name)
+            )
+
+        info = json.loads(
+            self.run_rgwadmin(unit_name, 'user info --uid={}'.format(
+                user_name))
+        )
+        caps = info.get('caps', [])
+        logging.info('{} caps: {}'.format(user_name, caps))
+        self.assertIn(
+            {'type': 'datalog', 'perm': 'read'}, caps,
+            'datalog=read cap was not applied to {}: {}'.format(
+                user_name, caps)
+        )
+        keys = info['keys'][0]
+        return keys['access_key'], keys['secret_key']
+
+    def signed_admin_get(self, endpoint, access_key, secret_key, params):
+        """Send a SigV4 signed GET to the RGW admin API.
+
+        Equivalent of `curl --aws-sigv4 "aws:amz:us-east-1:s3"`. The region
+        only has to be self consistent, since RGW recomputes the signature
+        from the scope in the Authorization header it is given.
+
+        :param endpoint: RGW endpoint URL, as get_rgw_endpoint returns.
+        :type endpoint: str
+        :param access_key: S3 access key for the signing user.
+        :type access_key: str
+        :param secret_key: S3 secret key for the signing user.
+        :type secret_key: str
+        :param params: Query string arguments for /admin/log.
+        :type params: dict
+        :returns: The HTTP response.
+        :rtype: requests.Response
+        """
+        credentials = botocore.credentials.Credentials(access_key, secret_key)
+        request = botocore.awsrequest.AWSRequest(
+            method='GET', url=endpoint + '/admin/log', params=params
+        )
+        # S3SigV4Auth, not SigV4Auth: RGW rejects a signature that does not
+        # cover x-amz-content-sha256, and only the S3 variant sends it. The
+        # plain signer omits it and RGW reports that as InvalidAccessKeyId,
+        # which reads like a bad key rather than a malformed signature.
+        botocore.auth.S3SigV4Auth(credentials, 's3', 'us-east-1').add_auth(
+            request
+        )
+        prepared = request.prepare()
+        return requests.get(
+            prepared.url, headers=dict(prepared.headers), verify=False
+        )
+
+    def assert_admin_get_ok(self, endpoint, access_key, secret_key, params,
+                            expected_key):
+        """Assert a signed admin GET returns 200 with the expected content.
+
+        Retried briefly, because a cap granted moments earlier is not always
+        visible to RGW straight away.
+
+        :param endpoint: RGW endpoint URL.
+        :type endpoint: str
+        :param access_key: S3 access key for the signing user.
+        :type access_key: str
+        :param secret_key: S3 secret key for the signing user.
+        :type secret_key: str
+        :param params: Query string arguments for /admin/log.
+        :type params: dict
+        :param expected_key: Key that must appear in the JSON response.
+        :type expected_key: str
+        :returns: The HTTP response.
+        :rtype: requests.Response
+        """
+        for attempt in tenacity.Retrying(
+            wait=tenacity.wait_fixed(15), reraise=True,
+            stop=tenacity.stop_after_attempt(4),
+            retry=tenacity.retry_if_exception_type(AssertionError)
+        ):
+            with attempt:
+                response = self.signed_admin_get(
+                    endpoint, access_key, secret_key, params
+                )
+                self.assertEqual(
+                    response.status_code, 200,
+                    'GET /admin/log {} returned {}: {}'.format(
+                        params, response.status_code, response.text[:500]
+                    )
+                )
+                self.assertIn(expected_key, response.json())
+        return response
+
+    def test_005_admin_datalog_shard_info(self):
+        """Verify a successful admin datalog shard-info request.
+
+        Regression test for canonical/microceph#810. Ceph 20.2.1 built
+        against boost 1.83 (Noble's system boost, below upstream's 1.87
+        floor) crashes radosgw on requests that *succeed*: rgw::run_coro<>
+        in src/rgw/async_utils.h hands the coroutine completion straight to
+        the yield context, and boost 1.83's spawn.hpp on_resume() checks
+        whether the exception_ptr is set rather than what it holds, so it
+        rethrows on every completion, including the ones with no exception
+        stored.
+
+        RGWOp_DATALog_ShardInfo::execute() is one such call site. RGW
+        multisite data sync polls it on its peer every sync cycle, which is
+        how the bug surfaced, but it needs neither a peer zone nor any user
+        data to reproduce, so this does not gate on self.multisite.
+
+        Only a shard that exists is requested. An out of range shard id is
+        not a usable control here: on squid 19.2.3 it takes radosgw down
+        with SIGABRT out of the same boost::asio spawn machinery, via
+        std::unexpected in spawned_thread_rethrow, so probing one would
+        leave nothing running to answer the request that matters.
+        """
+        unit_name = self.primary_rgw_unit
+        endpoint = self.get_rgw_endpoint(unit_name)
+        self.assertIsNotNone(endpoint)
+
+        access_key, secret_key = self.create_datalog_reader(unit_name)
+
+        # Baseline: the shard count is served without entering the coroutine
+        # path at all, so it confirms endpoint, keys and caps are good before
+        # anything is concluded from a failure below.
+        logging.info('Checking admin datalog shard count')
+        self.assert_admin_get_ok(
+            endpoint, access_key, secret_key, {'type': 'data'}, 'num_objects'
+        )
+
+        pids_before = zaza_utils.get_unit_process_ids(
+            {unit_name: {'radosgw': 1}}
+        )
+
+        # The regression itself: a shard-info lookup that succeeds. On an
+        # affected build radosgw dies handling it, which reaches the client
+        # in one of two ways. Hitting radosgw directly, the connection drops
+        # and requests raises. Through the charm's haproxy, the backend goes
+        # away mid-request and haproxy answers 502 (or 503). Either is the
+        # #810 signature, so both are reported as such rather than left to
+        # look like an ordinary bad status or a flaky network. No retry
+        # here: a crash is not transient, and retrying would just crash the
+        # freshly restarted daemon again.
+        logging.info('Checking admin datalog shard info for shard 0')
+        crash_note = (
+            'This is the signature of canonical/microceph#810, where Ceph '
+            '20.2.1 built against boost 1.83 crashes radosgw on successful '
+            'admin datalog shard-info requests.'
+        )
+        try:
+            response = self.signed_admin_get(
+                endpoint, access_key, secret_key,
+                {'type': 'data', 'id': '0', 'info': ''}
+            )
+        except requests.exceptions.RequestException as e:
+            self.fail(
+                'radosgw dropped the connection on a successful admin '
+                'datalog shard-info request: {}. {}'.format(e, crash_note)
+            )
+        if response.status_code in (502, 503):
+            self.fail(
+                'haproxy returned {} for a successful admin datalog '
+                'shard-info request, i.e. the radosgw backend died handling '
+                'it. {}'.format(response.status_code, crash_note)
+            )
+        self.assertEqual(
+            response.status_code, 200,
+            'GET /admin/log {} returned {}: {}'.format(
+                {'type': 'data', 'id': '0', 'info': ''},
+                response.status_code, response.text[:500]
+            )
+        )
+        self.assertIn('marker', response.json())
+
+        # Even if a crashed radosgw was restarted quickly enough to answer,
+        # the PID would change, so confirm the daemon is the one that
+        # started the test.
+        pids_after = zaza_utils.get_unit_process_ids(
+            {unit_name: {'radosgw': 1}}
+        )
+        self.assertEqual(pids_before, pids_after)
+
     def test_100_migration_and_multisite_failover(self):
         """Perform multisite migration and verify failover."""
         container_name = 'zaza-container'
@@ -863,13 +1088,37 @@ class CephRGWTest(test_utils.BaseCharmTest):
         self.purge_bucket(self.secondary_rgw_app, 'zaza-container')
         self.purge_bucket(self.secondary_rgw_app, 'failover-container')
 
+    def ceph_release_number(self, unit_name='ceph-mon/0'):
+        """Return the installed Ceph major version number.
+
+        Read straight from `ceph --version` rather than through zaza's
+        OpenStack codename tables, which map only the ceph releases zaza
+        knows about and raise KeyError on newer ones (e.g. tentacle, 20).
+        The daemon version is enough for the reef/squid/tentacle gates the
+        tests need and does not depend on cluster access.
+
+        :param unit_name: Unit to read the version from.
+        :type unit_name: str
+        :returns: The Ceph major version, e.g. 19 for squid or 20 for
+            tentacle.
+        :rtype: int
+        """
+        stdout = zaza_model.run_on_unit(
+            unit_name, 'ceph --version'
+        ).get('Stdout', '')
+        # e.g. "ceph version 20.2.1 (...) tentacle (stable)"
+        match = re.search(r'ceph version (\d+)\.', stdout)
+        if match is None:
+            raise AssertionError(
+                'could not parse ceph version from: {}'.format(stdout))
+        return int(match.group(1))
+
     def test_101_virtual_hosted_bucket(self):
         """Test virtual hosted bucket."""
-        # skip if quincy or older
-        current_release = zaza_openstack.get_os_release(
-            application='ceph-mon')
-        reef = zaza_openstack.get_os_release('jammy_bobcat')
-        if current_release < reef:
+        # Virtual hosted buckets need reef (Ceph 18) or newer. Gate on the
+        # Ceph version directly; zaza's get_os_release raises on releases
+        # newer than it knows, which would break this on tentacle.
+        if self.ceph_release_number() < 18:
             raise unittest.SkipTest(
                 'Virtual hosted bucket not supported in quincy or older')
 
