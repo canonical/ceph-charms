@@ -165,6 +165,15 @@ jobs:
             newgrp lxd
             lxd init --minimal
           fi
+          # Disable IPv6 on the default bridge. Otherwise model machines get
+          # an IPv6 address alongside their IPv4 one, and zaza's vault setup
+          # reaches keystone over HTTPS by machine address; the vault-issued
+          # certificate only covers the IPv4 SAN, so when the IPv6 address is
+          # picked, cert validation fails and the whole run aborts in the
+          # configure step before any test runs. Runs unconditionally because
+          # a self-hosted runner may already have lxdbr0 up with IPv6 enabled,
+          # skipping the init above.
+          sudo lxc network set lxdbr0 ipv6.address none
 
       - name: Install and configure tests
         run: |
