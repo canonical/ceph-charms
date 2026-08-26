@@ -357,13 +357,20 @@ options:
     default:
     description: |
       The hostname or address of the public endpoints created for ceph-radosgw
-      in the keystone identity provider.
+      in the keystone identity provider. Multiple hostnames may be supplied as
+      a comma-separated list. Whitespace and duplicate entries are ignored.
+      Each hostname is configured as a separate Apache TLS virtual host and
+      receives a separate certificate request.
       .
       This value will be used for public endpoints. For example, an
-      os-public-hostname set to 'files.example.com' with will create
-      the following public endpoint for the ceph-radosgw:
+      os-public-hostname set to 'files.example.com' will create the following
+      public endpoint for ceph-radosgw:
       .
       https://files.example.com:80/swift/v1
+      .
+      A multiple-hostname value can be specified as:
+      .
+      files.example.com,s3.example.com
   os-internal-hostname:
     type: string
     default:
@@ -602,8 +609,11 @@ options:
     default: false
     description: |
       If true, radosgw is configured to allow the use of virtual hosted bucket
-      name. This also requires the creation of a DNS CNAME to point all wildcard
-      subdomains (*.radosgw.domain) to the radosgw IP (or VIP). The host name part
-      (radosgw.domain) is taken from os-public-hostname so it must have a value too.
+      names. This also requires DNS records that point the wildcard subdomain
+      for every domain in os-public-hostname to the radosgw IP (or VIP). Each
+      domain also receives a certificate request containing its wildcard name.
+      For example, os-public-hostname=rgw.example.com,s3.example.com requires
+      DNS and certificate coverage for both *.rgw.example.com and
+      *.s3.example.com. The os-public-hostname option must have a value.
 
       https://docs.ceph.com/en/latest/radosgw/s3/commons/
