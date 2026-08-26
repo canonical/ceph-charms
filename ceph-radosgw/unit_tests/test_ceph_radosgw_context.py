@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from unittest.mock import patch, MagicMock, ANY
+from unittest.mock import patch, MagicMock, ANY, call
 
 import ceph_radosgw_context as context
 import charmhelpers.contrib.storage.linux.ceph as ceph
@@ -581,6 +581,47 @@ class MonContextTest(CharmTestCase):
         }
         self.assertEqual(expect, mon_ctxt())
 
+    @patch('ceph_radosgw_context.https')
+    @patch('charmhelpers.contrib.hahelpers.cluster.relation_ids')
+    @patch('charmhelpers.contrib.hahelpers.cluster.config_get')
+    @patch.object(ceph, 'config', lambda *args:
+                  '{"client.radosgw.gateway": {"rgw init timeout": 60}}')
+    def test_ctxt_virtual_hosted_bucket_multiple_hostnames(
+        self, mock_config_get, mock_relation_ids, mock_https,
+    ):
+        mock_https.return_value = False
+        mock_relation_ids.return_value = []
+        self.test_config.set('virtual-hosted-bucket-enabled', True)
+        self.test_config.set(
+            'os-public-hostname',
+            'rgw.example.com, s3.example.com, rgw.example.com',
+        )
+        mock_config_get.side_effect = self.test_config.get
+        self.socket.gethostname.return_value = 'testhost'
+        mon_ctxt = context.MonContext()
+        addresses = ['10.5.4.1', '10.5.4.2', '10.5.4.3']
+
+        def _relation_get(attr, unit, rid):
+            if attr == 'ceph-public-address':
+                return addresses.pop()
+            elif attr == 'auth':
+                return 'cephx'
+            elif attr == 'rgw.testhost_key':
+                return 'testkey'
+            elif attr == 'fsid':
+                return 'testfsid'
+
+        self.relation_get.side_effect = _relation_get
+        self.relation_ids.return_value = ['mon:6']
+        self.related_units.return_value = ['ceph/0', 'ceph/1', 'ceph/2']
+        self.multisite.plain_list = self.plain_list_stub
+        self.determine_api_port.return_value = 70
+
+        self.assertEqual(
+            'rgw.example.com,s3.example.com',
+            mon_ctxt()['public_hostname'],
+        )
+
 
 class LdapContextTest(CharmTestCase):
 
@@ -645,3 +686,80 @@ class ApacheContextTest(CharmTestCase):
     def setUp(self):
         super(ApacheContextTest, self).setUp(context, TO_PATCH)
         self.config.side_effect = self.test_config.get
+
+    @patch('ceph_radosgw_context.context.ApacheSSLContext.__call__')
+    def test_ctxt_multiple_public_hostnames(self, mock_apache_ssl_context):
+        self.test_config.set('virtual-hosted-bucket-enabled', True)
+        self.test_config.set(
+            'os-public-hostname', 'rgw.example.com,s3.example.com')
+        self.utils.listen_port.return_value = 443
+        mock_apache_ssl_context.return_value = {
+            'namespace': 'ceph-radosgw',
+            'endpoints': [
+                ('10.0.0.10', '10.0.0.10', 443, 80),
+                ('10.0.0.10', 'rgw.example.com,s3.example.com', 443, 80),
+            ],
+            'ext_ports': [443],
+        }
+
+        ctxt = context.ApacheSSLContext()()
+
+        self.assertEqual(
+            [
+                {
+                    'address': '10.0.0.10',
+                    'endpoint': '10.0.0.10',
+                    'cert_cn': '10.0.0.10',
+                    'aliases': [],
+                    'ext': 443,
+                    'int': 80,
+                },
+                {
+                    'address': '10.0.0.10',
+                    'endpoint': 'rgw.example.com',
+                    'cert_cn': 'rgw.example.com',
+                    'aliases': ['*.rgw.example.com'],
+                    'ext': 443,
+                    'int': 80,
+                },
+                {
+                    'address': '10.0.0.10',
+                    'endpoint': 's3.example.com',
+                    'cert_cn': 's3.example.com',
+                    'aliases': ['*.s3.example.com'],
+                    'ext': 443,
+                    'int': 80,
+                },
+            ],
+            ctxt['endpoints'],
+        )
+
+    @patch.object(context.ApacheSSLContext, 'configure_cert')
+    @patch('ceph_radosgw_context.context.ApacheSSLContext.__call__')
+    def test_ctxt_static_cert_installed_for_each_vhost(
+            self, mock_apache_ssl_context, mock_configure_cert):
+        self.test_config.set('ssl_cert', 'certificate')
+        self.test_config.set('ssl_key', 'private-key')
+        self.test_config.set('virtual-hosted-bucket-enabled', True)
+        self.test_config.set(
+            'os-public-hostname', 'rgw.example.com,s3.example.com')
+        self.utils.listen_port.return_value = 443
+        mock_apache_ssl_context.return_value = {
+            'namespace': 'ceph-radosgw',
+            'endpoints': [
+                ('10.0.0.10', '10.0.0.10', 443, 80),
+                ('10.0.0.10', 'rgw.example.com,s3.example.com', 443, 80),
+            ],
+            'ext_ports': [443],
+        }
+
+        context.ApacheSSLContext()()
+
+        self.assertEqual(
+            [
+                call('10.0.0.10'),
+                call('rgw.example.com'),
+                call('s3.example.com'),
+            ],
+            mock_configure_cert.call_args_list,
+        )
