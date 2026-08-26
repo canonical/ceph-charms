@@ -1,0 +1,39 @@
+name: cephx-upgrade-demo
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - tests/scripts/cephx-upgrade-demo.sh
+      - .github/workflows/cephx-upgrade-demo.yml
+
+jobs:
+  cephx-upgrade-demo:
+    name: cephx upgrade scenarios (19.2.3 vs SRU ppa)
+    runs-on: [self-hosted, linux, amd64, X64, large, noble]
+    timeout-minutes: 90
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Clear FORWARD firewall rules
+        run: bash tests/scripts/actionutils.sh cleaript
+
+      - name: Setup LXD
+        run: |
+          if [[ "$(snap list | grep -c lxd)" -eq 0 ]]; then
+            sudo snap install lxd --channel=5.21/stable
+            sudo usermod -aG lxd "$USER"
+            newgrp lxd
+            lxd init --minimal
+          fi
+          # a self-hosted runner may already have lxdbr0 up with IPv6
+          # enabled, which breaks apt inside the containers
+          sudo lxc network set lxdbr0 ipv6.address none || true
+
+      - name: Run the cephx upgrade scenarios
+        run: sudo -E bash tests/scripts/cephx-upgrade-demo.sh all
+
+      - name: Clean up demo containers
+        if: always()
+        run: sudo bash tests/scripts/cephx-upgrade-demo.sh --clean
