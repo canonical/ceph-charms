@@ -24,6 +24,8 @@
 #                        new-type key crashes the remaining old mons,
 #                        and upgrading them recovers the cluster
 #   mons-first           the recommended order: no breakage either way
+#   unordered            any upgrade order keeps the cluster running,
+#                        as long as no key is created or rotated
 #   provisioning-matrix  which key-creation paths are safe mid-upgrade
 #   fresh-cluster        a brand-new 19.2.6 cluster vs an old client
 #
@@ -62,7 +64,7 @@ CLIENT="$PREFIX-client"
 ALL=("${MONS[@]}" "$OSD_NODE" "$CLIENT")
 BASE="$PREFIX-base"
 SNAP=baseline
-SCENARIOS=(osd-first one-mon leader-flip mons-first provisioning-matrix fresh-cluster)
+SCENARIOS=(osd-first one-mon leader-flip mons-first unordered provisioning-matrix fresh-cluster)
 
 WORKDIR=$(mktemp -d)
 trap 'rm -rf "$WORKDIR"' EXIT
@@ -500,6 +502,37 @@ scenario_mons_first() {
     note "provisioning from the upgraded OSD node (new-type key) works too"
     io_check "$CLIENT" all-upgraded
     record "mons-first: no breakage in either direction; mons keep minting old-type keys until told otherwise"
+}
+
+scenario_unordered() {
+    banner "Scenario: unordered"
+    describe \
+        "The release-notes claim: an upgrade in ANY order keeps the" \
+        "cluster running, as long as nobody creates or rotates a key" \
+        "until it is done. We upgrade in a deliberately wrong order -" \
+        "the OSD machine first, then the mons one by one, the leader in" \
+        "the middle - and check client reads and writes after every" \
+        "single step. Everything keeps authenticating with its existing" \
+        "old-type key. Once every mon is upgraded, adding a disk works" \
+        "again too."
+    upgrade_node "$OSD_NODE"
+    run "$OSD_NODE" "systemctl restart ceph-osd@0"
+    wait_for "19.2.6 osd.0 rejoined with its old key" 120 "$CLIENT" \
+        "ceph osd tree | grep -E 'osd.0\s.*up'"
+    io_check "$CLIENT" osd-upgraded
+    upgrade_mon "$THIRD_MON"
+    io_check "$CLIENT" third-mon-upgraded
+    upgrade_mon "$LEAD_MON"
+    wait_leader "$LEAD_MON"
+    note "the upgraded $LEAD_MON leads again; still safe because no key was created"
+    io_check "$CLIENT" leader-upgraded
+    upgrade_mon "$NEXT_MON"
+    io_check "$CLIENT" all-mons-upgraded
+    soak 60 "fully upgraded, client still old"
+    make_osd "$OSD_NODE" 1
+    note "with every mon upgraded, provisioning with the default new-type key works"
+    io_check "$CLIENT" osd1-added
+    record "unordered: any upgrade order keeps I/O working when no key is created or rotated mid-window"
 }
 
 scenario_provisioning_matrix() {
