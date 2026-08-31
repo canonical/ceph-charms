@@ -31,6 +31,7 @@ from charmhelpers.core.hookenv import (
 
 from ceph_hooks import assess_status, update_apparmor
 from utils import parse_osds_arguments, ALL
+import charms_ceph.selog as selog
 
 START = 'start'
 STOP = 'stop'
@@ -55,6 +56,9 @@ def systemctl_execute(action, services):
         cmd = ['systemctl', action, 'ceph-osd.target']
     else:
         cmd = ['systemctl', action] + services
+    selog.log('Running ceph-osd.target %s' % action,
+              event='sys_daemon',
+              detail='daemon_%s' % action)
     subprocess.check_call(cmd, timeout=300)
 
 
@@ -144,6 +148,8 @@ ACTIONS = {'stop': stop,
 
 
 def main(args):
+    selog.register_log_callback(lambda msg: log(msg, "WARNING"))
+    selog.register_defaults({'appid': 'ceph.osd'})
     action_name = os.path.basename(args.pop(0))
     try:
         action = ACTIONS[action_name]
