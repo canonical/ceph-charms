@@ -36,6 +36,10 @@ Other commit rules:
 - Squash into logical commits (API / docs / CLI / daemon / tests / CI) for non-trivial PRs.
 - Maintain a linear git history.
 
+## Pull requests
+
+- Pull request descriptions must always conform to the project's PR template at [.github/PULL_REQUEST_TEMPLATE.md](.github/PULL_REQUEST_TEMPLATE.md). Fill in every section of the template rather than replacing it with free-form text.
+
 ## Build
 
 From the repo root, build a single charm:
