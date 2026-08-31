@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+from pathlib import Path
+import subprocess
+import sys
 from unittest import mock
 
 from charmhelpers.core import hookenv
@@ -25,6 +29,28 @@ class BlacklistActionTests(CharmTestCase):
     def setUp(self):
         super(BlacklistActionTests, self).setUp(
             blacklist, [])
+
+    def test_action_imports_vendored_library(self):
+        """The deployed blacklist action can import charms_ceph.selog."""
+        charm_dir = Path(__file__).resolve().parent.parent
+        env = os.environ.copy()
+        env.pop('PYTHONPATH', None)
+        result = subprocess.run(
+            [
+                sys.executable,
+                '-c',
+                (
+                    "import runpy; runpy.run_path("
+                    "'actions/blacklist-add-disk', "
+                    "run_name='blacklist_action')"
+                ),
+            ],
+            cwd=charm_dir,
+            env=env,
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(0, result.returncode, result.stderr)
 
     @mock.patch('os.path.isabs')
     @mock.patch('os.path.exists')
