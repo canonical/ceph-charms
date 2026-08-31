@@ -546,6 +546,46 @@ class CephRadosGWTests(CharmTestCase):
         )
         self.get_certificate_request.assert_called_once_with()
 
+    def test_certs_joined_multiple_public_hostnames(self):
+        self.test_config.set('virtual-hosted-bucket-enabled', True)
+        self.test_config.set(
+            'os-public-hostname', 'rgw.example.com,s3.example.com')
+        self.get_certificate_request.return_value = {
+            'cert_requests': json.dumps({
+                'juju-123.lxd': {'sans': ['10.0.0.10']},
+                'rgw.example.com,s3.example.com': {
+                    'sans': ['10.0.0.10', 'rgw.example.com,s3.example.com'],
+                },
+            }, sort_keys=True),
+            'unit_name': 'ceph-rgw_0',
+        }
+
+        ceph_hooks.certs_joined('certificates:1')
+
+        self.relation_set.assert_called_once_with(
+            relation_id='certificates:1',
+            relation_settings={
+                'cert_requests': json.dumps({
+                    'juju-123.lxd': {'sans': ['10.0.0.10']},
+                    'rgw.example.com': {
+                        'sans': [
+                            '*.rgw.example.com',
+                            '10.0.0.10',
+                            'rgw.example.com',
+                        ],
+                    },
+                    's3.example.com': {
+                        'sans': [
+                            '*.s3.example.com',
+                            '10.0.0.10',
+                            's3.example.com',
+                        ],
+                    },
+                }, sort_keys=True),
+                'unit_name': 'ceph-rgw_0',
+            }
+        )
+
     @patch.object(ceph_hooks, 'configure_https')
     def test_certs_changed(self, mock_configure_https):
         ceph_hooks.certs_changed('certificates:1', 'vault/0')

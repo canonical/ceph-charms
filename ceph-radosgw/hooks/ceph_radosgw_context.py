@@ -19,6 +19,7 @@ import tempfile
 import shutil
 
 import multisite
+import rgw_hostname
 from charmhelpers.contrib.openstack import context
 from charmhelpers.contrib.hahelpers.cluster import (
     determine_api_port,
@@ -92,8 +93,28 @@ class ApacheSSLContext(context.ApacheSSLContext):
     def __call__(self):
         self.external_ports = [utils.listen_port()]
         ctx = super(ApacheSSLContext, self).__call__()
-        ctx['virtual_hosted_bucket_enabled'] = \
-            config('virtual-hosted-bucket-enabled')
+        virtual_hosted_bucket_enabled = config(
+            'virtual-hosted-bucket-enabled')
+        ctx['virtual_hosted_bucket_enabled'] = virtual_hosted_bucket_enabled
+        ctx['endpoints'] = rgw_hostname.apache_ssl_vhosts(
+            ctx.get('endpoints', []),
+            config('os-public-hostname'),
+            virtual_hosted_bucket_enabled,
+        )
+
+        # The base context installs a statically configured certificate using
+        # the unsplit endpoint name.  The vhosts above reference one file per
+        # hostname, so install the same configured certificate under each name
+        # that Apache will use.  Certificate-relation certificates are already
+        # installed per request by process_certificates().
+        if config('ssl_cert') and config('ssl_key'):
+            configured_cns = set()
+            for endpoint in ctx['endpoints']:
+                cert_cn = endpoint['cert_cn']
+                if cert_cn not in configured_cns:
+                    self.configure_cert(cert_cn)
+                    configured_cns.add(cert_cn)
+
         return ctx
 
 
@@ -333,7 +354,9 @@ class MonContext(context.CephContext):
         }
         if config('virtual-hosted-bucket-enabled'):
             if config('os-public-hostname'):
-                ctxt['public_hostname'] = config('os-public-hostname')
+                ctxt['public_hostname'] = \
+                    rgw_hostname.normalise_rgw_public_hostnames(
+                        config('os-public-hostname'))
             else:
                 log("When virtual_hosted_bucket_enabled is true, "
                     "os_public_hostname must have a value.", level=WARNING)

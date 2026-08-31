@@ -29,6 +29,7 @@ sys.path.append('lib')
 import ceph_rgw as ceph
 import charms_ceph.utils as ceph_utils
 import multisite
+import rgw_hostname
 
 from charmhelpers.core.hookenv import (
     ERROR,
@@ -600,16 +601,18 @@ def post_series_upgrade():
 @hooks.hook('certificates-relation-joined')
 def certs_joined(relation_id=None):
     cert_req_obj = get_certificate_request()
-    if config('virtual-hosted-bucket-enabled'):
-        import json
+    if config('os-public-hostname'):
         cert_req = json.loads(cert_req_obj["cert_requests"])
-        for cn in cert_req.keys():
-            if cn == config('os-public-hostname'):
-                log("Adding wildcard hostname for virtual hosted buckets",
-                    "INFO")
-                cert_req[cn]["sans"].append("*."+config('os-public-hostname'))
-                cert_req_obj['cert_requests'] = json.dumps(cert_req,
-                                                           sort_keys=True)
+        cert_req = rgw_hostname.certificate_requests(
+            cert_req,
+            config('os-public-hostname'),
+            virtual_hosted_bucket_enabled=config(
+                'virtual-hosted-bucket-enabled'),
+        )
+        if config('virtual-hosted-bucket-enabled'):
+            log("Adding wildcard hostname for virtual hosted buckets",
+                "INFO")
+        cert_req_obj['cert_requests'] = json.dumps(cert_req, sort_keys=True)
     log("Cert request: {}".format(cert_req_obj), "INFO")
     relation_set(
         relation_id=relation_id,
