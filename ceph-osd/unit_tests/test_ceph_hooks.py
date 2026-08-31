@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import builtins
 from collections import OrderedDict
 import copy
 import unittest
@@ -59,6 +60,31 @@ class CephHooksTestCase(unittest.TestCase):
 
     def setUp(self):
         super(CephHooksTestCase, self).setUp()
+
+    def test_get_version_imports_apt_pkg_before_version_lookup(self):
+        calls = []
+        apt = MagicMock()
+        apt.upstream_version.return_value = '18.2.1'
+        version = MagicMock(ver_str='18.2.1')
+        original_import = builtins.__import__
+
+        def import_module(name, globals=None, locals=None, fromlist=(),
+                          level=0):
+            if name == 'apt_pkg':
+                calls.append('apt_pkg')
+                return apt
+            return original_import(name, globals, locals, fromlist, level)
+
+        def get_installed_version(package):
+            calls.append('get_installed_version')
+            return version
+
+        with patch('builtins.__import__', side_effect=import_module):
+            with patch.object(ceph_utils, 'get_installed_version',
+                              side_effect=get_installed_version):
+                self.assertEqual(18.2, ceph_utils.get_version())
+
+        self.assertEqual(['apt_pkg', 'get_installed_version'], calls)
 
     @patch.object(ceph_hooks.ch_context, 'CephBlueStoreCompressionContext',
                   lambda: lambda: {})

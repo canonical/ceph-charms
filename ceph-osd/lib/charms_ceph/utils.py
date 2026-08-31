@@ -754,14 +754,6 @@ def _is_int(v):
 
 def get_version():
     """Derive Ceph release from an installed package."""
-    package = "ceph"
-
-    current_ver = get_installed_version(package)
-    if not current_ver:
-        # package is known, but no version is currently installed.
-        e = 'Could not determine version of uninstalled package: %s' % package
-        error_out(e)
-
     try:
         import apt_pkg as apt
     except ImportError:
@@ -769,6 +761,14 @@ def get_version():
         # newer bases. Use charmhelpers' python implementation instead of
         # vendoring the python3-apt binary extension into the charm venv.
         from charmhelpers.fetch import ubuntu_apt_pkg as apt
+
+    package = "ceph"
+
+    current_ver = get_installed_version(package)
+    if not current_ver:
+        # package is known, but no version is currently installed.
+        e = 'Could not determine version of uninstalled package: %s' % package
+        error_out(e)
 
     vers = apt.upstream_version(current_ver.ver_str)
 
