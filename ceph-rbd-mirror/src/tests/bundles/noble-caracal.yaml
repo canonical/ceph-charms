@@ -1,6 +1,6 @@
 variables:
   openstack-origin: &openstack-origin distro
-  source: &source ppa:whershberger/ceph-gazpacho
+  source: &source ppa:ubuntu-cloud-archive/gazpacho-proposed
   series: &series noble
 
 series: *series

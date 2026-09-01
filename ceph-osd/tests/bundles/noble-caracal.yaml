@@ -18,7 +18,7 @@ applications:
     num_units: 3
     options:
       monitor-count: 3
-      source: ppa:whershberger/ceph-gazpacho
+      source: ppa:ubuntu-cloud-archive/gazpacho-proposed
     to:
       - '0'
       - '1'
@@ -31,7 +31,7 @@ applications:
     storage:
       osd-devices: 'loop,5G,2'
     options:
-      source: ppa:whershberger/ceph-gazpacho
+      source: ppa:ubuntu-cloud-archive/gazpacho-proposed
     to:
       - '3'
       - '4'

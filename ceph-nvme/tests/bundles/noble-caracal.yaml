@@ -20,7 +20,7 @@ applications:
     channel: latest/edge
     options:
       monitor-count: 3
-      source: ppa:whershberger/ceph-gazpacho
+      source: ppa:ubuntu-cloud-archive/gazpacho-proposed
     to:
       - '0'
       - '1'
@@ -43,7 +43,7 @@ applications:
     storage:
       osd-devices: 'loop,10G'
     options:
-      source: ppa:whershberger/ceph-gazpacho
+      source: ppa:ubuntu-cloud-archive/gazpacho-proposed
     to:
       - '5'
       - '6'

@@ -20,7 +20,7 @@ applications:
     storage:
       osd-devices: 'loop,4G'
     options:
-      source: ppa:whershberger/ceph-gazpacho
+      source: ppa:ubuntu-cloud-archive/gazpacho-proposed
     to:
       - '0'
       - '1'
@@ -32,7 +32,7 @@ applications:
     num_units: 3
     options:
       expected-osd-count: 3
-      source: ppa:whershberger/ceph-gazpacho
+      source: ppa:ubuntu-cloud-archive/gazpacho-proposed
     channel: latest/edge
     to:
       - '3'
@@ -44,7 +44,7 @@ applications:
     channel: latest/edge
     num_units: 1
     options:
-      source: ppa:whershberger/ceph-gazpacho
+      source: ppa:ubuntu-cloud-archive/gazpacho-proposed
     to:
       - '6'
 
@@ -53,14 +53,14 @@ applications:
     num_units: 1
     channel: latest/edge
     options:
-      source: ppa:whershberger/ceph-gazpacho
+      source: ppa:ubuntu-cloud-archive/gazpacho-proposed
 
   ceph-fs:
     charm: ch:ceph-fs
     channel: latest/edge
     num_units: 1
     options:
-      source: ppa:whershberger/ceph-gazpacho
+      source: ppa:ubuntu-cloud-archive/gazpacho-proposed
     to:
       - '2'
 
