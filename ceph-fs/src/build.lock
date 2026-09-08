@@ -164,8 +164,8 @@
       "type": "python_module",
       "package": "charmhelpers",
       "url": "git+https://github.com/juju/charm-helpers.git",
-      "branch": "33c08fc064069c30237b47f1998ac9996351301a",
-      "version": "33c08fc064069c30237b47f1998ac9996351301a",
+      "branch": "f53dfe10758d48197e1ef7b5138c2210fc4652d7",
+      "version": "f53dfe10758d48197e1ef7b5138c2210fc4652d7",
       "vcs": "git"
     },
     {
