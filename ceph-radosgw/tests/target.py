@@ -1155,7 +1155,13 @@ class S3APITest(test_utils.OpenStackBaseTest):
         # Create bucket
         bucket_name = 'zaza-s3'
         bucket = s3.Bucket(bucket_name)
-        bucket.create()
+        # We may not have certs for the pub hostname yet, so retry a few times.
+        for attempt in tenacity.Retrying(
+            stop=tenacity.stop_after_attempt(10),
+            wait=tenacity.wait_fixed(4),
+        ):
+            with attempt:
+                bucket.create()
 
         # Validate its presence
         bucket_list = s3_client.list_buckets()
