@@ -26,6 +26,11 @@ from unittest.mock import call
 class CephBrokerTestCase(unittest.TestCase):
     def setUp(self):
         super(CephBrokerTestCase, self).setUp()
+        self.saved = charms_ceph.broker.config
+        charms_ceph.broker.config = lambda _: ""
+
+    def tearDown(self):
+        charms_ceph.broker.config = self.saved
 
     @patch.object(charms_ceph.broker, 'check_call')
     def test_update_service_permission(self, _check_call):
@@ -36,7 +41,7 @@ class CephBrokerTestCase(unittest.TestCase):
         charms_ceph.broker.update_service_permissions(service='nova',
                                                       service_obj=service_obj)
         _check_call.assert_called_with(
-            ['ceph', 'auth', 'caps',
+            ['ceph', '--id', 'admin', 'auth', 'caps',
              'client.nova',
              'mon', ('allow r, allow command "osd blacklist"'
                      ', allow command "osd blocklist"'),
@@ -70,7 +75,7 @@ class CephBrokerTestCase(unittest.TestCase):
             value=json.dumps({"pools": ["glance", "cinder"],
                               "services": ["nova"]}, sort_keys=True))
         _check_call.assert_called_with([
-            'ceph', 'auth', 'caps',
+            'ceph', '--id', 'admin', 'auth', 'caps',
             'client.nova',
             'mon', ('allow r, allow command "osd blacklist"'
                     ', allow command "osd blocklist"'),
