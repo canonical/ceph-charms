@@ -1141,6 +1141,13 @@ class S3APITest(test_utils.OpenStackBaseTest):
 
     def test_901_s3_list_buckets(self):
         """Use S3 API to list buckets."""
+        if test_utils.package_version_matches(
+                'ceph-radosgw',
+                'radosgw',
+                ['20.2.0-0ubuntu2'],
+                'eq'):
+            raise unittest.SkipTest(
+                'radosgw 20.2.0-0ubuntu2 crashes during Keystone S3 auth')
         # We use a mix of the high- and low-level API with common arguments
         kwargs = {
             'region_name': self.s3_region,
@@ -1164,7 +1171,8 @@ class S3APITest(test_utils.OpenStackBaseTest):
             if bkt['Name'] == bucket_name:
                 break
         else:
-            AssertionError('Bucket "{}" not found'.format(bucket_name))
+            raise AssertionError(
+                'Bucket "{}" not found'.format(bucket_name))
 
         # Delete bucket
         bucket.delete()
