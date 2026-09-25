@@ -357,12 +357,14 @@ class CephRGWTest(test_utils.BaseCharmTest):
             }
         )
 
-    def set_os_public_hostname(self):
-        """Set os-public-hostname on primary rgw app."""
+    def set_os_public_hostnames(self):
+        """Set multiple os-public-hostname values on the primary RGW app."""
         zaza_model.set_application_config(
             self.primary_rgw_app,
             {
-                'os-public-hostname': "rgw.example.com",
+                'os-public-hostname': (
+                    "rgw.example.com,s3.example.com"
+                ),
             }
         )
 
@@ -885,7 +887,7 @@ class CephRGWTest(test_utils.BaseCharmTest):
             'os-public-hostname must have a value',
             timeout=900
         )
-        self.set_os_public_hostname()
+        self.set_os_public_hostnames()
         zaza_model.block_until_all_units_idle(self.model_name)
         container_name = 'zaza-bucket'
         obj_data = 'Test content from Zaza'
@@ -920,16 +922,17 @@ class CephRGWTest(test_utils.BaseCharmTest):
         )
 
         # 3. Test if we can get content via virtual hosted bucket name
-        public_hostname = zaza_model.get_application_config(
+        public_hostnames = zaza_model.get_application_config(
             self.primary_rgw_app
-        )["os-public-hostname"]["value"]
+        )["os-public-hostname"]["value"].split(',')
         url = f"{primary_endpoint}/{obj_name}"
-        virtual_host = f"{container_name}.{public_hostname}"
-        headers = {'host': virtual_host}
-        with requests.Session() as session:
-            session.mount('https://', SNIAdapter(virtual_host))
-            f = session.get(url, headers=headers, verify=False)
-        self.assertEqual(f.text, obj_data)
+        for public_hostname in public_hostnames:
+            virtual_host = f"{container_name}.{public_hostname}"
+            headers = {'host': virtual_host}
+            with requests.Session() as session:
+                session.mount('https://', SNIAdapter(virtual_host))
+                response = session.get(url, headers=headers, verify=False)
+            self.assertEqual(response.text, obj_data)
 
         # 4. Cleanup and de-configure virtual hosted bucket
         self.clean_virtual_hosted_bucket()
