@@ -30,6 +30,7 @@ import charmhelpers.core.hookenv as hookenv
 from charmhelpers.core.hookenv import function_fail
 
 import charms_ceph.utils
+import resource_manager
 from charmhelpers.core.unitdata import kv
 from utils import (get_bcache_names, bcache_remove, device_size,
                    get_parent_device, remove_lvm, wipefs_safely)
@@ -246,9 +247,15 @@ class ActionOSD:
                     'timed out waiting for an OSD to be safe to destroy')
             time.sleep(min(1, (end - curr).total_seconds()))
 
-        # Stop the OSD service.
+        # Stop before changing CPU ownership.  The resource manager repeats
+        # the stop through systemd and proves it completed before clearing a
+        # drop-in or releasing EPA; failure must leave the disk untouched.
         hookenv.log('Stopping the OSD service', hookenv.DEBUG)
         charms_ceph.utils.stop_osd(self.osd_id[4:])
+        if resource_manager.safe_release_osd(self.osd_id[4:]) is False:
+            raise RemoveException(
+                'cannot safely release CPU resources for {}'.format(
+                    self.osd_id))
         charms_ceph.utils.disable_osd(self.osd_id[4:])
         unit_filename = \
             '/run/systemd/system/ceph-osd.target.wants/ceph-osd@{}.service' \

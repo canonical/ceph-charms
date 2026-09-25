@@ -2324,54 +2324,35 @@ def upgrade_monitor(new_version, kick_function=None, restart_daemons=True):
 
 
 def lock_and_roll(upgrade_key, service, my_name, version):
-    """Create a lock on the Ceph monitor cluster and upgrade.
+    """Upgrade using the shared rolling-operation marker protocol.
 
-    :param upgrade_key: str. The cephx key to use
-    :param service: str. The cephx id to use
-    :param my_name: str. The current hostname
-    :param version: str. The version we are upgrading to
+    Release upgrades retain their existing version-keyed markers and watchdog
+    waiting policy. Resource rollouts use fresh generations and strict waiting.
     """
-    start_timestamp = time.time()
+    from charms_ceph.rolling import RollingOperation
 
-    log('monitor_key_set {}_{}_{}_start {}'.format(
-        service,
-        my_name,
-        version,
-        start_timestamp))
-    monitor_key_set(upgrade_key, "{}_{}_{}_start".format(
-        service, my_name, version), start_timestamp)
+    def write_marker(key, value):
+        if key.endswith(('_start', '_done')):
+            log('monitor_key_set {} {}'.format(key, value))
+        if key.endswith('_done'):
+            status_set('maintenance', 'Finishing upgrade')
+        monitor_key_set(upgrade_key, key, value)
 
-    # alive indication:
-    alive_function = (
-        lambda: monitor_key_set(
-            upgrade_key, "{}_{}_{}_alive"
-            .format(service, my_name, version), time.time()))
-    dog = WatchDog(kick_interval=3 * 60,
-                   kick_function=alive_function)
+    def upgrade(kick):
+        log('Rolling')
+        if service == 'osd':
+            upgrade_osd(version, kick_function=kick)
+        elif service == 'mon':
+            upgrade_monitor(version, kick_function=kick)
+        else:
+            log('Unknown service {}. Unable to upgrade'.format(service),
+                level=ERROR)
+        log('Done')
 
-    log("Rolling")
-
-    # This should be quick
-    if service == 'osd':
-        upgrade_osd(version, kick_function=dog.kick_the_dog)
-    elif service == 'mon':
-        upgrade_monitor(version, kick_function=dog.kick_the_dog)
-    else:
-        log("Unknown service {}. Unable to upgrade".format(service),
-            level=ERROR)
-    log("Done")
-
-    stop_timestamp = time.time()
-    # Set a key to inform others I am finished
-    log('monitor_key_set {}_{}_{}_done {}'.format(service,
-                                                  my_name,
-                                                  version,
-                                                  stop_timestamp))
-    status_set('maintenance', 'Finishing upgrade')
-    monitor_key_set(upgrade_key, "{}_{}_{}_done".format(service,
-                                                        my_name,
-                                                        version),
-                    stop_timestamp)
+    operation = RollingOperation(
+        service, version, lambda key: monitor_key_get(upgrade_key, key),
+        write_marker, now=time.time)
+    return operation.run(my_name, upgrade, WatchDog, record_failure=False)
 
 
 def wait_on_previous_node(upgrade_key, service, previous_node, version):
@@ -2618,11 +2599,8 @@ def get_upgrade_position(osd_sorted_list, match_name):
     :rtype: int
     :raises: ValueError if name is not found
     """
-    for index, item in enumerate(osd_sorted_list):
-        if item.name == match_name:
-            return index
-    raise ValueError("OSD name '{}' not found in get_upgrade_position list"
-                     .format(match_name))
+    from charms_ceph.rolling import position
+    return position([item.name for item in osd_sorted_list], match_name)
 
 
 # Edge cases:

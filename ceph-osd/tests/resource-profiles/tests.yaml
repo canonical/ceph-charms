@@ -1,0 +1,10 @@
+charm_name: ceph-osd
+
+# Explicitly selected with --test-directory; never part of the default gate.
+gate_bundles:
+  - noble-resource-profiles
+smoke_bundles:
+  - noble-resource-profiles
+
+tests:
+  - tests.resource_profiles.ResourceProfileRolloutTest

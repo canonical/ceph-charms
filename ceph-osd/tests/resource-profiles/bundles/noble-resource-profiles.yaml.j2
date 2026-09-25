@@ -1,0 +1,37 @@
+# Both local artifact paths are mandatory, absolute paths on the Zaza runner.
+# An undefined variable fails template rendering, before Juju deploys anything.
+default-base: ubuntu@24.04
+local_overlay_enabled: false
+
+machines:
+  '0':
+    constraints: cores=8 mem=12G root-disk=32G virt-type=virtual-machine
+  '1':
+    constraints: cores=8 mem=12G root-disk=32G virt-type=virtual-machine
+  '2':
+    constraints: cores=8 mem=12G root-disk=32G virt-type=virtual-machine
+
+applications:
+  ceph-mon:
+    charm: ch:ceph-mon
+    channel: tentacle/edge
+    num_units: 3
+    options:
+      source: distro
+      monitor-count: 3
+      expected-osd-count: 6
+    to: ['0', '1', '2']
+  ceph-osd:
+    charm: {{ TEST_EPA_OSD_CHARM | string | tojson }}
+    num_units: 3
+    options:
+      source: distro
+      performance-profile: unmanaged
+    resources:
+      epa-orchestrator: {{ TEST_EPA_SNAP | string | tojson }}
+    storage:
+      osd-devices: loop,8G,2
+    to: ['0', '1', '2']
+
+relations:
+  - ['ceph-osd:mon', 'ceph-mon:osd']

@@ -30,6 +30,7 @@ import utils
 
 sys.path.append('lib')
 import charms_ceph.utils as ceph
+import resource_manager
 from charmhelpers.core import hookenv
 from charmhelpers.core.hookenv import (
     log,
@@ -537,6 +538,9 @@ def get_ceph_context(upgrading=False):
         'bluestore_block_db_size': config('bluestore-block-db-size'),
     }
 
+    if resource_manager.affinity_protection_required():
+        cephcontext['resource_affinity_protection'] = True
+
     devices = get_devices()
 
     for device in devices:
@@ -636,6 +640,10 @@ def config_changed():
     prepare_disks_and_activate()
     install_apparmor_profile()
     add_to_updatedb_prunepath(STORAGE_MOUNT_PATH)
+    # Recalculate the resource allocation for the current profile. This
+    # also covers the paths where prepare_disks_and_activate() returned
+    # early, and is a no-op when nothing changed.
+    resource_manager.safe_reconcile()
 
 
 @hooks.hook('storage.real')
@@ -721,6 +729,10 @@ def prepare_disks_and_activate():
                 'osd-memory-target': get_osd_memory_target(),
             }
         )
+
+    # Allocate host resources for any OSD that appeared, and re-apply the
+    # active profile. This is a no-op when nothing changed.
+    resource_manager.safe_reconcile()
 
 
 def get_mon_hosts():
@@ -843,6 +855,7 @@ def mon_relation():
 @hooks.hook('upgrade-charm.real')
 @harden()
 def upgrade_charm():
+    resource_manager.resource_rollout.request_refresh()
     apt_install(packages=filter_installed_packages(ceph.determine_packages()),
                 fatal=True)
     if get_fsid() and get_auth():
@@ -1009,6 +1022,19 @@ def assess_status():
                 "offline?:\n{}".format(str(e)))
             log("Traceback: {}".format(traceback.format_exc()))
 
+    # Resource allocation errors and desired/actual mismatches block the
+    # unit; deviations are appended to the ready message below.
+    resource_status = resource_manager.assess()
+    if resource_status is not None and resource_status.blocked:
+        status_set('blocked', resource_status.message)
+        return
+    if resource_status is not None and resource_status.waiting:
+        status_set('waiting', resource_status.message)
+        return
+    resource_message = ''
+    if resource_status is not None:
+        resource_message = ', {}'.format(resource_status.message)
+
     # Check for OSD device creation parity i.e. at least some devices
     # must have been presented and used for this charm to be operational
     (prev_status, prev_message) = status_get()
@@ -1027,7 +1053,8 @@ def assess_status():
                 _set_pending_apparmor_update_status()
             else:
                 status_set('active',
-                           'Unit is ready ({} OSD)'.format(len(running_osds)))
+                           'Unit is ready ({} OSD){}'.format(
+                               len(running_osds), resource_message))
     else:
         pristine = True
         # Check unmounted disks that should be configured but don't check
@@ -1043,7 +1070,8 @@ def assess_status():
                 break
         if pristine:
             status_set('active',
-                       'Unit is ready ({} OSD)'.format(len(running_osds)))
+                       'Unit is ready ({} OSD){}'.format(
+                           len(running_osds), resource_message))
 
     try:
         get_bdev_enable_discard()
@@ -1057,10 +1085,28 @@ def assess_status():
         status_set('blocked', 'Invalid configuration: {}'.format(str(e)))
 
 
+@hooks.hook('stop')
+def stop():
+    log('Releasing OSD CPU allocations', level=INFO)
+    resource_manager.safe_release_all()
+
+
+@hooks.hook('resource-peers-relation-joined',
+            'resource-peers-relation-changed',
+            'resource-peers-relation-departed',
+            'leader-elected', 'start')
+def resource_rollout_changed():
+    """Advance a resource rollout after peer/leader progress or recovery."""
+    resource_manager.safe_reconcile()
+
+
 @hooks.hook('update-status')
 @harden()
 def update_status():
     log('Updating status.')
+    # Report-only: drift is surfaced through the unit status, but no
+    # allocation is made and no OSD is restarted from update-status.
+    resource_manager.safe_verify()
 
 
 @hooks.hook('pre-series-upgrade')
@@ -1082,6 +1128,8 @@ def post_series_upgrade():
     # upgrading states.
     clear_unit_paused()
     clear_unit_upgrading()
+    # Re-verify that the applied CPU allocations survived the upgrade.
+    resource_manager.safe_reconcile()
 
 
 if __name__ == '__main__':
