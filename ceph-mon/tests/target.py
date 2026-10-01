@@ -40,6 +40,23 @@ urllib3.disable_warnings(
 )
 
 
+def current_os_release():
+    """Return the OpenStack release index for the deployed ceph-mon.
+
+    zaza's get_os_release derives this from the installed ceph package
+    version through tables that only cover the releases it knows
+    (ceph-common tops out at 19/squid), so on a newer ceph such as
+    tentacle (20) it raises KeyError. A ceph release zaza does not
+    recognise is always newer than any it does, so fall back to a value
+    that sorts after every named release, preserving the "at least
+    release X" comparisons that rely on this.
+    """
+    try:
+        return zaza_openstack.get_os_release(application='ceph-mon')
+    except KeyError:
+        return float('inf')
+
+
 class CephLowLevelTest(test_utils.BaseCharmTest):
     """Ceph Low Level Test Class."""
 
@@ -208,7 +225,7 @@ class CephTest(test_utils.BaseCharmTest):
         Verify that the new disk is added with encryption by checking for
         Ceph's encryption keys directory.
         """
-        current_release = zaza_openstack.get_os_release(application='ceph-mon')
+        current_release = current_os_release()
         trusty_mitaka = zaza_openstack.get_os_release('trusty_mitaka')
         if current_release >= trusty_mitaka:
             logging.warn("Skipping encryption test for Mitaka and higher")
@@ -292,7 +309,7 @@ class CephTest(test_utils.BaseCharmTest):
         As the ephemeral device will have data on it we can use it to validate
         that these checks work as intended.
         """
-        current_release = zaza_openstack.get_os_release(application='ceph-mon')
+        current_release = current_os_release()
         focal_ussuri = zaza_openstack.get_os_release('focal_ussuri')
         if current_release >= focal_ussuri:
             # NOTE(ajkavanagh) - focal (on ServerStack) is broken for /dev/vdb
