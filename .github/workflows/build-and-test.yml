@@ -198,7 +198,10 @@ jobs:
           rm -rf ./crashdumps
           mkdir ./crashdumps
           for model in $models; do
-            juju-crashdump -m $model -o ./crashdumps
+            # Crash-dump generation is best-effort: some model teardown or remote
+            # LXD paths can fail during collection without indicating a charm
+            # regression. Do not fail the job because of the diagnostics step.
+            juju-crashdump -m "$model" -o ./crashdumps || true
           done
 
       - name: Upload artifacts on failure
