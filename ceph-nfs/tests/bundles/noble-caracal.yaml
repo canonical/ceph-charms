@@ -1,5 +1,5 @@
 options:
-  source: &source distro
+  source: &source ppa:ubuntu-cloud-archive/gazpacho-proposed
 
 machines:
   '0':
