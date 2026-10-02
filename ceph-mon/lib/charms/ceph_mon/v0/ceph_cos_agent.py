@@ -8,11 +8,6 @@ Library for handling ceph observability integrations
 import logging
 import socket
 import tenacity
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    import charm
-
 from charms.grafana_agent.v0 import cos_agent
 from charms_ceph import utils as ceph_utils
 
@@ -24,14 +19,15 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 3
+LIBPATCH = 4
 
 logger = logging.getLogger(__name__)
 
 
 class CephCOSAgentProvider(cos_agent.COSAgentProvider):
-
-    def __init__(self, charm, refresh_cb = None, departed_cb = None):
+    def __init__(
+        self, charm, refresh_cb=None, departed_cb=None, is_ready_cb=None
+    ):
         super().__init__(
             charm,
             metrics_rules_dir="./files/prometheus_alert_rules",
@@ -40,6 +36,7 @@ class CephCOSAgentProvider(cos_agent.COSAgentProvider):
         )
         self._refresh_cb = refresh_cb
         self._departed_cb = departed_cb
+        self._is_ready_cb = is_ready_cb
 
         events = self._charm.on[cos_agent.DEFAULT_RELATION_NAME]
         self.framework.observe(
@@ -49,15 +46,20 @@ class CephCOSAgentProvider(cos_agent.COSAgentProvider):
     def _on_refresh(self, event):
         """Enable prometheus on relation change"""
         super()._on_refresh(event)
-        
+
         if not self._charm.unit.is_leader():
             logger.debug("Not the charm leader, skipping refresh cb.")
             return
 
+        if self._is_ready_cb and not self._is_ready_cb():
+            # do not proceed if the charm is not ready
+            logger.debug("charm not ready to process COS events")
+            return
+
         if callable(self._refresh_cb):
-            self._refresh_cb(event) 
+            self._refresh_cb(event)
         else:
-            # ceph mon failback
+            # ceph mon fallback
             if not ceph_utils.is_bootstrapped():
                 logger.debug("not bootstrapped, defer _on_refresh: %s", event)
                 event.defer()
@@ -70,8 +72,11 @@ class CephCOSAgentProvider(cos_agent.COSAgentProvider):
 
     def _on_relation_departed(self, event):
         """Disable prometheus on depart of relation"""
-        if self._charm.unit.is_leader():
-            logger.debug("Not the charm leader, skipping relation_departed: %s.", event)
+        if not self._charm.unit.is_leader():
+            logger.debug(
+                "Not the charm leader, skipping relation_departed: %s.", event
+            )
+            return
 
         if callable(self._departed_cb):
             self._departed_cb(event)
@@ -111,7 +116,7 @@ class CephCOSAgentProvider(cos_agent.COSAgentProvider):
                         "regex": "(.+)",
                         "target_label": "instance",
                         "action": "replace",
-                        "replacement": "$1",
+                        "replacement": "$${1}",
                     },
                     {   # tack on the domain to the instance label to make it
                         # conform to grafana-agent's node-exporter expectations
@@ -119,7 +124,7 @@ class CephCOSAgentProvider(cos_agent.COSAgentProvider):
                         "regex": "(.*)",
                         "target_label": "instance",
                         "action": "replace",
-                        "replacement": "$1." + domain,
+                        "replacement": "$${1}." + domain,
                     },
                 ]
             },
@@ -140,8 +145,10 @@ class CephCOSAgentProvider(cos_agent.COSAgentProvider):
                 'mgr/prometheus/rbd_stats_pools',
                 rbd_stats_pools
             )
-        enable_perf_metrics = self._charm.model.config.get('enable-perf-metrics', False)
+        enable_perf_metrics = self._charm.model.config.get(
+            'enable-perf-metrics', False
+        )
         ceph_utils.mgr_config_set(
             'mgr/prometheus/exclude_perf_counters',
-            str(not enable_perf_metrics)  # flip the charm config value 
+            str(not enable_perf_metrics)  # flip the charm config value
         )

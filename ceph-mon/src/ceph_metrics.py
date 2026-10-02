@@ -10,7 +10,7 @@ import json
 import logging
 import os.path
 import pathlib
-
+from cosl.rules import AlertRules
 from typing import Optional, Union, List, TYPE_CHECKING
 
 import ops.model
@@ -141,7 +141,10 @@ class CephMetricsEndpointProvider(prometheus_scrape.MetricsEndpointProvider):
             if sink.exists() or sink.is_symlink():
                 sink.unlink()
             sink.symlink_to(resource)
-            alert_rules = prometheus_scrape.AlertRules(topology=self.topology)
+            alert_rules = AlertRules(
+                topology=self.topology,
+                query_type="promql",
+            )
             alert_rules.add_path(str(sink), recursive=True)
             alert_rules_as_dict = alert_rules.as_dict()
             if not alert_rules_as_dict:
