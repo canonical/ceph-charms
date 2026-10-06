@@ -13,9 +13,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import subprocess
 import unittest
 
 from unittest.mock import patch
+
+import charms_ceph.utils as ceph
+import test_utils
 
 with patch('charmhelpers.contrib.hardening.harden.harden') as mock_dec:
     mock_dec.side_effect = (lambda *dargs, **dkwargs: lambda f:
@@ -352,3 +356,86 @@ cset.uuid		57add9da-e5de-47c6-8f39-3e16aafb8d31
   }]
 }'''
         self.assertEqual(utils.get_parent_device('/dev/loop1p1'), '/dev/loop1')
+
+
+class CephGetOSDStateTestCase(test_utils.CharmTestCase):
+
+    def setUp(self):
+        super(CephGetOSDStateTestCase, self).setUp(ceph, ['time', 'log'])
+
+    @patch.object(ceph.subprocess, 'check_output')
+    def test_get_osd_state_timeout(self, check_output):
+        self.time.time.side_effect = [0, 0, 601]
+        check_output.return_value = b'{"state": "booting"}'
+
+        result = ceph.get_osd_state(0, osd_goal_state='active', timeout=600)
+
+        self.assertIsNone(result)
+        check_output.assert_called_once_with(
+            ['ceph', 'daemon', '/var/run/ceph/ceph-osd.0.asok', 'status'])
+        self.time.sleep.assert_called_once_with(10)
+        self.log.assert_called_with(
+            'Timeout waiting for OSD 0 to reach state active. '
+            'Elapsed time: 601.0s', level=ceph.WARNING)
+
+    @patch.object(ceph.subprocess, 'check_output')
+    def test_get_osd_state_success_after_retries(self, check_output):
+        self.time.time.side_effect = [0, 0, 10, 20]
+        check_output.side_effect = [
+            subprocess.CalledProcessError(1, 'cmd'),
+            b'invalid json',
+            b'{"state": "active"}',
+        ]
+
+        result = ceph.get_osd_state(0, osd_goal_state='active')
+
+        self.assertEqual(result, 'active')
+        self.assertEqual(self.time.sleep.call_count, 2)
+        self.time.sleep.assert_called_with(10)
+
+    @patch.object(ceph.subprocess, 'check_output')
+    def test_get_osd_state_no_goal_state(self, check_output):
+        self.time.time.side_effect = [0, 0]
+        check_output.return_value = b'{"state": "booting"}'
+
+        self.assertEqual(ceph.get_osd_state(0), 'booting')
+        self.time.sleep.assert_not_called()
+
+    @patch.object(ceph.subprocess, 'check_output')
+    def test_get_osd_state_custom_retry_interval(self, check_output):
+        self.time.time.side_effect = [0, 0, 7]
+        check_output.side_effect = [
+            b'{"state": "booting"}',
+            b'{"state": "active"}',
+        ]
+
+        result = ceph.get_osd_state(0, osd_goal_state='active',
+                                    retry_interval=7)
+
+        self.assertEqual(result, 'active')
+        self.time.sleep.assert_called_once_with(7)
+
+    @patch.object(ceph.subprocess, 'check_output')
+    def test_get_osd_state_timeout_on_errors(self, check_output):
+        for response in (subprocess.CalledProcessError(1, 'cmd'),
+                         b'invalid json'):
+            with self.subTest(response=response):
+                check_output.reset_mock()
+                self.time.reset_mock()
+                self.time.time.side_effect = [0, 0, 601]
+                check_output.side_effect = [response]
+
+                result = ceph.get_osd_state(0, timeout=600)
+
+                self.assertIsNone(result)
+                self.assertEqual(check_output.call_count, 1)
+                self.time.sleep.assert_called_once_with(10)
+
+    @patch.object(ceph.subprocess, 'check_output')
+    def test_get_osd_state_goal_reached(self, check_output):
+        self.time.time.side_effect = [0, 0]
+        check_output.return_value = b'{"state": "active"}'
+
+        self.assertEqual(ceph.get_osd_state(0, osd_goal_state='active'),
+                         'active')
+        self.time.sleep.assert_not_called()
