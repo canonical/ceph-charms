@@ -2254,16 +2254,28 @@ class CephManagerAndConfig(unittest.TestCase):
 
 class CephGetOSDStateTestCase(unittest.TestCase):
 
+    @patch.object(utils.time, 'sleep')
     @patch.object(utils.time, 'time')
     @patch.object(utils.subprocess, 'check_output')
-    def test_get_osd_state_timeout(self, _check_output, _time):
-        """Test that get_osd_state returns None after timeout."""
+    def test_get_osd_state_timeout(self, _check_output, _time, _sleep):
+        """A mismatched OSD state must fail rather than report success."""
         _time.side_effect = [0, 0, 601]
         _check_output.return_value = b'{"state": "booting"}'
 
-        result = utils.get_osd_state(0, osd_goal_state='active', timeout=600)
+        with self.assertRaisesRegex(TimeoutError, 'OSD 0.*active'):
+            utils.get_osd_state(0, osd_goal_state='active', timeout=600)
 
-        self.assertIsNone(result)
+    @patch.object(utils.time, 'sleep')
+    @patch.object(utils.time, 'time')
+    @patch.object(utils.subprocess, 'check_output')
+    def test_get_osd_state_timeout_without_goal(self, _check_output, _time,
+                                                _sleep):
+        """An unavailable OSD state cannot be used as a restoration goal."""
+        _time.side_effect = [0, 0, 601]
+        _check_output.side_effect = CalledProcessError(1, 'ceph')
+
+        with self.assertRaisesRegex(TimeoutError, 'OSD 0.*any'):
+            utils.get_osd_state(0, timeout=600)
 
     @patch.object(utils.time, 'time')
     @patch.object(utils.subprocess, 'check_output')

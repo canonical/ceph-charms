@@ -23,6 +23,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       parts: ${{ steps.determine-parts.outputs.parts }}
+      shared_library: ${{ steps.determine-parts.outputs.shared_library }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -42,6 +43,7 @@ jobs:
           GITHUB_EVENT_NAME: ${{ github.event_name }}
           ALL_MOD_FILES: ${{ steps.changed-files.outputs.all_modified_files }}
         run: |
+          shared_library=false
           if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ] || [ "$GITHUB_EVENT_NAME" = "schedule" ]; then
             if [ -n "$INPUT_PART" ]; then
               # Manual run with a specified charm
@@ -54,16 +56,16 @@ jobs:
             # Automatic run: use changed-files to determine modified charms
             echo "Modified files to eval: ${ALL_MOD_FILES}"
             components=()
-            # Retrieve components with a 'tox.ini' file.
+            # Only charms can be packed; test the shared library separately.
             for file in ${ALL_MOD_FILES} ; do
               component=$(echo "$file" | cut -d "/" -f1)
               if [[ -f "./$component/charmcraft.yaml" ]]; then
                 # This is a charm.
                 components+=("$component")
-              elif [[ -f "./$component/tox.ini" ]]; then
-                # Assume this is a library.
+              elif [[ "$component" == "charms.ceph" ]]; then
+                # Run shared-library tests without trying to pack it as a charm.
                 # TODO: Add dependent charms here.
-                :
+                shared_library=true
               fi
             done
             # Remove dups
@@ -72,6 +74,27 @@ jobs:
           json_output=$(jq --compact-output --null-input '$ARGS.positional' --args -- "${components[@]}")
           echo "Modified parts: $json_output"
           echo "parts=$json_output" >> $GITHUB_OUTPUT
+          echo "shared_library=$shared_library" >> $GITHUB_OUTPUT
+
+  shared-library:
+    needs: modifiedparts
+    name: Test shared Ceph library
+    runs-on: ubuntu-latest
+    if: ${{ needs.modifiedparts.outputs.shared_library == 'true' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get -qq install libxslt-dev libxml2-dev python3-lxml tox
+
+      - name: Run linters
+        run: tox -c charms.ceph -e pep8
+
+      - name: Run unit tests
+        run: tox -c charms.ceph -e py3
 
   build:
     needs: modifiedparts
