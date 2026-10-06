@@ -86,7 +86,7 @@ APACHE_PORTS_FILE = "/etc/apache2/ports.conf"
 APACHE_SITE_CONF = '/etc/apache2/sites-available/openstack_https_frontend'
 APACHE_SITE_24_CONF = '/etc/apache2/sites-available/' \
     'openstack_https_frontend.conf'
-
+APACHE_MPM_EVENT_CONF = '/etc/apache2/mods-available/mpm_event.conf'
 BASE_RESOURCE_MAP = OrderedDict([
     (HAPROXY_CONF, {
         'contexts': [context.HAProxyContext(singlenode_mode=True),
@@ -430,6 +430,61 @@ def disable_unused_apache_sites():
 
     if service_running('apache2'):
         log('Restarting Apache')
+        service('restart', 'apache2')
+
+
+def configure_apache_mpm_event():
+    """Configure Apache MPM event module based on charm config.
+
+    Writes /etc/apache2/mods-available/mpm_event.conf when any of the
+    MPM tuning options are set. Restarts apache2 if the config changes.
+    """
+    max_request_workers = config('mpm-max-request-workers')
+    server_limit = config('mpm-server-limit')
+    threads_per_child = config('mpm-threads-per-child')
+
+    if not any([max_request_workers, server_limit, threads_per_child]):
+        return
+
+    # Use defaults for unset values
+    if not server_limit:
+        server_limit = 16
+    if not threads_per_child:
+        threads_per_child = 25
+    if not max_request_workers:
+        max_request_workers = server_limit * threads_per_child
+
+    content = (
+        '# Managed by Juju\n'
+        '<IfModule mpm_event_module>\n'
+        '    StartServers             2\n'
+        '    MinSpareThreads          25\n'
+        '    MaxSpareThreads          75\n'
+        '    ThreadLimit              64\n'
+        '    ThreadsPerChild          {threads_per_child}\n'
+        '    ServerLimit              {server_limit}\n'
+        '    MaxRequestWorkers        {max_request_workers}\n'
+        '    MaxConnectionsPerChild   0\n'
+        '</IfModule>\n'
+    ).format(
+        threads_per_child=threads_per_child,
+        server_limit=server_limit,
+        max_request_workers=max_request_workers,
+    )
+
+    changed = False
+    if os.path.exists(APACHE_MPM_EVENT_CONF):
+        with open(APACHE_MPM_EVENT_CONF, 'r') as f:
+            if f.read() == content:
+                return
+        changed = True
+
+    log('Writing Apache MPM event configuration')
+    with open(APACHE_MPM_EVENT_CONF, 'w') as f:
+        f.write(content)
+
+    if service_running('apache2'):
+        log('Restarting Apache due to MPM event config change')
         service('restart', 'apache2')
 
 
