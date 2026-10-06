@@ -2919,6 +2919,8 @@ def get_osd_state(osd_num, osd_goal_state=None, timeout=600,
     :param retry_interval: Time in seconds between retries (default: 10)
     :returns: Returns a str, the OSD state.
     :rtype: str
+    :raises TimeoutError: if the OSD state cannot be obtained or the goal
+                          state is not reached before the timeout
     """
     start_time = time.time()
 
@@ -2926,11 +2928,11 @@ def get_osd_state(osd_num, osd_goal_state=None, timeout=600,
         elapsed_time = time.time() - start_time
 
         if elapsed_time > timeout:
-            log("Timeout waiting for OSD {} to reach state {}. "
-                "Elapsed time: {:.1f}s".format(
-                    osd_num, osd_goal_state or "any", elapsed_time),
-                level=WARNING)
-            return
+            message = ("Timeout waiting for OSD {} to reach state {}. "
+                       "Elapsed time: {:.1f}s".format(
+                           osd_num, osd_goal_state or "any", elapsed_time))
+            log(message, level=WARNING)
+            raise TimeoutError(message)
 
         asok = "/var/run/ceph/ceph-osd.{}.asok".format(osd_num)
         cmd = [
