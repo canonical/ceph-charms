@@ -439,20 +439,25 @@ def configure_apache_mpm_event():
     Writes /etc/apache2/mods-available/mpm_event.conf when any of the
     MPM tuning options are set. Restarts apache2 if the config changes.
     """
-    max_request_workers = config('mpm-max-request-workers')
-    server_limit = config('mpm-server-limit')
-    threads_per_child = config('mpm-threads-per-child')
+    default_server_limit = 16
+    default_threads_per_child = 25
 
-    if not any([max_request_workers, server_limit, threads_per_child]):
+    max_request_workers = config('mpm-max-request-workers')
+    server_limit = config('mpm-server-limit') or default_server_limit
+    threads_per_child = (
+        config('mpm-threads-per-child') or default_threads_per_child
+    )
+
+    if not any([
+        max_request_workers,
+        config('mpm-server-limit'),
+        config('mpm-threads-per-child'),
+    ]):
         return
 
-    # Use defaults for unset values
-    if not server_limit:
-        server_limit = 16
-    if not threads_per_child:
-        threads_per_child = 25
-    if not max_request_workers:
-        max_request_workers = server_limit * threads_per_child
+    max_request_workers = max_request_workers or (
+        server_limit * threads_per_child
+    )
 
     content = (
         '# Managed by Juju\n'
@@ -472,12 +477,10 @@ def configure_apache_mpm_event():
         max_request_workers=max_request_workers,
     )
 
-    changed = False
     if os.path.exists(APACHE_MPM_EVENT_CONF):
         with open(APACHE_MPM_EVENT_CONF, 'r') as f:
             if f.read() == content:
                 return
-        changed = True
 
     log('Writing Apache MPM event configuration')
     with open(APACHE_MPM_EVENT_CONF, 'w') as f:
