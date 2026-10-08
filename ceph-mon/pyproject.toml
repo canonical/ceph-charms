@@ -12,7 +12,8 @@ dependencies = [
     "netifaces",
     "pyyaml",
     "setuptools",
-    "cosl",
+    # Keep cosl compatible with the vendored cos_agent's Pydantic < 2 requirement.
+    "cosl==1.9.1",
     "pydantic<2",
     "charms-ceph @ git+https://github.com/canonical/ceph-charms.git#subdirectory=charms.ceph",
     "ops-openstack @ git+https://opendev.org/openstack/charm-ops-openstack",

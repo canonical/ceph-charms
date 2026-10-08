@@ -6,6 +6,8 @@ dnspython
 netaddr
 netifaces
 pyyaml
+# Keep cosl compatible with the vendored cos_agent's Pydantic < 2 requirement.
+cosl==1.9.1
 git+https://github.com/canonical/ceph-charms.git#egg=charms_ceph&subdirectory=charms.ceph
 git+https://opendev.org/openstack/charm-ops-openstack#egg=ops_openstack
 git+https://opendev.org/openstack/charm-ops-interface-tls-certificates#egg=interface_tls_certificates
