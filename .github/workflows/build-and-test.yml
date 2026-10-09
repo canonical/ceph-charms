@@ -237,17 +237,28 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - agent: grafana-agent
-            agent_deploy: "juju deploy grafana-agent --base ubuntu@24.04"
-            agent_integrate: "juju integrate grafana-agent ceph-mon && juju integrate grafana-agent:juju-info ceph-mon:juju-info"
-            agent_wait: "juju wait-for application grafana-agent --query='forEach(units, unit => unit.workload-status==\"active\" && unit.agent-status==\"idle\")' --timeout=20m"
-            artifact_suffix: cos
-            # Agents forward logs under their own juju_application label;
-            # loki_log_filter ensures the content is actually from ceph.
-            loki_application: grafana-agent
-            loki_log_filter: ceph
+          # NOTE: the grafana-agent leg is temporarily disabled. ceph-mon tests
+          # on resolute (26.04), and the grafana-agent charm has no ubuntu@26.04
+          # revisions on any channel, so juju rejects the cos-agent relation with
+          # "subordinate must support principal application's base". Re-enable the
+          # entry below (with --base ubuntu@26.04) once grafana-agent publishes
+          # 26.04 revisions, or move this test back to noble/24.04.
+          #
+          # - agent: grafana-agent
+          #   agent_deploy: "juju deploy grafana-agent --base ubuntu@24.04"
+          #   agent_integrate: "juju integrate grafana-agent ceph-mon && juju integrate grafana-agent:juju-info ceph-mon:juju-info"
+          #   agent_wait: "juju wait-for application grafana-agent --query='forEach(units, unit => unit.workload-status==\"active\" && unit.agent-status==\"idle\")' --timeout=20m"
+          #   artifact_suffix: cos
+          #   # Agents forward logs under their own juju_application label;
+          #   # loki_log_filter ensures the content is actually from ceph.
+          #   loki_application: grafana-agent
+          #   loki_log_filter: ceph
+          # ceph-mon runs on resolute (26.04) in this test. The opentelemetry-collector
+          # charm's track 2 has no ubuntu@26.04 revisions, so deploy from the 0.130
+          # track and pin its 26.04 build explicitly to keep the subordinate's base
+          # compatible with the principal's (juju enforces this at relation time).
           - agent: opentelemetry-collector
-            agent_deploy: "juju deploy opentelemetry-collector --channel 2/stable"
+            agent_deploy: "juju deploy opentelemetry-collector --channel 0.130/stable --base ubuntu@26.04"
             agent_integrate: "juju integrate opentelemetry-collector ceph-mon:cos-agent && juju integrate opentelemetry-collector ceph-mon:juju-info"
             agent_wait: "juju wait-for application opentelemetry-collector --query='forEach(units, unit => unit.workload-status==\"active\" && unit.agent-status==\"idle\")' --timeout=20m"
             artifact_suffix: otel
