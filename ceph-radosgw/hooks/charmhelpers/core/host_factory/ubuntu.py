@@ -38,6 +38,7 @@ UBUNTU_RELEASES = (
     'plucky',
     'questing',
     'resolute',
+    'stonking',
 )
 
 
