@@ -757,12 +757,16 @@ class ApacheContextTest(CharmTestCase):
 
         mock_configure_cert.assert_called_once_with('10.0.0.10')
 
-    def test_certificate_relation_takes_precedence_over_static_cert(self):
+    @patch('charmhelpers.contrib.openstack.context.config')
+    def test_certificate_relation_takes_precedence_over_static_cert(
+            self, config):
         self.test_config.set('ssl_cert', 'certificate')
         self.test_config.set('ssl_key', 'private-key')
         self.test_config.set('virtual-hosted-bucket-enabled', True)
         self.test_config.set(
             'os-public-hostname', 'rgw.example.com,s3.example.com')
+        self.test_config.set('haproxy-enable-proxy-protocol', False)
+        config.side_effect = self.test_config.get
         self.utils.listen_port.return_value = 443
 
         base_context = context.context.ApacheSSLContext
