@@ -96,6 +96,7 @@ from charmhelpers.contrib.openstack.ha.utils import (
 from utils import (
     assess_status,
     boto_client,
+    configure_apache_mpm_event,
     disable_unused_apache_sites,
     listen_port,
     multisite_deployment,
@@ -282,6 +283,7 @@ def config_changed():
 
         CONFIGS.write_all()
         configure_https()
+        configure_apache_mpm_event()
 
         update_nrpe_config()
 

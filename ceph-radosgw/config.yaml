@@ -439,6 +439,45 @@ options:
     description: |
       Connect timeout configuration in ms for haproxy, used in HA
       configurations. If not provided, default value of 9000ms is used.
+  haproxy-check-timeout:
+    type: int
+    default:
+    description: |
+      Maximum time in ms for a backend health-check probe to complete before
+      HAProxy marks it as timed out. If not provided, default value of 9000ms
+      is used.
+  haproxy-check-inter:
+    type: int
+    default:
+    description: |
+      Interval in ms between health checks for haproxy backends. If not
+      provided, default value of 10000ms (10s) is used.
+  # Apache MPM Event Tuning
+  mpm-max-request-workers:
+    type: int
+    default:
+    description: |
+      Maximum number of Apache worker threads serving requests
+      simultaneously. This is used to tune Apache's mpm_event module for
+      high concurrency workloads. The default Apache value is 150. The
+      maximum effective value is ServerLimit * ThreadsPerChild (by default
+      16 * 25 = 400). If you increase this beyond 400, you must also
+      increase mpm-server-limit and/or mpm-threads-per-child accordingly.
+  mpm-server-limit:
+    type: int
+    default:
+    description: |
+      Upper limit on configurable number of Apache server processes. The
+      default Apache value is 16. This may need to be increased if
+      mpm-max-request-workers requires more processes than
+      ServerLimit * ThreadsPerChild would allow.
+  mpm-threads-per-child:
+    type: int
+    default:
+    description: |
+      Number of threads created by each Apache child server process. The
+      default Apache value is 25. Changing this affects the maximum
+      effective value of MaxRequestWorkers.
 
   # External SSL Parameters
   ssl_cert:

@@ -15,6 +15,7 @@
 from unittest.mock import (
     patch,
     MagicMock,
+    mock_open,
 )
 
 import utils
@@ -86,6 +87,69 @@ class CephRadosGWUtilTests(CharmTestCase):
         with patch.object(utils, '_pause_resume_helper') as prh:
             utils.resume_unit_helper('random-config')
             prh.assert_called_once_with(utils.resume_unit, 'random-config')
+
+    def test_configure_apache_mpm_event_no_config(self):
+        self.config.side_effect = lambda key: None
+        with patch.object(utils.os.path, 'exists', return_value=False), \
+                patch.object(utils, 'service') as mock_service, \
+                patch.object(utils, 'service_running') as mock_running, \
+                patch('builtins.open', mock_open()) as mocked_open:
+            utils.configure_apache_mpm_event()
+
+        mock_running.assert_not_called()
+        mock_service.assert_not_called()
+        mocked_open.assert_not_called()
+
+    def test_configure_apache_mpm_event_writes_config_and_restarts(self):
+        side_effect = {
+            'mpm-max-request-workers': 200,
+            'mpm-server-limit': 16,
+            'mpm-threads-per-child': 25,
+        }
+        self.config.side_effect = lambda key: side_effect.get(key)
+        with patch.object(utils.os.path, 'exists', return_value=False), \
+                patch.object(utils, 'service_running', return_value=True), \
+                patch.object(utils, 'service') as mock_service, \
+                patch('builtins.open', mock_open()) as mocked_open:
+            utils.configure_apache_mpm_event()
+
+        mocked_open.assert_called_once_with(utils.APACHE_MPM_EVENT_CONF, 'w')
+        mock_service.assert_called_once_with('restart', 'apache2')
+
+    def test_configure_apache_mpm_event_idempotent(self):
+        side_effect = {
+            'mpm-max-request-workers': 200,
+            'mpm-server-limit': 16,
+            'mpm-threads-per-child': 25,
+        }
+        self.config.side_effect = lambda key: side_effect.get(key)
+        existing = (
+            '# Managed by Juju\n'
+            '<IfModule mpm_event_module>\n'
+            '    StartServers             2\n'
+            '    MinSpareThreads          25\n'
+            '    MaxSpareThreads          75\n'
+            '    ThreadLimit              64\n'
+            '    ThreadsPerChild          25\n'
+            '    ServerLimit              16\n'
+            '    MaxRequestWorkers        200\n'
+            '    MaxConnectionsPerChild   0\n'
+            '</IfModule>\n'
+        )
+        with patch.object(utils.os.path, 'exists', return_value=True):
+            with patch(
+                    'builtins.open',
+                    mock_open(read_data=existing),
+            ) as mocked_open:
+                with patch.object(utils, 'service') as mock_service:
+                    with patch.object(
+                            utils, 'service_running',
+                    ) as mock_running:
+                        utils.configure_apache_mpm_event()
+
+        mock_running.assert_not_called()
+        mock_service.assert_not_called()
+        mocked_open.assert_called_once_with(utils.APACHE_MPM_EVENT_CONF, 'r')
 
     @patch.object(utils, 'services')
     def test_pause_resume_helper(self, services):
