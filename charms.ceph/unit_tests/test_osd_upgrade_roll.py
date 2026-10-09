@@ -18,7 +18,7 @@ import time
 import subprocess
 import unittest
 
-from unittest.mock import patch, call, mock_open
+from unittest.mock import DEFAULT, patch, call, mock_open
 
 import charms_ceph.utils
 
@@ -109,6 +109,38 @@ class UpgradeRollingTestCase(unittest.TestCase):
         ])
         # Make sure on an Upgrade to Hammer that chownr was NOT called.
         assert not chownr.called
+
+    def test_roll_osd_does_not_complete_when_state_times_out(self):
+        with patch.multiple(
+            charms_ceph.utils,
+            WatchDog=DEFAULT, monitor_key_set=DEFAULT, status_set=DEFAULT,
+            get_version=DEFAULT, config=DEFAULT, add_source=DEFAULT,
+            apt_update=DEFAULT, apt_install=DEFAULT,
+            determine_packages=DEFAULT,
+            dirs_need_ownership_update=DEFAULT, get_local_osd_ids=DEFAULT,
+            systemd=DEFAULT, service_restart=DEFAULT, time=DEFAULT,
+        ) as mocks, patch.object(
+            charms_ceph.utils.subprocess, 'check_output'
+        ) as check_output:
+            mocks['get_local_osd_ids'].return_value = [0]
+            mocks['dirs_need_ownership_update'].return_value = False
+            mocks['time'].time.side_effect = [0, 0, 0, 0, 0, 601, 601]
+            check_output.side_effect = [
+                b'{"state": "active"}',
+                b'{"state": "booting"}',
+            ]
+
+            with self.assertRaises(SystemExit):
+                charms_ceph.utils.lock_and_roll(
+                    upgrade_key='admin', service='osd', my_name='osd-0',
+                    version='squid')
+
+            mocks['service_restart'].assert_called_once_with('ceph-osd.target')
+            mocks['status_set'].assert_any_call(
+                'blocked', 'Upgrade to squid failed')
+            self.assertFalse(any(
+                call.args[1].endswith('_done')
+                for call in mocks['monitor_key_set'].call_args_list))
 
     @patch.object(charms_ceph.utils, 'determine_packages')
     @patch.object(charms_ceph.utils, '_upgrade_single_osd')
