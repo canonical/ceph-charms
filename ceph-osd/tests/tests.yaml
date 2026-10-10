@@ -10,7 +10,7 @@ dev_bundles:
   - resolute-tentacle
 
 tests:
-  - zaza.charm_tests.lifecycle.refresh.CharmRefreshAll
+  - zaza.charm_tests.lifecycle.refresh.CharmRefreshAll;ceph-osd:epa-orchestrator=tests/resources/epa-orchestrator.snap
   - tests.target.CephLowLevelTest
   - tests.target.CephTest
   - tests.target.SecurityTest

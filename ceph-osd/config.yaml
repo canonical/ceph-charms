@@ -486,3 +486,55 @@ options:
       in tuning. Changing the configuration option on the ceph-osd charm will
       affect ALL pools on the OSDs managed by the named application of the
       ceph-osd charm in the Juju model.
+  performance-profile:
+    type: string
+    default: unmanaged
+    description: |
+      Resource allocation profile applied to the OSDs on this unit.
+      .
+      Supported values:
+      .
+      * `unmanaged` (default): the charm neither calculates nor applies any
+        resource allocation. Existing explicit charm settings still apply, and
+        any allocation previously applied by the charm is left in place.
+      * `performance`: optimise for low latency and high throughput at the
+        expense of resource usage. 12 logical CPUs are allocated per
+        NVMe/SSD-backed OSD and 4 per HDD-backed OSD, strictly NUMA aligned
+        with the OSD devices, the Ceph network interface and OSD memory. A
+        request that cannot be satisfied strictly is refused and the unit is
+        blocked.
+      * `balanced`: save on resource usage while still providing reasonable
+        performance. 8 logical CPUs are allocated per NVMe/SSD-backed OSD and
+        2 per HDD-backed OSD, NUMA aligned with the OSD data device and OSD
+        memory where possible. Requests that cannot be satisfied are degraded
+        with a warning.
+      * `minimal`: optimise for low resource usage. 2 logical CPUs are
+        allocated per OSD with no NUMA alignment requested. Requests that
+        cannot be satisfied are degraded with a warning.
+      .
+      CPU allocations are recorded with the EPA orchestrator, enforced through
+      per-OSD systemd drop-ins, and applied automatically in a rolling
+      operation across this application's hosts. One host proceeds at a time;
+      changed OSDs on that host are restarted sequentially. A failed host or
+      a timed-out predecessor blocks the rollout rather than being skipped.
+
+      Note this feature needs a supported epa-orchestrator snap. Check the
+      epa-orchestrator documentation for support. Also see the epa-orchestrator
+      resource and epa-orchestrator-channel config option.
+      
+  suppress-profile-warnings:
+    type: boolean
+    default: false
+    description: |
+      Suppress unit status warnings about deviations from the requested
+      `performance-profile`. Deviations are still logged, and errors, drift
+      between desired and actual settings, and unrelated Ceph health problems
+      are never suppressed.
+  epa-orchestrator-channel:
+    type: string
+    default: latest/stable
+    description: |
+      Snap store channel used to install the EPA orchestrator when no
+      `epa-orchestrator` resource is attached and `performance-profile` is not
+      `unmanaged`. An EPA orchestrator that is already installed on the host is
+      always used as-is: neither its revision nor its CPU pool is modified.

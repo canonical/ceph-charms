@@ -205,3 +205,27 @@ remove-disk:
         - json
       default: text
       description: The output format returned for the command.
+resource-allocation-status:
+  description: |
+    Report the OSD resource allocation for this unit: the active profile, the
+    EPA orchestrator CPU pool, and the desired, allocated and applied CPUs per
+    OSD. This action only queries state; it never changes configuration,
+    reserves CPUs, restarts OSDs or changes unit status.
+  params:
+    dry-run:
+      type: string
+      enum:
+        - performance
+        - balanced
+        - minimal
+      description: |
+        Preview the allocation that the given profile would produce instead of
+        reporting the applied allocation. No CPUs are reserved and nothing is
+        applied.
+    format:
+      type: string
+      enum:
+        - yaml
+        - json
+      default: yaml
+      description: The output format returned for the report.
