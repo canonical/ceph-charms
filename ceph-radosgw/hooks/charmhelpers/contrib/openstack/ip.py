@@ -257,14 +257,15 @@ def resolve_addresses(endpoint_type=PUBLIC, override=True):
     :returns: List of resolved addresses
     :rtype: list
     """
+    if override:
+        resolved_override = _get_address_override(endpoint_type)
+        if resolved_override:
+            return [resolved_override]
+
     vips_config = config('vip')
     vips = vips_config.split() if vips_config else []
 
     if is_clustered() and vips:
-        # When clustered with multiple VIPs, hostname overrides do not describe
-        # the full address set. The charm needs to serialize every configured
-        # VIP for that network so Apache can terminate TLS on each advertised
-        # address.
         net_type = ADDRESS_MAP[endpoint_type]['config']
         net_addr = config(net_type)
         binding = ADDRESS_MAP[endpoint_type]['binding']
@@ -290,11 +291,6 @@ def resolve_addresses(endpoint_type=PUBLIC, override=True):
 
         if matching_vips:
             return matching_vips
-
-    if override:
-        resolved_override = _get_address_override(endpoint_type)
-        if resolved_override:
-            return [resolved_override]
 
     return [resolve_address(endpoint_type=endpoint_type, override=override)]
 

@@ -3,15 +3,36 @@
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 
+import tempfile
 import unittest
 
+from pathlib import Path
 from unittest.mock import patch
 
 import charmhelpers.contrib.openstack.context as os_context
 import charmhelpers.contrib.openstack.ip as os_ip
+import charmhelpers.contrib.openstack.cert_utils as cert_utils
 
 
 class ResolveAddressesTests(unittest.TestCase):
+
+    @patch('charmhelpers.contrib.openstack.ip._get_address_override')
+    @patch('charmhelpers.contrib.openstack.ip.resolve_address')
+    @patch('charmhelpers.contrib.openstack.ip.config')
+    @patch('charmhelpers.contrib.openstack.ip.is_clustered')
+    def test_resolve_addresses_preserves_non_clustered_endpoint(
+            self, is_clustered, config, resolve_address,
+            get_address_override):
+        is_clustered.return_value = False
+        config.return_value = None
+        get_address_override.return_value = None
+        resolve_address.return_value = '10.95.127.168'
+
+        addresses = os_ip.resolve_addresses(endpoint_type=os_ip.PUBLIC)
+
+        self.assertEqual(['10.95.127.168'], addresses)
+        resolve_address.assert_called_once_with(
+            endpoint_type=os_ip.PUBLIC, override=True)
 
     @patch('charmhelpers.contrib.openstack.ip.is_address_in_network')
     @patch('charmhelpers.contrib.openstack.ip.config')
@@ -70,8 +91,10 @@ class ResolveAddressesTests(unittest.TestCase):
     @patch('charmhelpers.contrib.openstack.ip.is_address_in_network')
     @patch('charmhelpers.contrib.openstack.ip.config')
     @patch('charmhelpers.contrib.openstack.ip.is_clustered')
-    def test_resolve_addresses_prefers_matching_vips_when_clustered(
-            self, is_clustered, config,
+    @patch('charmhelpers.contrib.openstack.ip.service_name',
+           return_value='ceph-radosgw')
+    def test_resolve_addresses_prefers_hostname_override_when_clustered(
+            self, service_name, is_clustered, config,
             is_address_in_network, resolve_address):
         is_clustered.return_value = True
 
@@ -92,10 +115,59 @@ class ResolveAddressesTests(unittest.TestCase):
         addresses = os_ip.resolve_addresses(endpoint_type=os_ip.PUBLIC,
                                             override=True)
 
-        self.assertEqual([
-            '10.0.0.10', '10.0.0.11', '10.0.0.12'
-        ], addresses)
+        self.assertEqual(['s3.example.com'], addresses)
+        is_address_in_network.assert_not_called()
         resolve_address.assert_not_called()
+
+        addresses = os_ip.resolve_addresses(endpoint_type=os_ip.PUBLIC,
+                                            override=False)
+
+        self.assertEqual(['10.0.0.10', '10.0.0.11', '10.0.0.12'], addresses)
+        resolve_address.assert_not_called()
+
+
+class CertificateRequestTests(unittest.TestCase):
+
+    @patch('charmhelpers.contrib.openstack.cert_utils.local_unit',
+           return_value='ceph-radosgw/0')
+    @patch('charmhelpers.contrib.openstack.cert_utils.get_hostname',
+           return_value='rgw-unit')
+    @patch('charmhelpers.contrib.openstack.cert_utils.local_address',
+           return_value='10.0.0.20')
+    @patch('charmhelpers.contrib.openstack.cert_utils.resolve_network_cidr',
+           return_value='10.0.0.0/24')
+    @patch('charmhelpers.contrib.openstack.cert_utils.get_vip_in_network',
+           return_value='10.0.0.10')
+    @patch('charmhelpers.contrib.openstack.cert_utils.get_certificate_sans',
+           return_value=['10.0.0.20'])
+    @patch.object(cert_utils, 'get_default_api_bindings', return_value=[])
+    @patch('charmhelpers.contrib.openstack.cert_utils.config',
+           return_value='10.0.0.10 10.0.0.11 10.1.0.10')
+    def test_certificate_request_covers_all_vips(self, *mocks):
+        request = cert_utils.get_certificate_request(json_encode=False)
+
+        self.assertEqual({
+            'rgw-unit': {
+                'sans': ['10.0.0.10', '10.0.0.11', '10.0.0.20', '10.1.0.10']
+            }
+        }, request['cert_requests'])
+
+        with tempfile.TemporaryDirectory() as ssl_dir:
+            cert_path = Path(ssl_dir) / 'cert_rgw-unit'
+            key_path = Path(ssl_dir) / 'key_rgw-unit'
+            cert_path.touch()
+            key_path.touch()
+            with patch.object(cert_utils, 'get_certificate_request',
+                              return_value=request):
+                cert_utils.create_ip_cert_links(ssl_dir)
+
+            for vip in ['10.0.0.10', '10.0.0.11', '10.1.0.10']:
+                cert_link = Path(ssl_dir) / 'cert_{}'.format(vip)
+                key_link = Path(ssl_dir) / 'key_{}'.format(vip)
+                self.assertTrue(cert_link.is_symlink())
+                self.assertTrue(key_link.is_symlink())
+                self.assertEqual(cert_path, cert_link.resolve())
+                self.assertEqual(key_path, key_link.resolve())
 
 
 class ApacheSSLContextAddressTests(unittest.TestCase):
@@ -314,6 +386,22 @@ class ApacheSSLContextAddressTests(unittest.TestCase):
         # Verify the bind address for the uncovered VIP is the local IP
         vip_tuple = [(a, e) for a, e in addresses if e == '192.168.99.51']
         self.assertEqual(vip_tuple, [('192.168.99.206', '192.168.99.51')])
+
+        def fail_vip_cidr(addr):
+            if addr == '192.168.99.51':
+                raise ValueError('No interface for VIP')
+            return {
+                '10.1.32.111': '10.1.32.0/21',
+                '10.1.40.116': '10.1.40.0/21',
+            }[addr]
+
+        resolve_network_cidr.side_effect = fail_vip_cidr
+        addresses = ctxt.get_network_addresses()
+
+        self.assertIn(('10.1.32.111', '192.168.99.51'), addresses)
+        _log.assert_any_call(
+            'Unable to resolve local bind address for VIP 192.168.99.51: '
+            'No interface for VIP', os_context.WARNING)
 
 
 if __name__ == '__main__':

@@ -1276,8 +1276,9 @@ class ApacheSSLContext(OSContextGenerator):
                             vip_cidr, fallback)
                         if candidate not in vip_set:
                             bind_addr = candidate
-                    except Exception:
-                        pass
+                    except Exception as exc:
+                        log('Unable to resolve local bind address for VIP '
+                            '{}: {}'.format(vip, exc), WARNING)
                 if not bind_addr:
                     bind_addr = fallback
                 addresses.append((bind_addr, vip))
