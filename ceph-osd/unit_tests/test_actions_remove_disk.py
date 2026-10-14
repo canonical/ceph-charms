@@ -69,6 +69,8 @@ class RemoveDiskActionTests(CharmTestCase):
         obj = remove_disk.ActionOSD(dev_map, osd_id='1')
         self.assertEqual(obj.device, '/dev/sdx1')
 
+    @mock.patch.object(remove_disk.resource_manager, 'safe_release_osd',
+                       return_value=True)
     @mock.patch.object(remove_disk.charms_ceph.utils, 'disable_osd')
     @mock.patch.object(remove_disk, 'device_size')
     @mock.patch.object(remove_disk.charms_ceph.utils, 'stop_osd')
@@ -78,8 +80,12 @@ class RemoveDiskActionTests(CharmTestCase):
     @mock.patch.object(remove_disk, 'get_bcache_names')
     def test_action_osd_remove(self, get_bcache_names, check_call,
                                call, bcache_remove, stop_osd, device_size,
-                               disable_osd):
+                               disable_osd, safe_release_osd):
+        events = []
         call.return_value = 0
+        stop_osd.side_effect = lambda osd_id: events.append(('stop', osd_id))
+        safe_release_osd.side_effect = lambda osd_id: (
+            events.append(('release', osd_id)) or True)
         get_bcache_names.return_value = ('/dev/backing', '/dev/caching')
         device_size.side_effect = lambda x: 1 if x == '/dev/caching' else 0
         dev_map = [
@@ -89,6 +95,11 @@ class RemoveDiskActionTests(CharmTestCase):
         obj = remove_disk.ActionOSD(dev_map, osd_id='1')
 
         obj.remove(True, 1, True)
+
+        # CPU ownership is released only after the normal stop request.
+        stop_osd.assert_called_once_with('1')
+        safe_release_osd.assert_called_once_with('1')
+        self.assertEqual(events, [('stop', '1'), ('release', '1')])
 
         # Subprocess Call checks
         call.assert_any_call(
@@ -119,6 +130,42 @@ class RemoveDiskActionTests(CharmTestCase):
         with self.assertRaises(remove_disk.RemoveException):
             call.return_value = 1
             obj.remove(False, 0, False)
+
+    def test_action_osd_remove_stops_before_failed_resource_release(self):
+        dev_map = [{'path': '/dev/sdb', 'id': 'osd.1'}]
+        events = []
+        with mock.patch.object(remove_disk, 'get_bcache_names',
+                               return_value=(None, None)), \
+                mock.patch.object(remove_disk, 'reweight_osd'), \
+                mock.patch.object(remove_disk, 'safe_to_stop',
+                                  return_value=True), \
+                mock.patch.object(remove_disk, 'safe_to_destroy',
+                                  return_value=True), \
+                mock.patch.object(
+                    remove_disk.charms_ceph.utils, 'stop_osd',
+                    side_effect=lambda osd_id: events.append(
+                        ('stop', osd_id))) as stop_osd, \
+                mock.patch.object(
+                    remove_disk.resource_manager, 'safe_release_osd',
+                    side_effect=lambda osd_id: events.append(
+                        ('release', osd_id)) or False) as release, \
+                mock.patch.object(
+                    remove_disk.charms_ceph.utils, 'disable_osd',
+                    side_effect=lambda osd_id: events.append(
+                        ('disable', osd_id))) as disable_osd, \
+                mock.patch.object(
+                    remove_disk, 'destroy',
+                    side_effect=lambda *args: events.append(
+                        ('destroy', args[0]))) as destroy:
+            obj = remove_disk.ActionOSD(dev_map, osd_id='1')
+            with self.assertRaises(remove_disk.RemoveException):
+                obj.remove(True, 1, True)
+
+        stop_osd.assert_called_once_with('1')
+        release.assert_called_once_with('1')
+        self.assertEqual(events, [('stop', '1'), ('release', '1')])
+        disable_osd.assert_not_called()
+        destroy.assert_not_called()
 
     @mock.patch.object(remove_disk.hookenv, 'local_unit')
     @mock.patch.object(remove_disk.hookenv, 'action_set')

@@ -57,6 +57,17 @@ The `osd-format` option specifies what filesystem to use for all OSD devices
 ('xfs' or 'ext4'). The default value is 'xfs'. This option only applies when
 Ceph Luminous (or greater) is in use and option `bluestore` is set to 'False'.
 
+#### `performance-profile`
+
+The `performance-profile` option requests a CPU resource allocation for the
+OSDs on a unit ('unmanaged', 'performance', 'balanced' or 'minimal'). The
+default value is 'unmanaged', which neither calculates nor applies any
+allocation. The charm allocates logical CPUs through the EPA orchestrator,
+enforces them with per-OSD systemd drop-ins, and automatically rolls affected
+OSD restarts across the application's hosts, one host at a time. See
+[OSD resource allocation profiles][ceph-osd-resource-profiles]
+for the per-profile CPU counts, NUMA alignment rules and lifecycle.
+
 #### `source`
 
 The `source` option states the software sources. A common value is an OpenStack
@@ -243,6 +254,7 @@ is not deployed then see file `actions.yaml`.
 * `list-disks`
 * `osd-in`
 * `osd-out`
+* `resource-allocation-status`
 * `security-checklist`
 * `start`
 * `stop`
@@ -482,3 +494,4 @@ Please report bugs on [Launchpad][lp-bugs-charm-ceph-osd].
 [upstream-ceph-bluestore]: https://docs.ceph.com/en/latest/rados/configuration/storage-devices/#bluestore
 [cloud-archive-ceph]: https://wiki.ubuntu.com/OpenStack/CloudArchive#Ceph_and_the_UCA
 [lp-bug-1858519]: https://bugs.launchpad.net/charm-ceph-osd/+bug/1858519
+[ceph-osd-resource-profiles]: RESOURCE-PROFILES.md

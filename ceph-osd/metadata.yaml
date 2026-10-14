@@ -23,6 +23,18 @@ docs: https://discourse.charmhub.io/t/ceph-osd-docs-index/10545
 extra-bindings:
   public:
   cluster:
+resources:
+  epa-orchestrator:
+    type: file
+    filename: epa-orchestrator.snap
+    description: |
+      EPA orchestrator snap used to allocate CPUs for OSD resource profiles.
+      When no resource is attached the charm installs the snap from the store
+      channel given by the `epa-orchestrator-channel` config option. An EPA
+      orchestrator that is already installed on the host is used as-is.
+peers:
+  resource-peers:
+    interface: ceph-osd-resource-rollout
 requires:
   mon:
     interface: ceph-osd
