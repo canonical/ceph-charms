@@ -87,6 +87,22 @@ class CephRadosGWUtilTests(CharmTestCase):
             utils.resume_unit_helper('random-config')
             prh.assert_called_once_with(utils.resume_unit, 'random-config')
 
+    @patch.object(utils, 'service_name')
+    def test_resource_map_mpm_event_absent_by_default(self, mock_service_name):
+        mock_service_name.return_value = 'radosgw@localhost'
+        self.https.return_value = False
+        resources = utils.resource_map()
+        self.assertNotIn(utils.APACHE_MPM_EVENT_CONF, resources.keys())
+
+    @patch.object(utils, 'service_name')
+    def test_resource_map_mpm_event_present_when_configured(
+            self, mock_service_name):
+        mock_service_name.return_value = 'radosgw@localhost'
+        self.https.return_value = False
+        self.test_config.set('mpm-max-request-workers', 400)
+        resources = utils.resource_map()
+        self.assertIn(utils.APACHE_MPM_EVENT_CONF, resources.keys())
+
     @patch.object(utils, 'services')
     def test_pause_resume_helper(self, services):
         f = MagicMock()
