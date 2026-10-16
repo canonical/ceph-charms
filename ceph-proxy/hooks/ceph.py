@@ -391,8 +391,45 @@ def get_upgrade_key():
     return get_named_key('upgrade-osd', _upgrade_caps)
 
 
+class UserKeysSecretError(Exception):
+    """The user-keys-secret is set but cannot be read."""
+
+
+def _secret_user_keys():
+    """Return the user-keys string held in the user-keys-secret option.
+
+    :returns: '' when the option is unset
+    :raises UserKeysSecretError: when the secret cannot be read, e.g.
+        it has not been granted to the application
+    """
+    uri = config('user-keys-secret')
+    if not uri:
+        return ''
+    try:
+        return subprocess.check_output(
+            ['secret-get', '--refresh', str(uri), 'user-keys'],
+            universal_newlines=True).strip()
+    except (subprocess.CalledProcessError, OSError):
+        # Never log output, it might contain key material
+        raise UserKeysSecretError(
+            f'cannot read user-keys-secret {uri}; is it granted to '
+            'this application?'
+        )
+
+
+def user_keys():
+    """Space-separated <user>:<key> pairs from user-keys and its secret."""
+    return ' '.join(
+        k for k in (str(config('user-keys')) or '', _secret_user_keys())
+        if k)
+
+
 def _config_user_key(name):
-    user_keys_list = config('user-keys')
+    try:
+        user_keys_list = user_keys()
+    except UserKeysSecretError as e:
+        log(str(e), level=ERROR)
+        return None
     if not user_keys_list:
         return None
 
