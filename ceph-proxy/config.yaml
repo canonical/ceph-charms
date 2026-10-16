@@ -66,6 +66,19 @@ options:
       A space-separated list of <username>:<cephx-base64-key> pairs used to
       lookup authentication keys for a specific user instead of trying to
       create a user and a key via ceph-mon.
+  user-keys-secret:
+    type: secret
+    description: |
+      A juju user secret holding user keys, in the same format as user-keys
+      under the content "user-keys". Grant it to the application with
+      `juju grant-secret`. Keys from both options are used. When the secret
+      gets a new revision, the new keys are sent to the related clients.
+      .
+      Keys-only mode: if admin-key is unset, the charm serves ceph-client
+      relations from these keys alone. It installs no ceph packages, writes
+      no /etc/ceph files and refuses broker requests that contain
+      operations, so pools must exist already. radosgw and mds relations
+      still require admin-key.
   admin-user:
     type: string
     default: "client.admin"
