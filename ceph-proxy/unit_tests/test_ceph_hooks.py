@@ -1,3 +1,4 @@
+import json
 from unittest import mock
 import sys
 
@@ -151,17 +152,29 @@ class TestHooks(test_utils.CharmTestCase):
         self.relation_set.assert_called_with(relation_id='client:1',
                                              relation_settings=data)
 
+    def _config_with_previous(self, previous_values):
+        previous_test_config = test_utils.TestConfig()
+        for k, v in previous_values.items():
+            previous_test_config.set(k, v)
+        previous = mock.MagicMock()
+        previous.previous.side_effect = previous_test_config.get
+        self.config.side_effect = (
+            lambda x=None: previous if x is None else self.test_config.get(x))
+
+    @mock.patch('ceph_hooks.filter_installed_packages')
+    @mock.patch('ceph_hooks.ceph_packages')
     @mock.patch('ceph_hooks.emit_cephconf')
     @mock.patch('ceph_hooks.package_install')
     def test_config_get_skips_package_update(self,
                                              mock_package_install,
-                                             mock_emit_cephconf):
-        previous_test_config = test_utils.TestConfig()
-        previous_test_config.set('source', 'distro')
-        previous_test_config.set('key', '')
-        previous = mock.MagicMock().return_value
-        previous.previous.side_effect = lambda x: previous_test_config.get(x)
-        self.config.side_effect = [previous, "distro", ""]
+                                             mock_emit_cephconf,
+                                             mock_ceph_packages,
+                                             mock_filter_installed):
+        mock_filter_installed.return_value = []
+        self.test_config.set('admin-key', 'some-admin-key')
+        self.test_config.set('source', 'distro')
+        self.test_config.set('key', '')
+        self._config_with_previous({'source': 'distro', 'key': ''})
         hooks.config_changed()
         mock_package_install.assert_not_called()
         mock_emit_cephconf.assert_any_call()
@@ -216,16 +229,17 @@ class TestHooks(test_utils.CharmTestCase):
             self.relation_set.assert_called_with(
                 relation_id=rid, relation_settings=rel_data_set)
 
+    @mock.patch('ceph_hooks.filter_installed_packages')
+    @mock.patch('ceph_hooks.ceph_packages')
     @mock.patch('ceph_hooks.emit_cephconf')
     @mock.patch('ceph_hooks.package_install')
-    def test_update_apt_source(self, mock_package_install, mock_emit_cephconf):
-
-        previous_test_config = test_utils.TestConfig()
-        previous_test_config.set('source', 'distro')
-        previous_test_config.set('key', '')
-        previous = mock.MagicMock().return_value
-        previous.previous.side_effect = lambda x: previous_test_config.get(x)
-        self.config.side_effect = [previous, "cloud:cosmic-mimic", ""]
+    def test_update_apt_source(self, mock_package_install, mock_emit_cephconf,
+                               mock_ceph_packages, mock_filter_installed):
+        mock_filter_installed.return_value = []
+        self.test_config.set('admin-key', 'some-admin-key')
+        self.test_config.set('source', 'cloud:cosmic-mimic')
+        self.test_config.set('key', '')
+        self._config_with_previous({'source': 'distro', 'key': ''})
         hooks.config_changed()
         mock_package_install.assert_called_with()
         mock_emit_cephconf.assert_called_with()
@@ -233,7 +247,7 @@ class TestHooks(test_utils.CharmTestCase):
     @mock.patch('ceph_hooks.is_leader')
     @mock.patch('ceph_hooks.process_requests')
     @mock.patch('ceph_hooks.ceph')
-    @mock.patch('ceph_hooks.ready')
+    @mock.patch('ceph_hooks.client_ready')
     def test_client_relation_changed(self, mock_ready, mock_ceph,
                                      mock_process_requests, mock_is_leader):
         # Test client_relation_changed
@@ -242,6 +256,7 @@ class TestHooks(test_utils.CharmTestCase):
         # check broker request and set response.
         # and check get_named_key called correctly.
         self.remote_unit.return_value = 'client/0'
+        self.test_config.set('admin-key', 'some-admin-key')
         mock_process_requests.return_value = 'test-response'
 
         mock_ready.return_value = False
@@ -274,3 +289,175 @@ class TestHooks(test_utils.CharmTestCase):
             'broker-rsp-client-0': 'test-response'
         }
         self.relation_set.assert_called_with(relation_settings=expected_data)
+
+
+class TestKeysOnly(test_utils.CharmTestCase):
+    """ceph-proxy with fsid and user keys but no admin-key."""
+
+    CINDER_KEY = 'AQAij2tbMNjMOhAAqInpXQLFrltDgmYid6KXbg=='
+
+    def setUp(self):
+        super(TestKeysOnly, self).setUp(hooks, TO_PATCH + ['status_set'])
+        self.config.side_effect = lambda x=None: self.test_config.get(x)
+        self.remote_unit.return_value = 'cinder-ceph/0'
+        self.log.side_effect = fake_log
+        self.test_config.set('fsid', 'abc123')
+        self.test_config.set('monitor-hosts', '10.0.0.1:6789')
+        self.test_config.set(
+            'user-keys', 'client.cinder-ceph:{}'.format(self.CINDER_KEY))
+        self.related_units.return_value = ['cinder-ceph/0']
+        self.relation_ids.return_value = ['client:1']
+        self.relation_get.return_value = {}
+        p = mock.patch('subprocess.check_output')
+        self.check_output = p.start()
+        self.addCleanup(p.stop)
+        p = mock.patch.object(hooks.ceph, 'config',
+                              side_effect=self.test_config.get)
+        p.start()
+        self.addCleanup(p.stop)
+
+    def test_modes(self):
+        self.assertTrue(hooks.keys_only())
+        self.assertTrue(hooks.client_ready())
+        self.assertFalse(hooks.ready())
+        self.test_config.set('user-keys', '')
+        self.assertFalse(hooks.client_ready())
+        self.test_config.set('admin-key', 'some-admin-key')
+        self.assertFalse(hooks.keys_only())
+        self.assertTrue(hooks.client_ready())
+
+    @mock.patch.object(hooks, 'install_upstart_scripts')
+    @mock.patch.object(hooks, 'package_install')
+    @mock.patch.object(hooks, 'execd_preinstall')
+    def test_install_skips_packages(self, _execd, mock_package_install,
+                                    mock_upstart):
+        hooks.install()
+        mock_package_install.assert_not_called()
+        mock_upstart.assert_not_called()
+
+    @mock.patch.object(hooks, 'install_upstart_scripts')
+    @mock.patch.object(hooks, 'package_install')
+    @mock.patch.object(hooks, 'execd_preinstall')
+    def test_install_with_admin_key(self, _execd, mock_package_install,
+                                    mock_upstart):
+        self.test_config.set('admin-key', 'some-admin-key')
+        hooks.install()
+        mock_package_install.assert_called_once_with()
+        mock_upstart.assert_called_once_with()
+
+    @mock.patch.object(hooks, 'notify_client')
+    @mock.patch.object(hooks, 'emit_cephconf')
+    @mock.patch.object(hooks, 'package_install')
+    def test_config_changed_writes_nothing(self, mock_package_install,
+                                           mock_emit_cephconf,
+                                           mock_notify_client):
+        hooks.config_changed()
+        mock_package_install.assert_not_called()
+        mock_emit_cephconf.assert_not_called()
+        mock_notify_client.assert_called_once_with()
+
+    @mock.patch.object(hooks, 'filter_installed_packages')
+    @mock.patch.object(hooks, 'ceph_packages')
+    @mock.patch.object(hooks, 'emit_cephconf')
+    @mock.patch.object(hooks, 'package_install')
+    def test_admin_key_added_later_installs_packages(
+            self, mock_package_install, mock_emit_cephconf,
+            mock_ceph_packages, mock_filter_installed):
+        self.test_config.set('admin-key', 'some-admin-key')
+        mock_filter_installed.return_value = ['ceph']
+        previous = mock.MagicMock()
+        previous.previous.side_effect = self.test_config.get
+        self.config.side_effect = (
+            lambda x=None: previous if x is None else self.test_config.get(x))
+        hooks.config_changed()
+        mock_package_install.assert_called_once_with()
+        mock_emit_cephconf.assert_called_once_with()
+
+    @mock.patch.object(hooks, 'notify_client')
+    def test_secret_changed_notifies_clients(self, mock_notify_client):
+        hooks.secret_changed()
+        mock_notify_client.assert_called_once_with()
+
+    def test_client_relation_joined(self):
+        hooks.client_relation_joined('client:1')
+        self.relation_set.assert_called_once_with(
+            relation_id='client:1',
+            relation_settings={'key': self.CINDER_KEY,
+                               'auth': 'cephx',
+                               'ceph-public-address': '10.0.0.1:6789'})
+        self.check_output.assert_not_called()
+
+    def test_client_relation_joined_without_key(self):
+        self.related_units.return_value = ['glance/0']
+        hooks.client_relation_joined('client:1')
+        self.relation_set.assert_not_called()
+        self.check_output.assert_not_called()
+
+    @mock.patch.object(hooks, 'is_leader')
+    @mock.patch.object(hooks.ceph, 'get_named_key')
+    def test_client_relation_changed_empty_request(self, mock_get_named_key,
+                                                   mock_is_leader):
+        mock_is_leader.return_value = True
+        self.relation_get.return_value = {
+            'application-name': 'cinder-ceph',
+            'broker_req': json.dumps({'api-version': 1, 'ops': [],
+                                      'request-id': 'abc'})}
+        hooks.client_relation_changed()
+        mock_get_named_key.assert_not_called()
+        rsp = json.loads(
+            self.relation_set.call_args.kwargs[
+                'relation_settings']['broker-rsp-cinder-ceph-0'])
+        self.assertEqual({'exit-code': 0, 'request-id': 'abc'}, rsp)
+        self.check_output.assert_not_called()
+
+    @mock.patch.object(hooks, 'process_requests')
+    @mock.patch.object(hooks, 'is_leader')
+    def test_client_relation_changed_refuses_ops(self, mock_is_leader,
+                                                 mock_process_requests):
+        mock_is_leader.return_value = True
+        self.relation_get.return_value = {
+            'application-name': 'cinder-ceph',
+            'broker_req': json.dumps({
+                'api-version': 1, 'request-id': 'abc',
+                'ops': [{'op': 'create-pool', 'name': 'cinder-ceph'}]})}
+        hooks.client_relation_changed()
+        mock_process_requests.assert_not_called()
+        rsp = json.loads(
+            self.relation_set.call_args.kwargs[
+                'relation_settings']['broker-rsp-cinder-ceph-0'])
+        self.assertEqual(1, rsp['exit-code'])
+        self.assertEqual('abc', rsp['request-id'])
+        self.assertIn('pools must already exist', rsp['stderr'])
+
+    @mock.patch.object(hooks, 'apt_install')
+    def test_radosgw_relation_installs_nothing(self, mock_apt_install):
+        hooks.radosgw_relation('radosgw:2', 'ceph-radosgw/0')
+        mock_apt_install.assert_not_called()
+        self.relation_set.assert_not_called()
+
+    @mock.patch.object(hooks, 'is_unit_upgrading_set')
+    def test_assess_status(self, mock_upgrading):
+        mock_upgrading.return_value = False
+        hooks.assess_status()
+        self.status_set.assert_called_with(
+            'active', 'Ready to proxy settings (keys-only)')
+
+        self.related_units.return_value = ['cinder-ceph/0', 'glance/0']
+        hooks.assess_status()
+        self.status_set.assert_called_with(
+            'blocked', 'keys-only: no user key for glance')
+
+        self.test_config.set('user-keys', '')
+        hooks.assess_status()
+        self.status_set.assert_called_with(
+            'blocked', 'Ensure FSID and admin-key are set')
+
+    @mock.patch.object(hooks, 'is_unit_upgrading_set')
+    def test_assess_status_unreadable_secret(self, mock_upgrading):
+        mock_upgrading.return_value = False
+        self.test_config.set('user-keys-secret', 'secret:abc')
+        self.check_output.side_effect = OSError()
+        hooks.assess_status()
+        args = self.status_set.call_args.args
+        self.assertEqual('blocked', args[0])
+        self.assertIn('user-keys-secret', args[1])
