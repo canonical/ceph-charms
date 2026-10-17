@@ -1,0 +1,51 @@
+name: CephX aes256k upgrade + rotation
+
+# Manual trigger only. Deploys a Ceph cluster on 19.2.3, upgrades the packages to
+# 19.2.6 by hand, rotates every cephx key to aes256k and cuts over.
+# See tests/scripts/cephx-aes256k-rotation.md.
+on:
+  workflow_dispatch:
+    inputs:
+      source:
+        description: "apt source carrying 19.2.6"
+        default: "ppa:johnramsden/noble-caracal-ceph-squid-sru"
+      channel:
+        description: "charmhub channel to start on (19.2.3)"
+        default: "squid/stable"
+  pull_request:
+
+jobs:
+  cephx-test:
+    name: Upgrade + rotate a charmed Ceph cluster to aes256k
+    # nested virtualisation is needed for the ceph-osd VMs
+    runs-on: [self-hosted, linux, amd64, X64, large, noble]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Setup LXD
+        run: |
+          if [[ "$(snap list | grep -c lxd)" -eq 0 ]]; then
+            sudo snap install lxd --channel=5.21/stable
+            sudo usermod -aG lxd "$USER"
+            newgrp lxd
+            lxd init --minimal
+          fi
+      - name: Install juju + jq
+        run: |
+          if ! snap list juju >/dev/null 2>&1; then sudo snap install juju --channel 3/stable; fi
+          sudo apt-get update -q && sudo apt-get install -y jq
+          mkdir -p ~/.local/share/juju
+      - name: Bootstrap a controller if none exists
+        run: |
+          juju controllers --format=json 2>/dev/null | jq -e '(.controllers // {}) | length > 0' >/dev/null 2>&1 || juju bootstrap localhost lxd
+      - name: Run the cephx aes256k test
+        env:
+          SOURCE: ${{ github.event.inputs.source || 'ppa:johnramsden/noble-caracal-ceph-squid-sru' }}
+          CHANNEL: ${{ github.event.inputs.channel || 'squid/stable' }}
+          MODEL: cephx-ci
+        run: tests/scripts/cephx-aes256k-rotation.sh
+      - name: Tear down
+        if: always()
+        env:
+          MODEL: cephx-ci
+        run: tests/scripts/cephx-aes256k-rotation.sh --clean || true
