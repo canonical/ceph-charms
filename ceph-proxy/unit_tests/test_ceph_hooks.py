@@ -13,6 +13,8 @@ sys.modules['apt_pkg'] = mock_apt_pkg
 mock_apt_pkg.upstream_version = mock.MagicMock()
 mock_apt_pkg.upstream_version.return_value = '10.1.2-0ubuntu1'
 
+import os
+import re
 import test_utils
 import ceph_hooks as hooks
 
@@ -461,3 +463,29 @@ class TestKeysOnly(test_utils.CharmTestCase):
         args = self.status_set.call_args.args
         self.assertEqual('blocked', args[0])
         self.assertIn('user-keys-secret', args[1])
+
+    @mock.patch.object(hooks, 'notify_client')
+    def test_option_change_notifies_clients(self, mock_notify_client):
+        """Rotating a key in plain user-keys re-publishes it."""
+        self.test_config.set('user-keys', 'client.cinder-ceph:NEWKEY==')
+        hooks.config_changed()
+        mock_notify_client.assert_called_once_with()
+
+    def test_client_relation_joined_after_option_change(self):
+        """The key read on each hook is the current user-keys value."""
+        self.test_config.set('user-keys', 'client.cinder-ceph:NEWKEY==')
+        hooks.client_relation_joined('client:1')
+        self.relation_set.assert_called_once_with(
+            relation_id='client:1',
+            relation_settings={'key': 'NEWKEY==',
+                               'auth': 'cephx',
+                               'ceph-public-address': '10.0.0.1:6789'})
+
+    def test_declared_hooks_exist(self):
+        """Every @hooks.hook name has a hook file, so typos fail here."""
+        hooks_dir = os.path.dirname(os.path.abspath(hooks.__file__))
+        with open(hooks.__file__) as f:
+            names = re.findall(r"@hooks\.hook\('([^']+)'\)", f.read())
+        missing = [n for n in names
+                   if not os.path.exists(os.path.join(hooks_dir, n))]
+        self.assertEqual([], missing)
