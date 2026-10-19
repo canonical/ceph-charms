@@ -12,6 +12,9 @@ machines:
   '5':
   '6':
   '7':
+  '8':
+  '9':
+  '10':
 
 applications:
   ceph-osd:
@@ -37,13 +40,28 @@ applications:
       - '5'
 
   ceph-proxy:
-    charm: ch:ceph-proxy
-    channel: latest/edge
+    charm: ../../../ceph-proxy_ubuntu-24.04-amd64.charm
     num_units: 1
     options:
       source: distro
     to:
       - '6'
+
+  ceph-proxy-ko-a:
+    charm: ../../../ceph-proxy_ubuntu-24.04-amd64.charm
+    num_units: 1
+    options:
+      source: distro
+    to:
+      - '8'
+
+  ceph-proxy-ko-b:
+    charm: ../../../ceph-proxy_ubuntu-24.04-amd64.charm
+    num_units: 1
+    options:
+      source: distro
+    to:
+      - '8'
 
   ceph-radosgw:
     charm: ch:ceph-radosgw
@@ -64,6 +82,20 @@ applications:
     to:
       - '7'
 
+  johnny-ko-a:
+    charm: ch:johnny
+    channel: latest/edge
+    num_units: 1
+    to:
+      - '9'
+
+  johnny-ko-b:
+    charm: ch:johnny
+    channel: latest/edge
+    num_units: 1
+    to:
+      - '10'
+
 relations:
   - - 'ceph-osd:mon'
     - 'ceph-mon:osd'
@@ -76,3 +108,9 @@ relations:
 
   - - 'ceph-proxy:client'
     - 'johnny:ceph'
+
+  - - 'ceph-proxy-ko-a:client'
+    - 'johnny-ko-a:ceph'
+
+  - - 'ceph-proxy-ko-b:client'
+    - 'johnny-ko-b:ceph'

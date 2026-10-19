@@ -11,15 +11,23 @@ dev_bundles:
 
 configure:
   - tests.target.setup_ceph_proxy
+  - tests.target.setup_ceph_proxy_keys_only
 
 tests:
   - zaza.charm_tests.lifecycle.refresh.CharmRefreshAll
   - tests.target.CephProxyTest
   - tests.target.CephProxyUserKeyTests
+  - tests.target.CephProxyKeysOnlyTests
   - tests.target.CephFSWithCephProxyTests
 
 target_deploy_status:
   ceph-proxy:
+    workload-status: blocked
+    workload-status-message-prefix: "Ensure FSID and admin-key are set"
+  ceph-proxy-ko-a:
+    workload-status: blocked
+    workload-status-message-prefix: "Ensure FSID and admin-key are set"
+  ceph-proxy-ko-b:
     workload-status: blocked
     workload-status-message-prefix: "Ensure FSID and admin-key are set"
   ceph-radosgw:
@@ -29,5 +37,11 @@ target_deploy_status:
     workload-status: waiting
     workload-status-message-prefix: "'ceph-mds' incomplete"
   johnny:
+    workload-status: active
+    workload-status-message-regex: "^$"
+  johnny-ko-a:
+    workload-status: active
+    workload-status-message-regex: "^$"
+  johnny-ko-b:
     workload-status: active
     workload-status-message-regex: "^$"

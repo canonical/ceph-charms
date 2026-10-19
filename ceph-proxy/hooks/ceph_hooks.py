@@ -162,7 +162,7 @@ def config_changed():
     emit_cephconf()
 
 
-@hooks.hook('secret-changes')
+@hooks.hook('secret-changed')
 def secret_changed():
     """Republish client keys after the user-keys-secret is rotated."""
     notify_client()

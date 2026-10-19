@@ -27,6 +27,13 @@ import zaza.openstack.utilities.exceptions as zaza_exceptions
 
 JOHNNY_KEY = 'AQCnjmtbuEACMxAA7joUmgLIGI4/3LKkPzUy8g=='
 
+KO_POOL = 'ceph-proxy-ko'
+KO_APPS = {
+    'ceph-proxy-ko-a': ('johnny-ko-a', 'johnny-ko-a', 'user-keys'),
+    'ceph-proxy-ko-b': ('johnny-ko-b', 'johnny-ko-b', 'user-keys-secret'),
+}
+KO_SECRET = 'ceph-proxy-ko-b-keys'
+
 
 @tenacity.retry(
     wait=tenacity.wait_exponential(multiplier=1, min=2, max=10),
@@ -74,6 +81,61 @@ def setup_ceph_proxy():
     proxy_config = _get_proxy_config()
     logging.info('Configuring ceph-proxy with %s', proxy_config)
     zaza_model.set_application_config('ceph-proxy', proxy_config)
+
+
+def _juju(*args):
+    """Run a juju CLI command against the test model; returns stdout."""
+    cmd = ['juju'] + list(args) + ['-m', zaza_model.get_juju_model()]
+    return subprocess.check_output(cmd, text=True).strip()
+
+
+def _run_on_mon(cmd):
+    """Run cmd on the ceph-mon leader; return stdout or raise."""
+    result = zaza_model.run_on_leader('ceph-mon', cmd)
+    if str(result.get('Code')) != '0':
+        raise AssertionError(f'{cmd} failed: {result}')
+    return result.get('Stdout', '').strip()
+
+
+def _create_ko_user(user):
+    """(Re)create client.<user> scoped to KO_POOL; return its key."""
+    return _run_on_mon(
+        f"sudo ceph auth get-or-create-key client.{user} "
+        f"mon 'profile rbd' osd 'profile rbd pool={KO_POOL}'"
+    )
+
+
+def setup_ceph_proxy_keys_only():
+    """Configure the keys-only proxies: fsid + mons + user keys, no admin.
+
+    ko-a gets its key through plain user-keys, ko-b through secret.
+    The pool is created up front because keys-only proxies cannot
+    create pools.
+    """
+    _run_on_mon(f'sudo ceph osd pool create {KO_POOL} 8')
+    _run_on_mon(f'sudo rbd pool init {KO_POOL}')
+
+    base = _get_proxy_config()
+    common = {
+        'auth-supported': 'cephx',
+        'fsid': base['fsid'],
+        'monitor-hosts': base['monitor-hosts'],
+    }
+
+    _, user_a, _ = KO_APPS['ceph-proxy-ko-a']
+    key_a = _create_ko_user(user_a)
+    zaza_model.set_application_config('ceph-proxy-ko-a', dict(
+        common, **{'user-keys': f'client.{user_a}:{key_a}'}))
+
+    _, user_b, _ = KO_APPS['ceph-proxy-ko-b']
+    key_b = _create_ko_user(user_b)
+    uri = _juju('add-secret', KO_SECRET,
+                f'user-keys=client.{user_b}:{key_b}')
+    _juju('grant-secret', KO_SECRET, 'ceph-proxy-ko-b')
+    zaza_model.set_application_config('ceph-proxy-ko-b', dict(
+        common, **{'user-keys-secret': uri}))
+
+    logging.info('Configured keys-only proxies (keys not logged)')
 
 
 def _get_relation_info(unit_name: str, endpoint: str,
@@ -206,6 +268,134 @@ class CephProxyUserKeyTests(unittest.TestCase):
         self.assertIn(
             'failed to find client.johnny',
             result.get('Stderr', ''))
+
+
+class CephProxyKeysOnlyTests(unittest.TestCase):
+    """ceph-proxy without admin-key: keys only, nothing on the host."""
+
+    KO_MACHINE_UNIT = 'ceph-proxy-ko-a/0'   # both proxies share its machine
+
+    @classmethod
+    def setUpClass(cls):
+        super(CephProxyKeysOnlyTests, cls).setUpClass()
+        test_config = lifecycle_utils.get_charm_config(fatal=False)
+        states = dict(test_config.get('target_deploy_status', {}))
+        states.update({
+            app: {'workload-status': 'active',
+                  'workload-status-message-prefix':
+                      'Ready to proxy settings (keys-only)'}
+            for app in KO_APPS})
+        zaza_model.wait_for_application_states(states=states)
+
+    def _client_data(self, proxy):
+        client, _, _ = KO_APPS[proxy]
+        info = _get_relation_info(
+            '{}/0'.format(client), endpoint='ceph',
+            related_endpoint='client', related_application=proxy)
+        return info['related-units']['{}/0'.format(proxy)]['data']
+
+    def _mon_key(self, user):
+        return _run_on_mon(
+            'sudo ceph auth get-key client.{}'.format(user))
+
+    def test_nothing_on_host(self):
+        """Active without admin-key; no ceph package or conf."""
+        checks = {
+            "dpkg-query -W -f='${Status}' ceph 2>/dev/null "
+            "| grep -q 'install ok installed'": 'ceph package installed',
+            'test -e /etc/ceph/ceph.conf': '/etc/ceph/ceph.conf exists',
+            'test -e /var/lib/charm/ceph-proxy-ko-a/ceph.conf':
+                'ko-a charm ceph.conf exists',
+            'test -e /var/lib/charm/ceph-proxy-ko-b/ceph.conf':
+                'ko-b charm ceph.conf exists',
+        }
+        for cmd, failure in checks.items():
+            result = zaza_model.run_on_unit(self.KO_MACHINE_UNIT, cmd)
+            self.assertNotEqual('0', str(result.get('Code')), failure)
+
+    @tenacity.retry(
+        wait=tenacity.wait_exponential(multiplier=1, min=2, max=10),
+        stop=tenacity.stop_after_attempt(10),
+        reraise=True)
+    def _assert_key_published(self, proxy):
+        _, user, _ = KO_APPS[proxy]
+        data = self._client_data(proxy)
+        self.assertEqual(self._mon_key(user), data.get('key'))
+        self.assertEqual('cephx', data.get('auth'))
+        self.assertTrue(data.get('ceph-public-address'))
+
+    def test_key_from_user_keys(self):
+        """Plain user-keys reach the client."""
+        self._assert_key_published('ceph-proxy-ko-a')
+
+    def test_key_from_secret(self):
+        """User-keys-secret reaches the client."""
+        self._assert_key_published('ceph-proxy-ko-b')
+
+    def test_keys_work(self):
+        """The published keys can use the pre-created pool."""
+        mons = _get_proxy_config()['monitor-hosts'].replace(' ', ',')
+        for proxy in KO_APPS:
+            _, user, _ = KO_APPS[proxy]
+            key = self._client_data(proxy)['key']
+            # Explicit --id/--key/-m override the mon's admin conf.
+            # `K=...;` (with the semicolon) so $K is set before expansion.
+            cmd = ('K={}; CEPH_ARGS="--id {} --key $K -m {}" '
+                   'rados -p {} ls').format(key, user, mons, KO_POOL)
+            result = zaza_model.run_on_leader('ceph-mon', cmd)
+            self.assertEqual('0', str(result.get('Code')),
+                             '{} key rejected: {}'.format(
+                                 user, result.get('Stderr')))
+
+    def test_secret_rotation(self):
+        """A new secret revision re-publishes the new key."""
+        _, user, _ = KO_APPS['ceph-proxy-ko-b']
+        _run_on_mon('sudo ceph auth rm client.{}'.format(user))
+        new_key = _create_ko_user(user)
+        _juju('update-secret', KO_SECRET,
+              'user-keys=client.{}:{}'.format(user, new_key))
+
+        for attempt in tenacity.Retrying(
+            wait=tenacity.wait_exponential(multiplier=2, max=32),
+            reraise=True, stop=tenacity.stop_after_attempt(8),
+        ):
+            with attempt:
+                self.assertEqual(
+                    new_key, self._client_data('ceph-proxy-ko-b')['key'])
+
+    def test_option_rotation(self):
+        """A new key in plain user-keys re-publishes the new key."""
+        _, user, _ = KO_APPS['ceph-proxy-ko-a']
+        _run_on_mon('sudo ceph auth rm client.{}'.format(user))
+        new_key = _create_ko_user(user)
+        zaza_model.set_application_config(
+            'ceph-proxy-ko-a',
+            {'user-keys': 'client.{}:{}'.format(user, new_key)})
+
+        for attempt in tenacity.Retrying(
+            wait=tenacity.wait_exponential(multiplier=2, max=32),
+            reraise=True, stop=tenacity.stop_after_attempt(8),
+        ):
+            with attempt:
+                self.assertEqual(
+                    new_key, self._client_data('ceph-proxy-ko-a')['key'])
+
+    def test_broker_ops_refused(self):
+        """Broker operations get a clear refusal, not a crash.
+
+        Only meaningful if johnny sends a request with operations (the
+        admin-key suite shows it creates johnny-metadata, so it should).
+        Skips otherwise.
+        """
+        data = self._client_data('ceph-proxy-ko-a')
+        rsp = data.get('broker-rsp-johnny-ko-a-0')
+        if not rsp:
+            raise unittest.SkipTest('johnny-ko-a sent no broker request')
+        rsp = json.loads(rsp)
+        if rsp.get('exit-code') == 0:
+            raise unittest.SkipTest('johnny-ko-a sent a request without ops')
+        self.assertEqual(1, rsp['exit-code'])
+        self.assertIn('pools must already exist', rsp.get('stderr', ''))
 
 
 class CephFSWithCephProxyTests(unittest.TestCase):
