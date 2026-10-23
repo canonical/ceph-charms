@@ -23,8 +23,10 @@ provides:
   nrpe-external-master:
     interface: nrpe-external-master
     scope: container
+    optional: true
   mds:
     interface: ceph-mds
+    optional: true
   admin:
     interface: ceph-admin
   client:
@@ -33,22 +35,29 @@ provides:
     interface: ceph-osd
   radosgw:
     interface: ceph-radosgw
+    optional: true
   rbd-mirror:
     interface: ceph-rbd-mirror
+    optional: true
   prometheus:
     interface: http
+    optional: true
   metrics-endpoint:
     interface: prometheus_scrape
+    optional: true
   dashboard:
     interface: ceph-dashboard
+    optional: true
   cos-agent:
     interface: cos_agent
+    optional: true
 
 requires:
   # DEPRECATED: The bootstrap-source relation is deprecated and will be
   # removed in the Umbrella release.
   bootstrap-source:
     interface: ceph-bootstrap
+    optional: true
 resources:
   alert-rules:
     type: file
