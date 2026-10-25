@@ -97,6 +97,16 @@ If restoration fails or the shell is killed, run `python 01_stock_limitation/swi
 python -m unittest -v 02_support_compatibility/compatibility.py
 ```
 
+## 03: Messenger compatibility
+
+[Case 03 details](03_messenger_compatibility/README.md). Prepare debugfs on the dedicated client; both this case and case 04 use it for kernel evidence.
+
+```bash
+juju ssh -m "$CONTROLLER:$FRESH_MODEL" ubuntu/0 -- \
+  'sudo mountpoint -q /sys/kernel/debug || sudo mount -t debugfs debugfs /sys/kernel/debug'
+python -m unittest -v 03_messenger_compatibility/messenger.py
+```
+
 ## How to know the run passed
 
 Every setup/build command must exit zero. Every full unittest invocation must exit zero and end with `OK`, without skips, failures, or errors. Expected rejection diagnostics are normal in negative tests.
@@ -105,6 +115,7 @@ Every setup/build command must exit zero. Every full unittest invocation must ex
 | --- | --- |
 | 01 | 4 tests, then successful candidate restoration |
 | 02 | 4 tests |
+| 03 | 6 tests |
 
 ## Finish or diagnose a failure
 
