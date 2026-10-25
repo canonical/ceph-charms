@@ -17,7 +17,7 @@ Export these inputs before starting; paths must be absolute. For example, `expor
 | `IMAGE_SHA256`, `MODULES_SHA256` | Expected SHA-256 digests of those packages |
 | `STOCK_RELEASE`, `STOCK_VERSION` | Exact installed, signed Ubuntu kernel release and package version without aes256k support; see [case 01](01_stock_limitation/README.md) |
 
-Run the following blocks in the **same Bash shell**, initially from the repository root. Choose an unused `RUN` value. Setup refuses existing model names and output directories. Stop on any failure; do not continue to later cases.
+Run the following blocks in the **same Bash shell**, initially from the repository root. Choose an unused `RUN` value and set `KERNEL_REPO` to the kernel repository containing the committed candidate source. Setup refuses existing model names and output directories. Stop on any failure; do not continue to later cases.
 
 ```bash
 set -euo pipefail
@@ -29,10 +29,14 @@ set -euo pipefail
 : "${STOCK_VERSION:?Export its exact Ubuntu package version}"
 export CONTROLLER=cephx-rbd-controller
 export RUN=review1
+export KERNEL_REPO="$HOME/work/linux--noble"
 export FRESH_MODEL="cephx-sru-${RUN}-fresh"
 export UPGRADE_MODEL="cephx-sru-${RUN}-upgraded"
+export KERNEL_MODEL="cephx-sru-${RUN}-kernel"
+export BUILD_ROOT="$HOME/cephx-sru-builds/$RUN"
 
-sudo apt-get install -y python3-venv git
+sudo apt-get install -y python3-venv build-essential bc bison flex libssl-dev \
+  libelf-dev dpkg-dev debhelper rsync cpio kmod zstd git tar
 cd ceph-mon/tests/cephx_sru
 python3 -m venv "$HOME/cephx-sru-venv"
 . "$HOME/cephx-sru-venv/bin/activate"
@@ -146,6 +150,20 @@ After saving the upgraded run's output, destroy that completed lab too:
 juju destroy-model "$CONTROLLER:$UPGRADE_MODEL" --destroy-storage
 ```
 
+## 06: Kernel crypto prerequisites
+
+[Case 06 details](06_crypto_prerequisites/README.md). Build a separate test-enabled kernel from the kernel repository's committed `HEAD`; uncommitted changes are not included. The build uses an external source archive, not a worktree, and never modifies the original checkout. Do not ship this kernel.
+
+```bash
+python 06_crypto_prerequisites/build_kernel.py \
+  --repo "$KERNEL_REPO" --destination "$BUILD_ROOT/06" --jobs 2
+python 06_crypto_prerequisites/setup_client.py \
+  --controller "$CONTROLLER" --model "$KERNEL_MODEL" \
+  --artifacts "$BUILD_ROOT/06/artifacts.json"
+export SRU_ENVIRONMENT="$HOME/cephx-sru-labs/${CONTROLLER}-${KERNEL_MODEL}/environment.json"
+python -m unittest -v 06_crypto_prerequisites/crypto_prerequisites.py
+```
+
 ## How to know the run passed
 
 Every setup/build command must exit zero. Every full unittest invocation must exit zero and end with `OK`, without skips, failures, or errors. Expected rejection diagnostics are normal in negative tests.
@@ -157,7 +175,10 @@ Every setup/build command must exit zero. Every full unittest invocation must ex
 | 03 | 6 tests |
 | 04 | 4 tests |
 | 05 | 1 test on fresh deployment **and** 1 on genuine upgrade |
+| 06 | 1 test |
 
 ## Finish or diagnose a failure
 
 Interrupted processes, unavailable machines, or hung kernels can leave resources behind. Inspect the explicitly named disposable model or discard it and use a new `RUN`; there is no automatic cluster repair. Save terminal output and environment records before destroying a completed lab.
+
+Retain the kernel VM and complete build for the bounds-guard case. Never ship the test kernel.
