@@ -89,6 +89,14 @@ The stock image/modules must already be installed and have trusted Ubuntu archiv
 
 If restoration fails or the shell is killed, run `python 01_stock_limitation/switch_kernel.py restore --environment "$CANDIDATE_ENV"` before continuing.
 
+## 02: Support and compatibility
+
+[Case 02 details](02_support_compatibility/README.md). Run on the restored candidate and the unchanged mixed-key cluster.
+
+```bash
+python -m unittest -v 02_support_compatibility/compatibility.py
+```
+
 ## How to know the run passed
 
 Every setup/build command must exit zero. Every full unittest invocation must exit zero and end with `OK`, without skips, failures, or errors. Expected rejection diagnostics are normal in negative tests.
@@ -96,6 +104,7 @@ Every setup/build command must exit zero. Every full unittest invocation must ex
 | Case | Required full-suite result |
 | --- | --- |
 | 01 | 4 tests, then successful candidate restoration |
+| 02 | 4 tests |
 
 ## Finish or diagnose a failure
 
