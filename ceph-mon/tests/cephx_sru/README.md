@@ -6,7 +6,7 @@ Never use production or shared labs. Run cases serially; stop and inspect any fa
 
 ## Prepare the host and inputs
 
-Use an Ubuntu 24.04 amd64 host with Python 3.12, Juju 3.6, and initialized local LXD with VM support in its `default` project. Allow 16 GiB RAM, 88 GiB root disks, and two 8 GiB OSD volumes for one cluster, plus controller/build resources. Guests need access to Ubuntu archives, Charmhub, and the Ceph PPA.
+Use an Ubuntu 24.04 amd64 host with Python 3.12, Juju 3.6, and initialized local LXD with VM support in its `default` project. Allow 16 GiB RAM, 88 GiB root disks, and two 8 GiB OSD volumes for one cluster, plus controller/build resources. Guests need access to Ubuntu archives, Charmhub, and the Ceph PPA. The sequence destroys each completed cluster before creating the next to limit memory use.
 
 Export these inputs before starting; paths must be absolute. For example, `export IMAGE=/path/to/candidate-image.deb`. Expected digests must come from the chosen build's record, not from arbitrary files found on disk.
 
@@ -30,6 +30,7 @@ set -euo pipefail
 export CONTROLLER=cephx-rbd-controller
 export RUN=review1
 export FRESH_MODEL="cephx-sru-${RUN}-fresh"
+export UPGRADE_MODEL="cephx-sru-${RUN}-upgraded"
 
 sudo apt-get install -y python3-venv git
 cd ceph-mon/tests/cephx_sru
@@ -115,6 +116,36 @@ python -m unittest -v 03_messenger_compatibility/messenger.py
 python -m unittest -v 04_session_recovery/recovery.py
 ```
 
+## 05: Enforced policy, fresh and upgraded
+
+[Case 05 details](05_enforced_policy/README.md). Both runs are required. First consume the fresh cluster used above:
+
+```bash
+python 05_enforced_policy/setup_policy.py \
+  --environment "$SRU_ENVIRONMENT" --origin fresh --disposable
+python -m unittest -v 05_enforced_policy/enforced_policy.py
+```
+
+Save the output and environment record. The next command **permanently destroys the completed fresh lab and its storage**, not the controller. Wait for it to finish before deploying the older cluster.
+
+```bash
+juju destroy-model "$CONTROLLER:$FRESH_MODEL" --destroy-storage
+python setup_lab.py --controller "$CONTROLLER" --model "$UPGRADE_MODEL" \
+  --image "$IMAGE" --modules "$MODULES" \
+  --image-sha256 "$IMAGE_SHA256" --modules-sha256 "$MODULES_SHA256" \
+  --ceph-version 19.2.3-0ubuntu0.24.04.3 --ceph-source distro
+export SRU_ENVIRONMENT="$HOME/cephx-sru-labs/${CONTROLLER}-${UPGRADE_MODEL}/environment.json"
+python 05_enforced_policy/setup_policy.py \
+  --environment "$SRU_ENVIRONMENT" --origin upgraded --disposable
+python -m unittest -v 05_enforced_policy/enforced_policy.py
+```
+
+After saving the upgraded run's output, destroy that completed lab too:
+
+```bash
+juju destroy-model "$CONTROLLER:$UPGRADE_MODEL" --destroy-storage
+```
+
 ## How to know the run passed
 
 Every setup/build command must exit zero. Every full unittest invocation must exit zero and end with `OK`, without skips, failures, or errors. Expected rejection diagnostics are normal in negative tests.
@@ -125,11 +156,8 @@ Every setup/build command must exit zero. Every full unittest invocation must ex
 | 02 | 4 tests |
 | 03 | 6 tests |
 | 04 | 4 tests |
+| 05 | 1 test on fresh deployment **and** 1 on genuine upgrade |
 
 ## Finish or diagnose a failure
 
 Interrupted processes, unavailable machines, or hung kernels can leave resources behind. Inspect the explicitly named disposable model or discard it and use a new `RUN`; there is no automatic cluster repair. Save terminal output and environment records before destroying a completed lab.
-
-```bash
-juju destroy-model "$CONTROLLER:$FRESH_MODEL" --destroy-storage
-```
