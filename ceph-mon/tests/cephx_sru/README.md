@@ -1,8 +1,8 @@
 # CephX SRU tests
 
-Host-side Zaza/libjuju helpers prepare disposable Ceph labs and run the numbered SRU cases. Guests do not need pytest or a copied Python test suite.
+Run these seven cases in order on disposable labs. Python tests run on the host through Zaza/libjuju; guests do not need pytest or a copied Python test suite. The numbered READMEs explain each case's prerequisites, evidence, and limits. The numbering follows https://bugs.launchpad.net/ubuntu/+source/linux/+bug/2171558.
 
-Never use production or shared labs. Run cases serially; stop and inspect any failure.
+**Never use production or shared labs.** Cases 01 and 04 reboot clients or restart daemons. Case 05 permanently rotates credentials and enforces aes256k-only authentication. Cases 06–07 use a separate, non-shipping kernel. Do not run cases concurrently.
 
 ## Prepare the host and inputs
 
@@ -164,9 +164,20 @@ export SRU_ENVIRONMENT="$HOME/cephx-sru-labs/${CONTROLLER}-${KERNEL_MODEL}/envir
 python -m unittest -v 06_crypto_prerequisites/crypto_prerequisites.py
 ```
 
+## 07: Decrypt bounds guard
+
+[Case 07 details](07_bounds_guard/README.md). Reuse the case-06 build and VM. This adds test-only instrumentation to the archived libceph source; it does not replace the installed module on disk.
+
+```bash
+python 07_bounds_guard/build_instrumentation.py \
+  --kernel-build "$BUILD_ROOT/06" --destination "$BUILD_ROOT/07" --jobs 2
+SRU_KERNEL_ARTIFACTS="$BUILD_ROOT/07/artifacts.json" python -m unittest -v \
+  07_bounds_guard/bounds_guard.py
+```
+
 ## How to know the run passed
 
-Every setup/build command must exit zero. Every full unittest invocation must exit zero and end with `OK`, without skips, failures, or errors. Expected rejection diagnostics are normal in negative tests.
+Every setup/build command must exit zero. Every full unittest invocation must exit zero and finish with `OK`, without skips, failures, or errors. Expected rejection diagnostics inside cases 01 and 05 are normal; their final unittest result must still be `OK`. A single selected test, successful deployment, or successful module load is not complete coverage.
 
 | Case | Required full-suite result |
 | --- | --- |
@@ -176,9 +187,18 @@ Every setup/build command must exit zero. Every full unittest invocation must ex
 | 04 | 4 tests |
 | 05 | 1 test on fresh deployment **and** 1 on genuine upgrade |
 | 06 | 1 test |
+| 07 | 1 test |
+
+Retain terminal output, the environment records under `~/cephx-sru-labs/`, and both kernel artifact manifests. The numbered READMEs explain the evidence each test requires. Version/module checks are not exact loaded-binary attestation; run the intended final candidate artifacts for submission. Package pins do not freeze all archive dependencies.
 
 ## Finish or diagnose a failure
 
-Interrupted processes, unavailable machines, or hung kernels can leave resources behind. Inspect the explicitly named disposable model or discard it and use a new `RUN`; there is no automatic cluster repair. Save terminal output and environment records before destroying a completed lab.
+Successful tests clean up their scoped mappings, mounts, identities, and temporary files. Interrupted processes, unavailable machines, or hung kernels can leave resources behind. Stop and inspect a failed run, or discard its explicitly named model and start with a new `RUN`; there is no automatic repair or cluster-resume engine. Case 05 leaves successful clusters aes256k-only, so they cannot be reused for cases 01–04.
 
-Retain the kernel VM and complete build for the bounds-guard case. Never ship the test kernel.
+After case 07, save its output and destroy the dedicated kernel VM:
+
+```bash
+juju destroy-model "$CONTROLLER:$KERNEL_MODEL" --destroy-storage
+```
+
+Keep or remove the external build directories only after saving the required evidence. Never install the test kernel or instrumented module on the host or a production client.
