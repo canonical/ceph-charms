@@ -107,6 +107,14 @@ juju ssh -m "$CONTROLLER:$FRESH_MODEL" ubuntu/0 -- \
 python -m unittest -v 03_messenger_compatibility/messenger.py
 ```
 
+## 04: Session recovery
+
+[Case 04 details](04_session_recovery/README.md). Keep the client free of other RBD mappings and CephFS mounts. This case temporarily changes ticket lifetimes and restarts the storage daemons.
+
+```bash
+python -m unittest -v 04_session_recovery/recovery.py
+```
+
 ## How to know the run passed
 
 Every setup/build command must exit zero. Every full unittest invocation must exit zero and end with `OK`, without skips, failures, or errors. Expected rejection diagnostics are normal in negative tests.
@@ -116,6 +124,7 @@ Every setup/build command must exit zero. Every full unittest invocation must ex
 | 01 | 4 tests, then successful candidate restoration |
 | 02 | 4 tests |
 | 03 | 6 tests |
+| 04 | 4 tests |
 
 ## Finish or diagnose a failure
 
