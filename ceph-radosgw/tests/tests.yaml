@@ -7,7 +7,7 @@ smoke_bundles:
   - noble-caracal
 
 dev_bundles:
-  - noble-caracal
+  - noble-tentacle
 
 target_deploy_status:
   vault:
