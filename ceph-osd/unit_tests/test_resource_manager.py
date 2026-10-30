@@ -163,6 +163,8 @@ def osd(osd_id, tier=rp.TIER_NVME, node=0, aux_nodes=None, device=None):
 
 
 TWO_NODES = {0: list(range(0, 16)), 1: list(range(16, 32))}
+# Room for more than one performance OSD, and under the pool cap, per node.
+WIDE_NODES = {0: list(range(0, 32)), 1: list(range(32, 64))}
 
 
 class ManagerTestCase(unittest.TestCase):
@@ -323,6 +325,43 @@ class ProfileConfigTestCase(ManagerTestCase):
         self.config['suppress-profile-warnings'] = True
         self.assertTrue(resource_manager.warnings_suppressed())
 
+    def test_default_overrides_are_empty(self):
+        self.assertEqual(resource_manager.configured_overrides(), {})
+        self.config['performance-profile-resources'] = ''
+        self.assertEqual(resource_manager.configured_overrides(), {})
+
+    def test_overrides_accept_yaml_and_json(self):
+        expected = {rp.PROFILE_PERFORMANCE: {'cpus': {'nvme': 16, 'hdd': 6}}}
+        for value in ('{performance: {cpus: {nvme: 16, hdd: 6}}}',
+                      'performance:\n  cpus:\n    nvme: 16\n    hdd: 6\n',
+                      '{"performance": {"cpus": {"nvme": 16, "hdd": 6}}}'):
+            self.config['performance-profile-resources'] = value
+            self.assertEqual(resource_manager.configured_overrides(),
+                             expected)
+
+    def test_invalid_overrides_are_rejected(self):
+        for value in ('{performance: {cpus: 0}}',
+                      '{balanced: {cpus: 4}}',
+                      '{performance: [cpus',
+                      '16'):
+            self.config['performance-profile-resources'] = value
+            with self.assertRaises(resource_manager.ResourceError) as ctx:
+                resource_manager.configured_overrides()
+            self.assertIn('invalid performance-profile-resources',
+                          str(ctx.exception))
+            self.assertNotIn('\n', str(ctx.exception))
+
+    def test_invalid_overrides_block_without_allocating(self):
+        self.config['performance-profile-resources'] = (
+            '{performance: {cpus: -1}}')
+        epa = FakeEpa(range(0, 16), TWO_NODES)
+        state = self.reconcile(rp.PROFILE_PERFORMANCE, [osd(0)], epa)
+        self.assertIn('invalid performance-profile-resources',
+                      state['errors'][0])
+        self.assertEqual(state['requested-profile'], rp.PROFILE_PERFORMANCE)
+        self.assertEqual(epa.claims, {})
+        self.assertEqual(self.applied, [])
+
 
 class UnmanagedTestCase(ManagerTestCase):
 
@@ -360,14 +399,15 @@ class UnmanagedTestCase(ManagerTestCase):
 class PerformanceReconcileTestCase(ManagerTestCase):
 
     def test_applies_aligned_allocations(self):
-        epa = FakeEpa(range(0, 16), TWO_NODES)
+        epa = FakeEpa(range(0, 64), WIDE_NODES)
         osds = [osd(0), osd(1, tier=rp.TIER_HDD, device='/dev/sdb')]
-        state = self.reconcile(rp.PROFILE_PERFORMANCE, osds, epa)
+        state = self.reconcile(rp.PROFILE_PERFORMANCE, osds, epa,
+                               nodes=WIDE_NODES)
         self.assertEqual(state['errors'], [])
         self.assertEqual(sorted(epa.claims), ['ceph-osd.0', 'ceph-osd.1'])
-        self.assertEqual(len(epa.claims['ceph-osd.0']), 12)
+        self.assertEqual(len(epa.claims['ceph-osd.0']), 16)
         self.assertEqual(len(epa.claims['ceph-osd.1']), 4)
-        self.assertEqual(state['osds']['0']['cores'], '0-11')
+        self.assertEqual(state['osds']['0']['cores'], '0-15')
         self.assertEqual(state['osds']['0']['numa-policy'], 'bind')
         self.assertEqual(state['osds']['0']['data-device'], '/dev/nvme0n1')
         self.assertEqual(state['restarted'], ['0', '1'])
@@ -376,7 +416,7 @@ class PerformanceReconcileTestCase(ManagerTestCase):
         self.assertEqual(allocations[0]['numa-node'], 0)
 
     def test_refuses_a_plan_that_does_not_fit(self):
-        # Two NVMe OSDs need 24 CPUs but only 16 are eligible on node 0.
+        # Two NVMe OSDs need 32 CPUs but only 16 are eligible on node 0.
         epa = FakeEpa(range(0, 16), TWO_NODES)
         osds = [osd(0), osd(1)]
         state = self.reconcile(rp.PROFILE_PERFORMANCE, osds, epa)
@@ -387,6 +427,56 @@ class PerformanceReconcileTestCase(ManagerTestCase):
         self.assertEqual(epa.claims, {})
         self.assertEqual(self.applied, [])
         self.assertEqual(state['osds'], {})
+
+    def test_overridden_counts_fit_where_defaults_do_not(self):
+        # The default 2 x 16 CPUs do not fit node 0; 2 x 8 do.
+        self.config['performance-profile-resources'] = (
+            '{performance: {cpus: 8}}')
+        epa = FakeEpa(range(0, 16), TWO_NODES)
+        state = self.reconcile(rp.PROFILE_PERFORMANCE, [osd(0), osd(1)], epa)
+        self.assertEqual(state['errors'], [])
+        self.assertEqual(len(epa.claims['ceph-osd.0']), 8)
+        self.assertEqual(len(epa.claims['ceph-osd.1']), 8)
+        self.assertEqual(state['restarted'], ['0', '1'])
+
+    def test_changing_the_override_replaces_the_claim(self):
+        epa = FakeEpa(range(0, 32), TWO_NODES)
+        state = self.reconcile(rp.PROFILE_PERFORMANCE, [osd(0)], epa)
+        self.assertEqual(state['osds']['0']['cores'], '0-15')
+        self.stop_osd.assert_not_called()
+
+        self.config['performance-profile-resources'] = (
+            '{performance: {cpus: {nvme: 6}}}')
+        state = self.reconcile(rp.PROFILE_PERFORMANCE, [osd(0)], epa)
+        self.assertEqual(state['errors'], [])
+        self.assertEqual(len(epa.claims['ceph-osd.0']), 6)
+        self.assertEqual(len(parse_cpu_list(state['osds']['0']['cores'])), 6)
+        self.stop_osd.assert_called_once_with('0')
+        self.assertEqual(state['restarted'], ['0'])
+
+    def test_override_above_the_pool_cap_is_logged(self):
+        # The charm offers at most 12 of a 16-CPU node to EPA.
+        self.config['performance-profile-resources'] = (
+            '{performance: {cpus: {nvme: 13, hdd: 12}}}')
+        epa = FakeEpa(range(0, 32), TWO_NODES)
+        with patch.object(resource_manager, 'log') as log:
+            self.reconcile(rp.PROFILE_PERFORMANCE, [osd(0)], epa)
+        warnings = [c[0][0] for c in log.call_args_list
+                    if c[1].get('level') == resource_manager.WARNING and
+                    'performance-profile-resources' in c[0][0]]
+        self.assertEqual(warnings, [
+            'performance-profile-resources: 13 logical CPUs per nvme OSD '
+            'for profile performance exceed 75% of the logical CPUs of '
+            'NUMA node(s) 0,1'])
+
+    def test_override_within_the_pool_cap_is_not_logged(self):
+        self.config['performance-profile-resources'] = (
+            '{performance: {cpus: 12}}')
+        epa = FakeEpa(range(0, 32), TWO_NODES)
+        with patch.object(resource_manager, 'log') as log:
+            self.reconcile(rp.PROFILE_PERFORMANCE, [osd(0)], epa)
+        self.assertFalse([c for c in log.call_args_list
+                          if 'performance-profile-resources' in c[0][0]])
 
     def test_refuses_a_plan_that_is_not_numa_aligned(self):
         epa = FakeEpa(range(0, 32), TWO_NODES)
@@ -413,7 +503,7 @@ class PerformanceReconcileTestCase(ManagerTestCase):
         epa.allocate_numa_cores = (
             lambda service, node, count: original(service, node, count - 1))
         state = self.reconcile(rp.PROFILE_PERFORMANCE, [osd(0)], epa)
-        self.assertIn('granted 11 of 12', state['errors'][0])
+        self.assertIn('granted 15 of 16', state['errors'][0])
         self.assertEqual(self.applied, [])
 
     def test_missing_non_preemptive_support_blocks(self):
@@ -570,15 +660,15 @@ class ClaimLifecycleTestCase(ManagerTestCase):
             'version': 1,
             'profile': rp.PROFILE_PERFORMANCE,
             'osds': {'0': {'osd-id': '0', 'mode': rp.MODE_NUMA,
-                           'numa-node': 0, 'cores': '0-11'}},
+                           'numa-node': 0, 'cores': '0-15'}},
         })
         epa = FakeEpa(range(0, 32), TWO_NODES,
-                      foreign={'ceph-osd.0': list(range(0, 12))})
+                      foreign={'ceph-osd.0': list(range(0, 16))})
         state = self.reconcile(rp.PROFILE_PERFORMANCE, [osd(0, node=1)], epa,
                                nic_nodes=(1,))
         self.stop_osd.assert_called_once_with('0')
         self.assertIn(('release', 'ceph-osd.0'), epa.calls)
-        self.assertEqual(epa.claims['ceph-osd.0'], list(range(16, 28)))
+        self.assertEqual(epa.claims['ceph-osd.0'], list(range(16, 32)))
         self.assertEqual(state['osds']['0']['numa-node'], 1)
 
     def test_strict_failure_stops_before_releasing_live_claims_and_recovers(
@@ -588,14 +678,11 @@ class ClaimLifecycleTestCase(ManagerTestCase):
             'requested-profile': rp.PROFILE_PERFORMANCE,
             'osds': {
                 '0': {'osd-id': '0', 'mode': rp.MODE_NUMA, 'numa-node': 0,
-                      'count': 12, 'cores': '0-11'},
-                '1': {'osd-id': '1', 'mode': rp.MODE_NUMA, 'numa-node': 1,
-                      'count': 4, 'cores': '16-19'},
+                      'count': 16, 'cores': '0-15'},
             },
         })
-        epa = FakeEpa(range(0, 32), TWO_NODES, foreign={
-            'ceph-osd.0': list(range(0, 12)),
-            'ceph-osd.1': list(range(16, 20)),
+        epa = FakeEpa(range(0, 64), WIDE_NODES, foreign={
+            'ceph-osd.0': list(range(0, 16)),
         })
         allocate = epa.allocate_numa_cores
 
@@ -610,28 +697,29 @@ class ClaimLifecycleTestCase(ManagerTestCase):
             osd(1, tier=rp.TIER_HDD, node=1, device='/dev/sdb'),
         ]
         state = self.reconcile(rp.PROFILE_PERFORMANCE, transition_osds,
-                               epa, nic_nodes=(1,))
+                               epa, nodes=WIDE_NODES, nic_nodes=(1,))
         self.assertIn('second claim failed', state['errors'][0])
         self.stop_osd.assert_called_once_with('0')
         self.assertIn(('release', 'ceph-osd.0'), epa.calls)
-        self.assertTrue(set(range(0, 12)).isdisjoint(
+        self.assertTrue(set(range(0, 16)).isdisjoint(
             epa.claims['ceph-osd.0']))
         # The first OSD completed its stop/release/claim/restart sequence
         # before the second claim failed, so it is truthfully recorded on the
         # new CPUs and is no longer a pending transition.
-        self.assertEqual(state['osds']['0']['cores'], '20-31')
+        self.assertEqual(state['osds']['0']['cores'], '32-47')
         self.assertNotIn('0', state['pending-transitions'])
-        # The second OSD did not mutate ownership, and a retry completes the
-        # remaining strict work without stopping the migrated OSD again.
+        # The new second OSD did not mutate ownership, and a retry completes
+        # the remaining strict work without stopping the migrated OSD again.
         epa.allocate_numa_cores = allocate
         recovered = self.reconcile(
-            rp.PROFILE_PERFORMANCE, transition_osds, epa, nic_nodes=(1,))
+            rp.PROFILE_PERFORMANCE, transition_osds, epa, nodes=WIDE_NODES,
+            nic_nodes=(1,))
         self.assertEqual(recovered['errors'], [])
         self.assertNotIn('pending-transitions', recovered)
         self.stop_osd.assert_called_once_with('0')
 
     def test_first_strict_claim_is_applied_before_a_later_failure(self):
-        epa = FakeEpa(range(0, 16), {0: list(range(0, 16)), 1: []})
+        epa = FakeEpa(range(0, 32), {0: list(range(0, 32)), 1: []})
         allocate = epa.allocate_numa_cores
 
         def fail_second(service, node, count):
@@ -643,12 +731,12 @@ class ClaimLifecycleTestCase(ManagerTestCase):
         state = self.reconcile(
             rp.PROFILE_PERFORMANCE,
             [osd(0), osd(1, tier=rp.TIER_HDD)], epa,
-            nodes={0: list(range(0, 16)), 1: []})
+            nodes={0: list(range(0, 32)), 1: []})
         self.assertIn('second claim failed', state['errors'][0])
         # The first EPA reservation is no longer orphaned: it was enforced
         # and durably recorded before attempting the second mutation.
-        self.assertEqual(state['osds']['0']['cores'], '0-11')
-        self.assertEqual(epa.claims['ceph-osd.0'], list(range(0, 12)))
+        self.assertEqual(state['osds']['0']['cores'], '0-15')
+        self.assertEqual(epa.claims['ceph-osd.0'], list(range(0, 16)))
         self.assertNotIn('ceph-osd.1', epa.claims)
         self.assertEqual(len(self.applied), 1)
 
@@ -660,7 +748,7 @@ class ClaimLifecycleTestCase(ManagerTestCase):
         state = self.reconcile(
             rp.PROFILE_PERFORMANCE, [osd(0)], epa,
             nodes={0: list(range(0, 16)), 1: []})
-        self.assertIn('allocator granted 11 of 12', state['errors'][0])
+        self.assertIn('allocator granted 15 of 16', state['errors'][0])
         self.assertNotIn('ceph-osd.0', epa.claims)
         self.assertEqual(state['pending-transitions'], {})
         self.assertEqual(self.applied, [])
@@ -848,12 +936,12 @@ class ClaimLifecycleTestCase(ManagerTestCase):
             'pending-transitions': {
                 '0': {'new': True, 'status': 'allocated',
                       'mode': rp.MODE_NUMA, 'numa-node': 0,
-                      'requested': 12, 'cores': '0-11',
+                      'requested': 16, 'cores': '0-15',
                       'profile': rp.PROFILE_PERFORMANCE},
             },
         })
         epa = FakeEpa(range(32), TWO_NODES,
-                      foreign={'ceph-osd.0': list(range(12))})
+                      foreign={'ceph-osd.0': list(range(16))})
         events = []
         running = [True]
         release = epa.release
@@ -875,7 +963,7 @@ class ClaimLifecycleTestCase(ManagerTestCase):
         self.assertEqual(state['errors'], [])
         self.assertEqual(events[0], ('stop', '0'))
         self.assertEqual(events[1], ('release', 'ceph-osd.0', False))
-        self.assertEqual(epa.claims['ceph-osd.0'], list(range(12)))
+        self.assertEqual(epa.claims['ceph-osd.0'], list(range(16)))
         self.assertNotIn('pending-transitions', state)
 
     def test_strict_allocated_journal_without_dropin_failures_are_closed(self):
@@ -892,11 +980,11 @@ class ClaimLifecycleTestCase(ManagerTestCase):
                     'pending-transitions': {
                         '0': {'new': True, 'status': 'allocated',
                               'mode': rp.MODE_NUMA, 'numa-node': 0,
-                              'requested': 12, 'cores': '0-11'},
+                              'requested': 16, 'cores': '0-15'},
                     },
                 })
                 epa = FakeEpa(range(32), TWO_NODES,
-                              foreign={'ceph-osd.0': list(range(12))})
+                              foreign={'ceph-osd.0': list(range(16))})
                 events = []
                 if failure == 'stop':
                     self.stop_osd.side_effect = error
@@ -917,11 +1005,11 @@ class ClaimLifecycleTestCase(ManagerTestCase):
                     durable['pending-transitions']['0']['status'], status)
                 self.assertEqual(
                     durable['pending-transitions']['0']['source']['cores'],
-                    '0-11')
+                    '0-15')
                 self.assertEqual(
                     len([event for event in events
                          if event[0] == 'release']), releases)
-                self.assertEqual(epa.claims['ceph-osd.0'], list(range(12)))
+                self.assertEqual(epa.claims['ceph-osd.0'], list(range(16)))
                 self.stop_osd.side_effect = None
 
     def test_resumed_live_strict_claim_is_not_released_on_request_error(self):
@@ -929,11 +1017,11 @@ class ClaimLifecycleTestCase(ManagerTestCase):
             'version': 1, 'profile': rp.PROFILE_UNMANAGED,
             'pending-transitions': {
                 '0': {'new': True, 'status': 'allocated', 'mode': rp.MODE_NUMA,
-                      'numa-node': 0, 'requested': 12, 'cores': '0-11'},
+                      'numa-node': 0, 'requested': 16, 'cores': '0-15'},
             },
         })
         epa = FakeEpa(range(0, 16), {0: list(range(0, 16)), 1: []},
-                      foreign={'ceph-osd.0': list(range(0, 12))})
+                      foreign={'ceph-osd.0': list(range(0, 16))})
         epa.allocate_numa_cores = lambda *args: (_ for _ in ()).throw(
             epa_client.EpaRequestError('transient request error'))
         with patch.object(resource_manager.resource_apply, 'read_dropin',
@@ -942,17 +1030,17 @@ class ClaimLifecycleTestCase(ManagerTestCase):
                 rp.PROFILE_PERFORMANCE, [osd(0)], epa,
                 nodes={0: list(range(0, 16)), 1: []})
         self.assertIn('refusing to release', state['errors'][0])
-        self.assertEqual(epa.claims['ceph-osd.0'], list(range(0, 12)))
+        self.assertEqual(epa.claims['ceph-osd.0'], list(range(0, 16)))
         self.stop_osd.assert_not_called()
 
     def test_legacy_matching_dropin_forces_one_affinity_restart(self):
         self.kv.set(resource_manager.STATE_KEY, {
             'version': 1, 'profile': rp.PROFILE_PERFORMANCE,
             'osds': {'0': {'osd-id': '0', 'mode': rp.MODE_NUMA,
-                           'numa-node': 0, 'count': 12, 'cores': '0-11'}},
+                           'numa-node': 0, 'count': 16, 'cores': '0-15'}},
         })
         epa = FakeEpa(range(0, 16), {0: list(range(0, 16)), 1: []},
-                      foreign={'ceph-osd.0': list(range(0, 12))})
+                      foreign={'ceph-osd.0': list(range(0, 16))})
         state = self.reconcile(
             rp.PROFILE_PERFORMANCE, [osd(0)], epa,
             nodes={0: list(range(0, 16)), 1: []})
@@ -969,13 +1057,13 @@ class ClaimLifecycleTestCase(ManagerTestCase):
             'version': 1,
             'profile': rp.PROFILE_PERFORMANCE,
             'osds': {'0': {'osd-id': '0', 'mode': rp.MODE_NUMA,
-                           'numa-node': 0, 'cores': '0-11'}},
+                           'numa-node': 0, 'cores': '0-15'}},
         })
         epa = FakeEpa(range(0, 32), TWO_NODES,
-                      foreign={'ceph-osd.0': list(range(0, 12))})
+                      foreign={'ceph-osd.0': list(range(0, 16))})
         self.reconcile(rp.PROFILE_PERFORMANCE, [osd(0, node=0)], epa)
         self.assertNotIn(('release', 'ceph-osd.0'), epa.calls)
-        self.assertEqual(epa.claims['ceph-osd.0'], list(range(0, 12)))
+        self.assertEqual(epa.claims['ceph-osd.0'], list(range(0, 16)))
 
     def test_epa_only_teardown_survives_reconcile_and_unavailable_retry(self):
         epa = FakeEpa(range(0, 16), TWO_NODES,
@@ -1227,6 +1315,185 @@ class ClaimLifecycleTestCase(ManagerTestCase):
         self.assertEqual(self.cleared, [])
 
 
+class ReplacementOrderTestCase(ManagerTestCase):
+    """Replacements that release CPUs run before those that need more."""
+
+    NODES = {0: list(range(0, 32))}
+
+    def _exchange(self, nvme_id, hdd_id):
+        """Swap the CPU counts of an NVMe and an HDD OSD on one node."""
+        # 24 eligible CPUs hold both the 8 + 16 and the 16 + 8 split.
+        epa = FakeEpa(range(0, 24), self.NODES)
+        osds = sorted(
+            [osd(nvme_id), osd(hdd_id, tier=rp.TIER_HDD, device='/dev/sdb')],
+            key=lambda o: int(o.osd_id))
+        self.config['performance-profile-resources'] = (
+            '{performance: {cpus: {nvme: 8, hdd: 16}}}')
+        state = self.reconcile(rp.PROFILE_PERFORMANCE, osds, epa,
+                               nodes=self.NODES)
+        self.assertEqual(state['errors'], [])
+        self.stop_osd.reset_mock()
+
+        self.config['performance-profile-resources'] = (
+            '{performance: {cpus: {nvme: 16, hdd: 8}}}')
+        state = self.reconcile(rp.PROFILE_PERFORMANCE, osds, epa,
+                               nodes=self.NODES)
+        self.assertEqual(state['errors'], [])
+        self.assertEqual(len(epa.claims['ceph-osd.{}'.format(nvme_id)]), 16)
+        self.assertEqual(len(epa.claims['ceph-osd.{}'.format(hdd_id)]), 8)
+        # The shrinking HDD OSD is replaced first, whatever the OSD IDs.
+        expected = [str(hdd_id), str(nvme_id)]
+        self.assertEqual(
+            [c[0][0] for c in self.stop_osd.call_args_list], expected)
+        self.assertEqual(state['restarted'], expected)
+        self.assertNotIn('pending-transitions', state)
+
+    def test_shrink_runs_before_growth_of_a_lower_osd_id(self):
+        self._exchange(nvme_id=0, hdd_id=1)
+
+    def test_shrink_runs_first_when_already_in_id_order(self):
+        self._exchange(nvme_id=1, hdd_id=0)
+
+    def test_interrupted_exchange_completes_on_retry(self):
+        epa = FakeEpa(range(0, 24), self.NODES)
+        osds = [osd(0), osd(1, tier=rp.TIER_HDD, device='/dev/sdb')]
+        self.config['performance-profile-resources'] = (
+            '{performance: {cpus: {nvme: 8, hdd: 16}}}')
+        self.reconcile(rp.PROFILE_PERFORMANCE, osds, epa, nodes=self.NODES)
+        self.stop_osd.reset_mock()
+
+        allocate = epa.allocate_numa_cores
+
+        def fail_growth(service, node, count):
+            if service == 'ceph-osd.0':
+                raise epa_client.EpaRequestError('transient failure')
+            return allocate(service, node, count)
+
+        epa.allocate_numa_cores = fail_growth
+        self.config['performance-profile-resources'] = (
+            '{performance: {cpus: {nvme: 16, hdd: 8}}}')
+        state = self.reconcile(rp.PROFILE_PERFORMANCE, osds, epa,
+                               nodes=self.NODES)
+        self.assertIn('osd.0: transient failure', state['errors'][0])
+        # The shrink completed and is recorded; only the growing OSD waits.
+        self.assertEqual(len(epa.claims['ceph-osd.1']), 8)
+        self.assertEqual(len(parse_cpu_list(state['osds']['1']['cores'])), 8)
+        self.assertNotIn('ceph-osd.0', epa.claims)
+        self.assertIn('0', state['pending-transitions'])
+
+        epa.allocate_numa_cores = allocate
+        state = self.reconcile(rp.PROFILE_PERFORMANCE, osds, epa,
+                               nodes=self.NODES)
+        self.assertEqual(state['errors'], [])
+        self.assertEqual(len(epa.claims['ceph-osd.0']), 16)
+        self.assertEqual(len(epa.claims['ceph-osd.1']), 8)
+        self.assertNotIn('pending-transitions', state)
+        # The finished shrink is not repeated.
+        self.assertEqual(
+            [c[0][0] for c in self.stop_osd.call_args_list].count('1'), 1)
+
+    def _track_running(self, osd_ids, down=()):
+        """Record stops and starts, asserting at most one OSD is down."""
+        running = set(osd_ids) - set(down)
+        events = []
+
+        def stop(osd_id):
+            running.discard(osd_id)
+            events.append(('stop', osd_id))
+            self.assertGreaterEqual(len(running), len(osd_ids) - 1, events)
+
+        def apply(profile, allocations, **kwargs):
+            for allocation in allocations:
+                running.add(allocation['osd-id'])
+                events.append(('start', allocation['osd-id']))
+            return self._apply(profile, allocations, **kwargs)
+
+        self.stop_osd.side_effect = stop
+        self.apply_allocations.side_effect = apply
+        return events
+
+    def test_interrupted_shrink_is_recovered_before_stopping_another(self):
+        epa = FakeEpa(range(0, 24), self.NODES)
+        osds = [osd(0), osd(1)]
+        self.config['performance-profile-resources'] = (
+            '{performance: {cpus: 8}}')
+        self.reconcile(rp.PROFILE_PERFORMANCE, osds, epa, nodes=self.NODES)
+        events = self._track_running(['0', '1'])
+
+        allocate = epa.allocate_numa_cores
+
+        def fail_osd_0(service, node, count):
+            if service == 'ceph-osd.0':
+                raise epa_client.EpaRequestError('transient failure')
+            return allocate(service, node, count)
+
+        epa.allocate_numa_cores = fail_osd_0
+        self.config['performance-profile-resources'] = (
+            '{performance: {cpus: 4}}')
+        # The stopped OSD 0 fails again: OSD 1 must not be stopped as well.
+        for attempt in range(2):
+            state = self.reconcile(rp.PROFILE_PERFORMANCE, osds, epa,
+                                   nodes=self.NODES)
+            self.assertIn('osd.0: transient failure', state['errors'][0])
+            self.assertNotIn('ceph-osd.0', epa.claims)
+            self.assertEqual(len(epa.claims['ceph-osd.1']), 8)
+        self.assertEqual(events, [('stop', '0'), ('stop', '0')])
+
+        epa.allocate_numa_cores = allocate
+        state = self.reconcile(rp.PROFILE_PERFORMANCE, osds, epa,
+                               nodes=self.NODES)
+        self.assertEqual(state['errors'], [])
+        self.assertEqual(events[2:], [
+            ('stop', '0'), ('start', '0'), ('stop', '1'), ('start', '1')])
+        self.assertNotIn('pending-transitions', state)
+
+    def test_pending_restart_is_recovered_before_stopping_another(self):
+        epa = FakeEpa(range(0, 24), self.NODES)
+        osds = [osd(0), osd(1, tier=rp.TIER_HDD, device='/dev/sdb')]
+        self.config['performance-profile-resources'] = (
+            '{performance: {cpus: {nvme: 8}}}')
+        self.reconcile(rp.PROFILE_PERFORMANCE, osds, epa, nodes=self.NODES)
+        # OSD 1 keeps its allocation but its last restart did not finish.
+        self.pending_restarts.return_value = {'1'}
+        events = self._track_running(['0', '1'], down=['1'])
+
+        self.config['performance-profile-resources'] = (
+            '{performance: {cpus: {nvme: 4}}}')
+        state = self.reconcile(rp.PROFILE_PERFORMANCE, osds, epa,
+                               nodes=self.NODES)
+        self.assertEqual(state['errors'], [])
+        self.assertEqual(events, [
+            ('start', '1'), ('stop', '0'), ('start', '0')])
+
+    def test_replacement_that_cannot_fit_is_refused_before_stopping(self):
+        # Swapping two full NUMA nodes fits in the end, but neither OSD can
+        # move first without the other's CPUs.
+        self.kv.set(resource_manager.STATE_KEY, {
+            'version': 1, 'profile': rp.PROFILE_PERFORMANCE,
+            'osds': {
+                '0': {'osd-id': '0', 'mode': rp.MODE_NUMA, 'numa-node': 0,
+                      'count': 16, 'cores': '0-15'},
+                '1': {'osd-id': '1', 'mode': rp.MODE_NUMA, 'numa-node': 1,
+                      'count': 16, 'cores': '16-31'},
+            },
+        })
+        claims = {'ceph-osd.0': list(range(0, 16)),
+                  'ceph-osd.1': list(range(16, 32))}
+        epa = FakeEpa(range(0, 32), TWO_NODES, foreign=dict(claims))
+        swapped = [osd(0, node=1), osd(1, node=0)]
+        for attempt in range(2):
+            state = self.reconcile(rp.PROFILE_PERFORMANCE, swapped, epa,
+                                   nic_nodes=(0, 1))
+            self.assertEqual(state['errors'], [
+                'osd.0: NUMA node 1 has 0 logical CPUs free for this OSD but '
+                '16 are needed; not replacing its allocation'])
+            self.stop_osd.assert_not_called()
+            self.assertNotIn(('release', 'ceph-osd.0'), epa.calls)
+            self.assertEqual(epa.claims, claims)
+            self.assertEqual(state['osds']['0']['cores'], '0-15')
+            self.assertEqual(self.applied, [])
+
+
 class ReplacementRestartTestCase(ManagerTestCase):
     """A stopped replacement is always restarted and fully released."""
 
@@ -1260,10 +1527,10 @@ class ReplacementRestartTestCase(ManagerTestCase):
         self.kv.set(resource_manager.STATE_KEY, {
             'version': 1, 'profile': rp.PROFILE_PERFORMANCE,
             'osds': {'0': {'osd-id': '0', 'mode': rp.MODE_NUMA,
-                           'numa-node': 0, 'cores': '0-11'}},
+                           'numa-node': 0, 'cores': '0-15'}},
         })
         epa = FakeEpa(range(0, 32), TWO_NODES,
-                      foreign={'ceph-osd.0': list(range(0, 12))})
+                      foreign={'ceph-osd.0': list(range(0, 16))})
         self.reconcile(rp.PROFILE_PERFORMANCE, [osd(0, node=1)], epa,
                        nic_nodes=(1,))
         self.assertEqual(events, [('mark', '0'), ('stop', '0')])
@@ -1496,7 +1763,7 @@ class StaleAllocationTestCase(ManagerTestCase):
                       foreign={'ceph-osd.9': list(range(4, 16))})
         state = self.reconcile(rp.PROFILE_PERFORMANCE, [osd(0)], epa)
         self.assertEqual(state['errors'], [])
-        self.assertEqual(epa.claims, {'ceph-osd.0': list(range(0, 12))})
+        self.assertEqual(epa.claims, {'ceph-osd.0': list(range(0, 16))})
 
 
 class PoolManagementTestCase(ManagerTestCase):
@@ -1682,16 +1949,16 @@ class PoolManagementTestCase(ManagerTestCase):
 
     def test_pool_grows_with_profile_demand(self):
         self.ensure_installed.return_value = 'resource'
-        self.pool = '30-31'
-        epa = FakeEpa(range(0, 32), TWO_NODES)
-        self.reconcile(rp.PROFILE_PERFORMANCE, [osd(0)], epa)
-        # Node 0 needs 12 CPUs for the OSD, node 0's floor is 4, and the
-        # pre-existing pool is retained.
+        self.pool = '62-63'
+        epa = FakeEpa(range(0, 64), WIDE_NODES)
+        state = self.reconcile(rp.PROFILE_PERFORMANCE, [osd(0)], epa,
+                               nodes=WIDE_NODES)
+        self.assertEqual(state['errors'], [])
         self.assertEqual(len(self.pools_set), 1)
         pool = self.pools_set[0]
-        # The pre-existing CPUs 30-31 are retained, node 0 grows to 12
+        # The pre-existing CPUs 62-63 are retained, node 0 grows to 16
         # CPUs for the OSD, and node 1 keeps its 20% floor.
-        self.assertEqual(pool, '4-15,28-31')
+        self.assertEqual(pool, '16-31,57-63')
 
     def test_pool_accounts_for_cpus_held_by_other_workloads(self):
         self.ensure_installed.return_value = 'store'
@@ -1707,14 +1974,16 @@ class PoolManagementTestCase(ManagerTestCase):
         self.assertNotIn(14, epa.claims['ceph-osd.0'])
 
     def test_pool_cap_wins_over_foreign_demand(self):
-        # 12 CPUs for the OSD plus 2 held elsewhere exceeds the 75% cap
-        # of a 16 CPU node, so the profile is refused rather than the
+        # 16 CPUs for the OSD plus 10 held elsewhere exceeds the 75% cap
+        # of a 32 CPU node, so the profile is refused rather than the
         # host being handed over entirely.
         self.ensure_installed.return_value = 'store'
-        epa = FakeEpa(range(0, 32), TWO_NODES,
-                      foreign={'nova-compute': [14, 15]})
-        state = self.reconcile(rp.PROFILE_PERFORMANCE, [osd(0)], epa)
-        self.assertEqual(self.pools_set[0], '4-15,28-31')
+        self.pool = '22-31'
+        epa = FakeEpa(range(0, 64), WIDE_NODES,
+                      foreign={'nova-compute': list(range(22, 32))})
+        state = self.reconcile(rp.PROFILE_PERFORMANCE, [osd(0)], epa,
+                               nodes=WIDE_NODES)
+        self.assertEqual(self.pools_set[0], '8-31,57-63')
         self.assertIn('needs more CPUs', state['errors'][0])
         self.assertNotIn('ceph-osd.0', epa.claims)
 
@@ -1992,7 +2261,7 @@ class StatusReportTestCase(ManagerTestCase):
         self.assertEqual(report['profile'], rp.PROFILE_BALANCED)
         self.assertEqual(report['requested-profile'], rp.PROFILE_PERFORMANCE)
         self.assertEqual(report['osds'][0]['applied-cores'], '4-11')
-        self.assertEqual(report['osds'][0]['desired-cores'], 12)
+        self.assertEqual(report['osds'][0]['desired-cores'], 16)
 
     def test_dry_run_previews_without_changing_anything(self):
         epa = FakeEpa(range(0, 16), TWO_NODES)
@@ -2001,10 +2270,31 @@ class StatusReportTestCase(ManagerTestCase):
         self.assertEqual(report['dry-run'], rp.PROFILE_PERFORMANCE)
         self.assertEqual(report['profile'], rp.PROFILE_UNMANAGED)
         self.assertEqual([entry['desired-cores'] for entry in report['osds']],
-                         [12, 12])
+                         [16, 16])
         self.assertEqual(len(report['shortfalls']), 1)
         self.assertEqual(epa.claims, {})
         self.assertEqual(self.applied, [])
+
+    def test_dry_run_uses_overrides(self):
+        self.config['performance-profile-resources'] = (
+            '{performance: {cpus: {nvme: 7}}}')
+        epa = FakeEpa(range(0, 16), TWO_NODES)
+        report = self.report(epa, [osd(0), osd(1, tier=rp.TIER_HDD)],
+                             dry_run=rp.PROFILE_PERFORMANCE)
+        self.assertEqual(report['resource-overrides'],
+                         {rp.PROFILE_PERFORMANCE: {'cpus': {'nvme': 7}}})
+        self.assertEqual([entry['desired-cores'] for entry in report['osds']],
+                         [7, 4])
+        self.assertEqual(report['shortfalls'], [])
+
+    def test_invalid_overrides_are_reported_without_a_plan(self):
+        self.config['performance-profile-resources'] = '{minimal: {cpus: 1}}'
+        epa = FakeEpa(range(0, 16), TWO_NODES)
+        report = self.report(epa, [osd(0)], dry_run=rp.PROFILE_PERFORMANCE)
+        self.assertIn('invalid performance-profile-resources',
+                      report['errors'][0])
+        self.assertNotIn('resource-overrides', report)
+        self.assertIsNone(report['osds'][0]['desired-cores'])
 
     def test_dry_run_reports_strict_errors(self):
         epa = FakeEpa(range(0, 32), TWO_NODES)

@@ -44,11 +44,20 @@ PROFILES = (
 TIER_NVME = 'nvme'
 TIER_HDD = 'hdd'
 
+TIERS = (TIER_NVME, TIER_HDD)
+
+RESOURCE_CPUS = 'cpus'
+
 # Logical CPUs per OSD, by profile and device tier.
 PROFILE_CORES = {
-    PROFILE_PERFORMANCE: {TIER_NVME: 12, TIER_HDD: 4},
+    PROFILE_PERFORMANCE: {TIER_NVME: 16, TIER_HDD: 4},
     PROFILE_BALANCED: {TIER_NVME: 8, TIER_HDD: 2},
     PROFILE_MINIMAL: {TIER_NVME: 2, TIER_HDD: 2},
+}
+
+# Resources an operator may override, per profile.
+OVERRIDABLE_RESOURCES = {
+    PROFILE_PERFORMANCE: (RESOURCE_CPUS,),
 }
 
 # systemd NUMAPolicy applied alongside the CPU affinity.  'bind' is a
@@ -140,12 +149,75 @@ def tier_for_rotational(rotational):
     return TIER_HDD if rotational else TIER_NVME
 
 
-def cores_for(profile, tier):
+def _positive_int(value, what):
+    if isinstance(value, bool) or not isinstance(value, int) or value < 1:
+        raise ValueError(
+            '{} must be a positive integer, got {!r}'.format(what, value))
+    return value
+
+
+def resolve_overrides(overrides):
+    """Validate operator resource overrides and normalise them.
+
+    ``overrides`` maps a profile to its resources, for example
+    ``{'performance': {'cpus': 16}}``.  A CPU count applies to every
+    device tier; a mapping such as ``{'nvme': 16, 'hdd': 6}`` overrides
+    individual tiers and leaves the others at the profile default.
+
+    :param overrides: overrides as configured, None for none
+    :type overrides: dict or None
+    :returns: profile -> resource -> tier -> value, for overridden tiers
+    :rtype: dict[str, dict[str, dict[str, int]]]
+    :raises ValueError: the overrides are malformed or not supported
+    """
+    if overrides is None:
+        return {}
+    if not isinstance(overrides, dict):
+        raise ValueError('expected a mapping of profile to resources, '
+                         'got {!r}'.format(overrides))
+    resolved = {}
+    for profile, resources in overrides.items():
+        if profile not in OVERRIDABLE_RESOURCES:
+            raise ValueError(
+                'resources of profile {!r} cannot be overridden, expected '
+                'one of {}'.format(
+                    profile, ', '.join(sorted(OVERRIDABLE_RESOURCES))))
+        if not isinstance(resources, dict):
+            raise ValueError(
+                '{}: expected a mapping of resource to value, got '
+                '{!r}'.format(profile, resources))
+        for resource, value in resources.items():
+            if resource not in OVERRIDABLE_RESOURCES[profile]:
+                raise ValueError(
+                    '{}: resource {!r} cannot be overridden, expected one '
+                    'of {}'.format(profile, resource, ', '.join(
+                        OVERRIDABLE_RESOURCES[profile])))
+            what = '{}.{}'.format(profile, resource)
+            if isinstance(value, dict):
+                unknown = [tier for tier in value if tier not in TIERS]
+                if unknown:
+                    raise ValueError(
+                        '{}: unknown device tier {!r}, expected one of '
+                        '{}'.format(what, unknown[0], ', '.join(TIERS)))
+                counts = dict(
+                    (tier, _positive_int(count, '{}.{}'.format(what, tier)))
+                    for tier, count in value.items())
+            else:
+                count = _positive_int(value, what)
+                counts = dict((tier, count) for tier in TIERS)
+            resolved.setdefault(profile, {})[resource] = counts
+    return resolved
+
+
+def cores_for(profile, tier, overrides=None):
     """Return the logical CPU count for a profile and device tier.
 
+    :param overrides: resolved overrides, see :func:`resolve_overrides`
+    :type overrides: dict or None
     :rtype: int
     """
-    return PROFILE_CORES[profile][tier]
+    cpus = (overrides or {}).get(profile, {}).get(RESOURCE_CPUS, {})
+    return cpus.get(tier, PROFILE_CORES[profile][tier])
 
 
 class OsdRequest(object):
@@ -441,7 +513,7 @@ def _target_node(profile, osd, host, deviations, errors):
     return node
 
 
-def build_plan(profile, osds, host):
+def build_plan(profile, osds, host, overrides=None):
     """Compute the desired allocation for a profile.
 
     :param profile: profile name
@@ -450,6 +522,8 @@ def build_plan(profile, osds, host):
     :type osds: list[OsdFacts]
     :param host: host topology facts
     :type host: HostFacts
+    :param overrides: resolved overrides, see :func:`resolve_overrides`
+    :type overrides: dict or None
     :rtype: Plan
     """
     if not is_managed(profile):
@@ -460,7 +534,7 @@ def build_plan(profile, osds, host):
     for osd in sorted(osds, key=lambda o: int(o.osd_id)):
         deviations = []
         errors = []
-        cores = cores_for(profile, osd.tier)
+        cores = cores_for(profile, osd.tier, overrides)
         if profile == PROFILE_MINIMAL:
             # The minimal profile deliberately requests no NUMA
             # alignment at all.

@@ -209,6 +209,16 @@ def _select_node_cpus(cpus, want, root='/', excluded_cpus=()):
     return sorted(selected)
 
 
+def pool_cap(cpus, cap_percent=MAX_POOL_PERCENT):
+    """Return the most logical CPUs of one NUMA node offered to EPA.
+
+    :param cpus: the node's logical CPU IDs
+    :type cpus: list[int]
+    :rtype: int
+    """
+    return int(math.floor(len(cpus) * cap_percent / 100.0))
+
+
 def compute_pool(nodes, demand_by_node=None, unbound_demand=0,
                  floor_percent=DEFAULT_POOL_PERCENT,
                  cap_percent=MAX_POOL_PERCENT, root='/', excluded_cpus=()):
@@ -238,7 +248,7 @@ def compute_pool(nodes, demand_by_node=None, unbound_demand=0,
             continue
         demand = demand_by_node.get(node, 0) + share
         floor = int(math.ceil(len(cpus) * floor_percent / 100.0))
-        cap = int(math.floor(len(cpus) * cap_percent / 100.0))
+        cap = pool_cap(cpus, cap_percent)
         want = min(max(demand, floor), max(cap, 1))
         pool.extend(_select_node_cpus(
             cpus, want, root=root, excluded_cpus=excluded_cpus))

@@ -82,7 +82,7 @@ class ProfileDefinitionTestCase(unittest.TestCase):
 
     def test_core_counts(self):
         self.assertEqual(
-            rp.cores_for(rp.PROFILE_PERFORMANCE, rp.TIER_NVME), 12)
+            rp.cores_for(rp.PROFILE_PERFORMANCE, rp.TIER_NVME), 16)
         self.assertEqual(
             rp.cores_for(rp.PROFILE_PERFORMANCE, rp.TIER_HDD), 4)
         self.assertEqual(rp.cores_for(rp.PROFILE_BALANCED, rp.TIER_NVME), 8)
@@ -127,9 +127,9 @@ class PerformancePlanTestCase(unittest.TestCase):
         self.assertTrue(plan.satisfiable)
         self.assertEqual([(r.osd_id, r.cores, r.mode, r.numa_node,
                            r.numa_policy) for r in plan.requests],
-                         [('0', 12, rp.MODE_NUMA, 0, 'bind'),
+                         [('0', 16, rp.MODE_NUMA, 0, 'bind'),
                           ('1', 4, rp.MODE_NUMA, 0, 'bind')])
-        self.assertEqual(plan.demand_by_node(), {0: 16})
+        self.assertEqual(plan.demand_by_node(), {0: 20})
         self.assertEqual(plan.demand_unbound(), 0)
 
     def test_nic_on_other_node_is_refused(self):
@@ -245,6 +245,70 @@ class MinimalPlanTestCase(unittest.TestCase):
         self.assertEqual(plan.demand_unbound(), 4)
 
 
+class OverrideTestCase(unittest.TestCase):
+
+    def test_no_overrides(self):
+        self.assertEqual(rp.resolve_overrides(None), {})
+        self.assertEqual(rp.resolve_overrides({}), {})
+        self.assertEqual(rp.resolve_overrides({'performance': {}}), {})
+
+    def test_cpu_count_applies_to_every_tier(self):
+        self.assertEqual(
+            rp.resolve_overrides({'performance': {'cpus': 20}}),
+            {'performance': {'cpus': {'nvme': 20, 'hdd': 20}}})
+
+    def test_cpu_count_per_tier(self):
+        overrides = rp.resolve_overrides(
+            {'performance': {'cpus': {'nvme': 20}}})
+        self.assertEqual(overrides,
+                         {'performance': {'cpus': {'nvme': 20}}})
+        self.assertEqual(
+            rp.cores_for(rp.PROFILE_PERFORMANCE, rp.TIER_NVME, overrides), 20)
+        # A tier left out keeps the profile default.
+        self.assertEqual(
+            rp.cores_for(rp.PROFILE_PERFORMANCE, rp.TIER_HDD, overrides), 4)
+
+    def test_other_profiles_keep_their_defaults(self):
+        overrides = rp.resolve_overrides({'performance': {'cpus': 20}})
+        self.assertEqual(
+            rp.cores_for(rp.PROFILE_BALANCED, rp.TIER_NVME, overrides), 8)
+
+    def test_invalid_overrides_are_rejected(self):
+        for overrides in (
+                16,
+                'performance',
+                ['performance'],
+                {'performance': 16},
+                {'performance': None},
+                {'balanced': {'cpus': 4}},
+                {'unmanaged': {'cpus': 4}},
+                {'performance': {'memory': 4}},
+                {'performance': {'cpus': 0}},
+                {'performance': {'cpus': -2}},
+                {'performance': {'cpus': 2.5}},
+                {'performance': {'cpus': '16'}},
+                {'performance': {'cpus': True}},
+                {'performance': {'cpus': None}},
+                {'performance': {'cpus': {'ssd': 16}}},
+                {'performance': {'cpus': {'nvme': 0}}}):
+            self.assertRaises(ValueError, rp.resolve_overrides, overrides)
+
+    def test_plan_uses_overridden_counts(self):
+        overrides = rp.resolve_overrides(
+            {'performance': {'cpus': {'nvme': 6, 'hdd': 2}}})
+        osds = [
+            osd(0, tier=rp.TIER_NVME, data_node=0),
+            osd(1, tier=rp.TIER_HDD, data_node=0, data_device='/dev/sdb'),
+        ]
+        plan = rp.build_plan(rp.PROFILE_PERFORMANCE, osds, host(), overrides)
+        self.assertTrue(plan.satisfiable)
+        self.assertEqual([(r.osd_id, r.cores, r.mode, r.numa_policy)
+                          for r in plan.requests],
+                         [('0', 6, rp.MODE_NUMA, 'bind'),
+                          ('1', 2, rp.MODE_NUMA, 'bind')])
+        self.assertEqual(plan.demand_by_node(), {0: 8})
+
+
 class CapacityTestCase(unittest.TestCase):
 
     def test_numa_demand_fits(self):
@@ -260,7 +324,7 @@ class CapacityTestCase(unittest.TestCase):
         nodes = {0: list(range(0, 16)), 1: list(range(16, 32))}
         shortfalls = rp.check_capacity(plan, range(0, 16), nodes)
         self.assertEqual(len(shortfalls), 1)
-        self.assertIn('NUMA node 0 needs 24 logical CPUs, 16 available',
+        self.assertIn('NUMA node 0 needs 32 logical CPUs, 16 available',
                       shortfalls[0])
 
     def test_unbound_demand_uses_what_numa_left_over(self):
