@@ -1,0 +1,14 @@
+# Applied before deployment so charms cannot bootstrap with a different Ceph.
+default-base: ubuntu@24.04
+cloudinit-userdata: |
+  write_files:
+    - path: /etc/apt/preferences.d/cephx-sru.pref
+      permissions: '0644'
+      content: |
+        Package: src:ceph:any
+        Pin: version 19.2.6-0ubuntu0.24.04.1
+        Pin-Priority: 1001
+
+        Package: src:ceph:any
+        Pin: version *
+        Pin-Priority: -1

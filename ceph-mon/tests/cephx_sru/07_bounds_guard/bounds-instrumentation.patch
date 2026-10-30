@@ -1,0 +1,22 @@
+diff --git a/net/ceph/auth_x.c b/net/ceph/auth_x.c
+--- a/net/ceph/auth_x.c
++++ b/net/ceph/auth_x.c
+@@ -116,6 +116,8 @@ static int __ceph_x_decrypt(const struct ceph_crypto_key *key, int usage_slot,
+ 		return ret;
+ 
+ 	if (plaintext_len < sizeof(*hdr)) {
++		pr_info("CEPHX_SRU07_GUARD plaintext=%d header=%zu result=%d\n",
++			plaintext_len, sizeof(*hdr), -EINVAL);
+ 		pr_err("%s plaintext too small %d\n", __func__, plaintext_len);
+ 		return -EINVAL;
+ 	}
+@@ -129,6 +131,9 @@ static int __ceph_x_decrypt(const struct ceph_crypto_key *key, int usage_slot,
+ 	return plaintext_len - sizeof(*hdr);
+ }
+ 
++/* NON-SHIPPING: synthetic valid ciphertext into this translation unit's function. */
++#include "cephx_sru_bounds_test.inc"
++
+ static int ceph_x_decrypt(const struct ceph_crypto_key *key, int usage_slot,
+ 			  void **p, void *end)
+ {
