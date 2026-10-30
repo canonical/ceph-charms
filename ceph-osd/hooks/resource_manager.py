@@ -35,6 +35,8 @@ import collections
 import ipaddress
 import traceback
 
+import yaml
+
 from charmhelpers.core.hookenv import (
     config,
     log,
@@ -87,11 +89,13 @@ from resource_profiles import (
     OsdFacts,
     PROFILE_UNMANAGED,
     PROFILES,
+    RESOURCE_CPUS,
     build_plan,
     check_capacity,
     choose_addresses,
     is_managed,
     is_strict,
+    resolve_overrides,
     tier_for_rotational,
 )
 
@@ -132,6 +136,44 @@ def configured_profile():
             'invalid performance-profile {!r}, expected one of {}'.format(
                 profile, ', '.join(PROFILES)))
     return profile
+
+
+def configured_overrides():
+    """Return the validated profile resource overrides.
+
+    :returns: resolved overrides, see
+        :func:`resource_profiles.resolve_overrides`
+    :rtype: dict
+    :raises ResourceError: the configured value is not valid
+    """
+    value = _config('performance-profile-resources', '')
+    try:
+        return resolve_overrides(yaml.safe_load(value) if value else None)
+    except (yaml.YAMLError, ValueError) as exc:
+        raise ResourceError(
+            'invalid performance-profile-resources: {}'.format(
+                ' '.join(str(exc).split())))
+
+
+def _warn_oversized_overrides(profile, overrides, nodes):
+    """Log overridden CPU counts that exceed a node's share of the pool.
+
+    The charm never offers more than ``epa_snap.MAX_POOL_PERCENT`` of a
+    NUMA node's logical CPUs to EPA, so an OSD asking for more cannot be
+    placed on that node.  This only warns: the planner and the capacity
+    check decide what happens to the request.
+    """
+    cpus = overrides.get(profile, {}).get(RESOURCE_CPUS, {})
+    for tier, count in sorted(cpus.items()):
+        over = [str(node) for node, node_cpus in sorted(nodes.items())
+                if node_cpus and count > epa_snap.pool_cap(node_cpus)]
+        if over:
+            log('performance-profile-resources: {} logical CPUs per {} OSD '
+                'for profile {} exceed {}% of the logical CPUs of NUMA '
+                'node(s) {}'.format(count, tier, profile,
+                                    epa_snap.MAX_POOL_PERCENT,
+                                    ','.join(over)),
+                level=WARNING)
 
 
 def warnings_suppressed():
@@ -660,17 +702,82 @@ def _cleanup_new_claim(client, service, osd_id, state):
     return None
 
 
-def _apply_strict(client, plan, previous_osds, state, osds, profile,
+def _replacement_growth(request, claims, nodes):
+    """Logical CPUs a request needs beyond what its OSD holds there now.
+
+    :param claims: EPA claims, see :func:`epa_client.allocations_by_service`
+    :type claims: dict
+    :param nodes: NUMA node to logical CPU mapping
+    :type nodes: dict[int, list[int]]
+    :rtype: int
+    """
+    claim = claims.get(service_name_for(request.osd_id)) or {}
+    held = set(claim.get('cores') or [])
+    if request.mode == MODE_NUMA:
+        held &= set(nodes.get(request.numa_node, []))
+    return request.cores - len(held)
+
+
+def _replacement_order(requests, claims, nodes, unfinished=()):
+    """Order requests so that replacements releasing CPUs run first.
+
+    Replacements run one OSD at a time, and an OSD's claim is released only
+    once it has stopped. A growing OSD handled before a shrinking one can
+    therefore find its NUMA node still full, even though the final plan fits.
+    Handling every request that needs no more CPUs where it is going first
+    leaves room for the growing ones whenever they share a node; the check in
+    :func:`_check_replacement_room` covers moves between nodes.
+
+    An unfinished transition or restart can leave its OSD stopped, and its
+    released claim makes it look like growth. Such OSDs are recovered before
+    any other OSD is stopped, so a retry never takes down a second OSD.
+
+    :param unfinished: IDs of OSDs with a pending transition or restart
+    :type unfinished: Iterable[str]
+    :rtype: list[OsdRequest]
+    """
+    unfinished = set(str(osd_id) for osd_id in unfinished)
+    return sorted(requests, key=lambda request: (
+        str(request.osd_id) not in unfinished,
+        _replacement_growth(request, claims, nodes) > 0,
+        int(request.osd_id)))
+
+
+def _check_replacement_room(client, service, request, host=None):
+    """Refuse a replacement the allocator cannot grant, before stopping.
+
+    The OSD's own claim counts as free, since it is released before the
+    replacement is claimed; claims of every other service, including this
+    unit's other OSDs, do not. Without host facts the whole pool counts.
+
+    :raises ResourceError: the target has too few logical CPUs free
+    """
+    listing = client.list_allocations()
+    free = set(eligible_cpus(listing))
+    free.difference_update(claimed_by_others(listing, (service,)))
+    target = 'the allocator'
+    if request.mode == MODE_NUMA and host is not None:
+        free &= set(host.nodes.get(request.numa_node, []))
+        target = 'NUMA node {}'.format(request.numa_node)
+    if len(free) < request.cores:
+        raise ResourceError(
+            '{} has {} logical CPUs free for this OSD but {} are needed; not '
+            'replacing its allocation'.format(
+                target, len(free), request.cores))
+
+
+def _apply_strict(client, requests, previous_osds, state, osds, profile,
                   existing_claims, host=None):
     """Claim and enforce strict allocations one OSD at a time.
 
     A replacement is stopped, released, claimed and restarted before the next
     OSD is touched. This deliberately permits a failed later OSD to leave an
     earlier OSD truthfully recorded on the new allocation instead of leaving a
-    running daemon without an EPA claim.
+    running daemon without an EPA claim. A replacement that cannot fit is
+    refused before its OSD is stopped.
     """
     errors = []
-    for request in plan.requests:
+    for request in requests:
         osd_id = str(request.osd_id)
         service = service_name_for(request.osd_id)
         previous = previous_osds.get(osd_id)
@@ -682,6 +789,7 @@ def _apply_strict(client, plan, previous_osds, state, osds, profile,
         try:
             if _needs_transition(previous, request, transition):
                 if not _transition_matches(transition, request):
+                    _check_replacement_room(client, service, request, host)
                     _release_for_replacement(
                         client, service, previous, request, state)
             elif not previous:
@@ -773,8 +881,8 @@ def _reset_claim(client, service, previous, request, state):
     _release_for_replacement(client, service, previous, request, state)
 
 
-def _allocate_flexible(client, plan, previous_osds, state, osds, profile,
-                       host=None):
+def _allocate_flexible(client, requests, previous_osds, state, osds,
+                       profile, host=None):
     """Claim CPUs for a non-strict profile, degrading as needed.
 
     The ladder is: the planned NUMA node, then any node, then whatever
@@ -786,7 +894,7 @@ def _allocate_flexible(client, plan, previous_osds, state, osds, profile,
     """
     warnings = []
     errors = []
-    for request in plan.requests:
+    for request in requests:
         osd_id = str(request.osd_id)
         service = service_name_for(request.osd_id)
         previous = previous_osds.get(osd_id)
@@ -1081,6 +1189,7 @@ def reconcile(client_factory=EpaClient):
     }
     try:
         profile = configured_profile()
+        overrides = configured_overrides()
     except ResourceError as exc:
         state.update({'requested-profile': _config('performance-profile'),
                       'errors': [str(exc)]})
@@ -1176,7 +1285,8 @@ def reconcile(client_factory=EpaClient):
         _save_state(state)
         return state
 
-    plan = build_plan(profile, osds, host)
+    _warn_oversized_overrides(profile, overrides, host.nodes)
+    plan = build_plan(profile, osds, host, overrides)
     state['warnings'] = list(plan.warnings) + plan.deviations()
     if not plan.satisfiable:
         state['errors'] = list(plan.errors)
@@ -1220,10 +1330,15 @@ def reconcile(client_factory=EpaClient):
         state['warnings'].extend(shortfalls)
 
     previous_osds = previous.get('osds') or {}
+    claims = allocations_by_service(listing)
+    unfinished = (set(state['pending-transitions']) |
+                  resource_apply.pending_restarts())
+    requests = _replacement_order(
+        plan.requests, claims, host.nodes, unfinished)
     if is_strict(profile):
         errors = _apply_strict(
-            client, plan, previous_osds, state, osds, profile,
-            allocations_by_service(listing), host=host)
+            client, requests, previous_osds, state, osds, profile, claims,
+            host=host)
         state['errors'].extend(errors)
         if state['errors']:
             log('Not enforcing allocations for profile {}: {}'.format(
@@ -1234,7 +1349,8 @@ def reconcile(client_factory=EpaClient):
         state['affinity-protection-version'] = AFFINITY_PROTECTION_VERSION
     else:
         warnings, errors = _allocate_flexible(
-            client, plan, previous_osds, state, osds, profile, host=host)
+            client, requests, previous_osds, state, osds, profile,
+            host=host)
         state['warnings'].extend(warnings)
         state['errors'].extend(errors)
         if state['errors']:
@@ -1549,8 +1665,15 @@ def status_report(dry_run=None, client_factory=EpaClient):
 
     profile = dry_run or report['requested-profile']
     plan = None
-    if is_managed(profile):
-        plan = build_plan(profile, osds, host)
+    try:
+        overrides = configured_overrides()
+    except ResourceError as exc:
+        report['errors'].append(str(exc))
+        overrides = None
+    else:
+        report['resource-overrides'] = overrides
+    if is_managed(profile) and overrides is not None:
+        plan = build_plan(profile, osds, host, overrides)
         if dry_run:
             report['errors'] = list(plan.errors)
             report['warnings'] = plan.deviations()

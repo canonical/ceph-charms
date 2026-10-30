@@ -508,7 +508,7 @@ options:
         resource allocation. Existing explicit charm settings still apply, and
         any allocation previously applied by the charm is left in place.
       * `performance`: optimise for low latency and high throughput at the
-        expense of resource usage. 12 logical CPUs are allocated per
+        expense of resource usage. 16 logical CPUs are allocated per
         NVMe/SSD-backed OSD and 4 per HDD-backed OSD, strictly NUMA aligned
         with the OSD devices, the Ceph cluster network interface and OSD
         memory. A request that cannot be satisfied strictly is refused and the
@@ -526,16 +526,46 @@ options:
         allocated per OSD with no NUMA alignment requested. Requests that
         cannot be satisfied are degraded with a warning.
       .
+      The per-OSD CPU counts of the `performance` profile can be changed with
+      the `performance-profile-resources` option.
+      .
       CPU allocations are recorded with the EPA orchestrator, enforced through
       per-OSD systemd drop-ins, and applied automatically in a rolling
       operation across this application's hosts. One host proceeds at a time;
       changed OSDs on that host are restarted sequentially. A failed host or
       a timed-out predecessor blocks the rollout rather than being skipped.
+      .
+      Set this option at deployment time. Changing it later is a maintenance
+      operation: every OSD whose allocation changes is restarted in turn,
+      which can take hours on a large cluster.
 
       Note this feature needs a supported epa-orchestrator snap. Check the
       epa-orchestrator documentation for support. Also see the epa-orchestrator
       resource and epa-orchestrator-channel config option.
       
+  performance-profile-resources:
+    type: string
+    default: ""
+    description: |
+      YAML or JSON mapping of profile names to the resources allocated per OSD,
+      overriding the profile defaults. Only the `cpus` resource of the
+      `performance` profile can currently be overridden.
+      .
+      `cpus` is either a number of logical CPUs applied to every OSD, or a
+      mapping by device tier (`nvme` for non-rotational devices, `hdd` for
+      rotational ones). A tier left out keeps the profile default.
+      .
+      Examples:
+      .
+        {performance: {cpus: 16}}
+        {performance: {cpus: {nvme: 16, hdd: 6}}}
+      .
+      An invalid value blocks the unit. A count above 75% of a NUMA node's
+      logical CPUs is logged as a warning: when the charm manages the EPA
+      orchestrator's CPU pool it offers at most that share of each node, so
+      such a count cannot be placed there. Like `performance-profile`, set
+      this option at deployment time: changing it later triggers the same
+      rolling restart.
   suppress-profile-warnings:
     type: boolean
     default: false

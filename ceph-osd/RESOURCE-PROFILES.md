@@ -11,7 +11,7 @@ counted in **logical CPUs** (SMT siblings are individual CPUs).
 | Profile | NVMe/SSD OSD | HDD OSD | NUMA alignment | Unsatisfiable request |
 | --- | --- | --- | --- | --- |
 | `unmanaged` (default) | - | - | - | - |
-| `performance` | 12 logical CPUs | 4 logical CPUs | strict: data device, `block.db`/`block.wal`, Ceph cluster NIC and OSD memory; public NIC best effort | refused, unit blocked |
+| `performance` | 16 logical CPUs | 4 logical CPUs | strict: data device, `block.db`/`block.wal`, Ceph cluster NIC and OSD memory; public NIC best effort | refused, unit blocked |
 | `balanced` | 8 logical CPUs | 2 logical CPUs | data device, OSD memory and Ceph NICs, best effort | degraded with a warning |
 | `minimal` | 2 logical CPUs | 2 logical CPUs | none requested | degraded with a warning |
 
@@ -30,6 +30,36 @@ sets systemd `NUMAPolicy=bind`, `balanced` sets `NUMAPolicy=preferred`.
 No memory sizing, hugepage accounting, thread/shard tuning, kernel queue
 tuning or Ceph configuration is performed, and existing charm tuning
 options such as `tune-osd-memory-target` are untouched.
+
+## Overriding profile resources
+
+The `performance-profile-resources` option maps profile names to the
+resources allocated per OSD, replacing the defaults above. Only the `cpus`
+resource of `performance` can be overridden in this iteration:
+
+```
+juju config ceph-osd performance-profile-resources='{performance: {cpus: 16}}'
+juju config ceph-osd \
+    performance-profile-resources='{performance: {cpus: {nvme: 16, hdd: 6}}}'
+```
+
+A single number applies to every device tier; a mapping overrides only the
+tiers it names. The value is YAML (JSON works too). An unknown profile,
+resource or tier, or a count that is not a positive integer, blocks the unit
+without allocating anything. Like the profile itself, the override applies to
+the whole application.
+
+The charm never offers more than 75% of a NUMA node's logical CPUs to the EPA
+orchestrator (see [CPU pool](#cpu-pool)), so a count above that is logged as a
+warning naming the affected nodes. The count is not refused because of the
+warning alone, since an externally managed pool is not capped by the charm. If
+the allocator cannot grant the CPUs, `performance` blocks the unit on the
+capacity check.
+
+Changing the override is a configuration change like any other: it starts a
+new rolling generation, and OSDs whose CPU count changed are stopped, have
+their claim replaced and are restarted one at a time. See
+[Changing profiles after deployment](#changing-profiles-after-deployment).
 
 ## Strict alignment
 
@@ -395,8 +425,16 @@ changed OSDs restart sequentially, waiting for each to report `active` before
 continuing. When a strict-profile change must replace an existing EPA claim,
 the charm durably records the transition, stops the OSD and confirms it is
 stopped **before** releasing any CPUs, then allocates, enforces, restarts and
-verifies that OSD before touching the next one. A runtime allocator/restart
-failure can therefore leave only the failing OSD down and the host fenced with
+verifies that OSD before touching the next one. OSDs that need no more CPUs
+on their target NUMA node than they already hold there are replaced first, so
+an OSD that shrinks frees CPUs for one that grows. An OSD with an unfinished
+replacement or restart comes before both, so a retry recovers it before
+stopping any other OSD. Before stopping an OSD the
+charm checks that its target node has room for the new count, counting the
+OSD's own claim; if not, the replacement is refused and the OSD keeps running
+on its current allocation. This can happen when OSDs swap NUMA nodes and
+neither fits until the other has moved. Any other runtime allocator/restart
+failure can leave only the failing OSD down and the host fenced with
 a recoverable pending transition; previously migrated OSDs remain running and
 are recorded on their new allocations. First allocations are journaled before
 EPA mutation, so an incomplete un-enforced claim is cleaned up or left as an
@@ -424,6 +462,30 @@ its successors remain fenced until it completes. Coordination is scoped to
 this application's resource changes, not to other applications, manual
 service operations or concurrent release upgrades. This is not a distributed
 cluster-wide mutex or a guarantee that all placement groups are clean.
+
+## Changing profiles after deployment
+
+Set `performance-profile` and `performance-profile-resources` when deploying
+the application. Changing either later is supported, but treat it as a
+maintenance operation rather than online tuning:
+
+* Every OSD whose allocation changes is restarted, one host at a time and one
+  OSD at a time on each host. Under `performance` each of these OSDs is down
+  while its claim is replaced. The rollout takes about one OSD restart per
+  changed OSD in the application, which can be hours on a large cluster.
+* Between OSDs and between hosts the rollout only waits for the restarted OSD
+  to report `active`. It does not set `noout` and does not wait for
+  placement groups to be clean.
+* A change can be refused for an OSD whose target NUMA node lacks free CPUs
+  for the new count. That OSD keeps running on its current allocation and
+  the unit is blocked.
+* Any failure stops the rollout and fences the remaining hosts until it is
+  fixed and retried, as described in
+  [Enforcement and restarts](#enforcement-and-restarts).
+
+Plan such a change for a maintenance window. The charm deliberately does not
+try to keep a reconfiguration fully online, for example by restarting a
+host's OSDs in parallel or by waiting for cluster health between hosts.
 
 ## Lifecycle
 
@@ -471,7 +533,8 @@ and EPA snap artifacts; it is not part of the default functional-test gate.
 
 ## Out of scope in this iteration
 
-* Per-setting overrides of profile values.
+* Resource overrides other than the CPU count of the `performance`
+  profile.
 * Memory sizing, hugepages, Ceph thread/shard settings, kernel queue
   depth and IRQ placement.
 * Network routing and ARP configuration for per-socket addresses.

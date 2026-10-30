@@ -70,7 +70,10 @@ address on its own NUMA node when the host has a network interface with its
 own address there. See
 [OSD resource allocation profiles][ceph-osd-resource-profiles]
 for the per-profile CPU counts, NUMA alignment rules, network address binding
-and lifecycle.
+and lifecycle. The `performance-profile-resources` option overrides the per-OSD
+CPU counts of the 'performance' profile. Set both options at deployment time:
+changing them later restarts every affected OSD and is best done in a
+maintenance window.
 
 #### `source`
 
