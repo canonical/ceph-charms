@@ -51,4 +51,5 @@ croniter            # needed for charm-rabbitmq-server unit tests
 pyopenssl<=22.0.0
 
 pydantic < 2
-cosl
+# Keep cosl compatible with the vendored cos_agent's Pydantic < 2 requirement.
+cosl==1.9.1
