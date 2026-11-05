@@ -652,7 +652,30 @@ def _get_mon_count_from_prometheus(prometheus_ip):
 
 
 class CephAuthTest(unittest.TestCase):
-    """Ceph auth tests (user creation and deletion)."""
+    """Ceph auth configuration and user lifecycle tests."""
+
+    def test_auth_supported(self):
+        """Verify librados retains the legacy auth_supported option.
+
+        Regression: https://bugs.launchpad.net/ubuntu/+source/ceph/+bug/2161000
+        """
+        # Exercise the same configuration API used by libvirt's RBD backend.
+        # Do not connect: these settings only affect this temporary client.
+        cmd = (
+            "python3 - <<'PY'\n"
+            "import rados\n"
+            "cluster = rados.Rados(conffile=None)\n"
+            "try:\n"
+            "    for value in ('cephx', 'none'):\n"
+            "        cluster.conf_set('auth_supported', value)\n"
+            "        print(cluster.conf_get('auth_supported'))\n"
+            "finally:\n"
+            "    cluster.shutdown()\n"
+            "PY\n"
+        )
+        result = zaza_model.run_on_leader('ceph-mon', cmd)
+        self.assertEqual(result['Code'], '0', result)
+        self.assertEqual(result['Stdout'].splitlines(), ['cephx', 'none'])
 
     def test_ceph_auth(self):
         """Test creating and deleting user."""
