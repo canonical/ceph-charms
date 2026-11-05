@@ -24,6 +24,7 @@ import random
 import socket
 import subprocess
 
+import charmhelpers.fetch as fetch
 import interface_ceph_client.ceph_client as ceph_client
 import interface_ceph_iscsi_admin_access.admin_access as admin_access
 import ops
@@ -574,7 +575,14 @@ class CephNVMECharm(ops.CharmBase):
     def on_config_changed(self, event):
         self._render_config()
 
+    def _configure_source(self):
+        source = self.config.get('source')
+        if source and source != 'distro':
+            fetch.add_source(source, self.config.get('key'))
+            fetch.apt_update(fatal=True)
+
     def _install_systemd_services(self):
+        self._configure_source()
         self._install_packages(self.PACKAGES)
         config_path = self._render_config()
         utils.setup_hugepages(int(self.config['nr-hugepages']))

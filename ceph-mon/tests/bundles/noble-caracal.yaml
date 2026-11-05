@@ -22,6 +22,8 @@ applications:
     num_units: 3
     options:
       monitor-count: 3
+      # SRU packages restoring the legacy auth_supported option.
+      source: ppa:johnramsden/noble-caracal-ceph-squid-sru
     to:
       - '0'
       - '1'
@@ -33,6 +35,8 @@ applications:
     channel: latest/edge
     storage:
       osd-devices: 'loop,8G'
+    options:
+      source: ppa:johnramsden/noble-caracal-ceph-squid-sru
     to:
       - '3'
       - '4'
