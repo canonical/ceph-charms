@@ -1,6 +1,6 @@
 variables:
   openstack-origin: &openstack-origin distro
-  source: &source proposed
+  source: &source ppa:johnramsden/noble-caracal-ceph-squid-sru
 
 series: &series noble
 

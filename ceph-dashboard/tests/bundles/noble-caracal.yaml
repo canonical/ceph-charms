@@ -2,7 +2,7 @@ local_overlay_enabled: False
 series: noble
 variables:
   openstack-origin: &openstack-origin distro
-  source: &source proposed
+  source: &source ppa:johnramsden/noble-caracal-ceph-squid-sru
 
 machines:
   '0':
