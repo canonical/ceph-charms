@@ -582,3 +582,7 @@ options:
       `epa-orchestrator` resource is attached and `performance-profile` is not
       `unmanaged`. An EPA orchestrator that is already installed on the host is
       always used as-is: neither its revision nor its CPU pool is modified.
+  force-net-addr:
+    type: boolean
+    default: False
+    description: Don't filter out network addresses based on available interfaces.
