@@ -371,5 +371,5 @@ options:
     default: False
     description: |
       Don't filter out network addresses based on available interfaces.
-      NOTE: Chaning this option does not automatically restart the Monitor or OSD services.
+      NOTE: Changing this option does not automatically restart the Monitor or OSD services.
       Operators must do so manually to ensure the new network addresses are considered.
