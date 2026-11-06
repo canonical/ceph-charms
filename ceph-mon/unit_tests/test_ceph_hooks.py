@@ -164,6 +164,19 @@ class CephHooksTestCase(test_utils.CharmTestCase):
                     'use_syslog': 'true'}
         self.assertEqual(ctxt, expected)
 
+    @patch.object(utils, 'get_address_in_network')
+    @patch.object(utils, 'config')
+    def test_get_networks_forced(self, config, gain):
+        net = '10.2.154.0/24'
+        cdict = {'ceph-public-network': net, 'force-net-addr': False}
+        config.side_effect = cdict.__getitem__
+        gain.return_value = None
+        ret = ceph_hooks.get_networks()
+        self.assertEqual(ret, [])
+        cdict['force-net-addr'] = True
+        ret = ceph_hooks.get_networks()
+        self.assertEqual(ret, [net])
+
     @patch.object(ceph_hooks, 'get_rbd_features', return_value=None)
     @patch.object(ceph_hooks, 'get_public_addr', lambda *args: "10.0.0.1")
     @patch.object(ceph_hooks, 'get_cluster_addr', lambda *args: "10.1.0.1")
