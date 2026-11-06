@@ -366,3 +366,10 @@ options:
     type: boolean
     default: False
     description: Include Ceph performance metrics in the prometheus endpoint.
+  force-net-addr:
+    type: boolean
+    default: False
+    description: |
+      Don't filter out network addresses based on available interfaces.
+      NOTE: Changing this option does not automatically restart the Monitor or OSD services.
+      Operators must do so manually to ensure the new network addresses are considered.
