@@ -1,0 +1,4 @@
+# Match the repository's Zaza integration-test library and Juju 3.6 API.
+zaza @ git+https://github.com/openstack-charmers/zaza.git@abe787a61333eeee7cc14da76ca9bcc9fcf9b3a3
+juju==3.6.1.3
+PyYAML>=6,<7
