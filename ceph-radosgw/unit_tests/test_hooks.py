@@ -202,7 +202,8 @@ class CephRadosGWTests(CharmTestCase):
 
     @patch.object(ceph_hooks, 'certs_joined')
     @patch.object(ceph_hooks, 'update_nrpe_config')
-    def test_config_changed(self, update_nrpe_config, mock_certs_joined):
+    def test_config_changed(
+            self, update_nrpe_config, mock_certs_joined):
         _install_packages = self.patch('install_packages')
         _relations = {
             'certificates': ['certificates:1']
@@ -219,7 +220,8 @@ class CephRadosGWTests(CharmTestCase):
     @patch.object(ceph_hooks, 'certs_joined')
     @patch.object(ceph_hooks, 'update_nrpe_config')
     def test_config_changed_upgrade(self, update_nrpe_config,
-                                    mock_certs_joined, mock_service_restart,
+                                    mock_certs_joined,
+                                    mock_service_restart,
                                     mock_service_name):
         _install_packages = self.patch('install_packages')
         _install_packages.return_value = True

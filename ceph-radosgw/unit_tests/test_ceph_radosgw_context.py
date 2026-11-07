@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from unittest.mock import patch, MagicMock, ANY, call
+from unittest.mock import patch, MagicMock, ANY, call, mock_open
 
 import ceph_radosgw_context as context
 import charmhelpers.contrib.storage.linux.ceph as ceph
@@ -76,6 +76,34 @@ class HAProxyContextTests(CharmTestCase):
         }
         self.assertEqual(expect, haproxy_context())
         _is_ipv6_disabled.assert_called_once_with()
+
+    @patch('ceph_radosgw_context.https')
+    @patch('charmhelpers.contrib.openstack.context.is_ipv6_disabled')
+    @patch('charmhelpers.contrib.openstack.context.get_relation_ip')
+    @patch('charmhelpers.contrib.openstack.context.mkdir')
+    @patch('charmhelpers.contrib.openstack.context.local_unit')
+    @patch('charmhelpers.contrib.openstack.context.config')
+    @patch('charmhelpers.contrib.hahelpers.cluster.config_get')
+    @patch('charmhelpers.contrib.openstack.context.relation_ids')
+    @patch('charmhelpers.contrib.hahelpers.cluster.relation_ids')
+    def test_ctxt_haproxy_tuning(self, _harelation_ids, _ctxtrelation_ids,
+                                 _haconfig, _ctxtconfig, _local_unit,
+                                 _mkdir, _get_relation_ip,
+                                 _is_ipv6_disabled, _mock_https):
+        _mock_https.return_value = False
+        _get_relation_ip.return_value = '10.0.0.10'
+        _ctxtconfig.side_effect = self.test_config.get
+        _haconfig.side_effect = self.test_config.get
+        _harelation_ids.return_value = []
+        self.test_config.set('haproxy-check-timeout', 5000)
+        self.test_config.set('haproxy-check-inter', 2000)
+        haproxy_context = context.HAProxyContext(singlenode_mode=True)
+        self.utils.listen_port.return_value = 80
+        self.determine_api_port.return_value = 70
+        with patch('builtins.open', mock_open()):
+            ctxt = haproxy_context()
+        self.assertEqual(5000, ctxt['haproxy_check_timeout'])
+        self.assertEqual(2000, ctxt['haproxy_check_inter'])
 
 
 class MonContextTest(CharmTestCase):

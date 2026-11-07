@@ -86,7 +86,7 @@ APACHE_PORTS_FILE = "/etc/apache2/ports.conf"
 APACHE_SITE_CONF = '/etc/apache2/sites-available/openstack_https_frontend'
 APACHE_SITE_24_CONF = '/etc/apache2/sites-available/' \
     'openstack_https_frontend.conf'
-
+APACHE_MPM_EVENT_CONF = '/etc/apache2/mods-available/mpm_event.conf'
 BASE_RESOURCE_MAP = OrderedDict([
     (HAPROXY_CONF, {
         'contexts': [context.HAProxyContext(singlenode_mode=True),
@@ -141,6 +141,15 @@ def resource_map():
             resource_map.pop(APACHE_SITE_24_CONF)
 
     resource_map[CEPH_CONF]['services'] = [service_name()]
+
+    if any([config('mpm-max-request-workers'),
+            config('mpm-server-limit'),
+            config('mpm-threads-per-child')]):
+        resource_map[APACHE_MPM_EVENT_CONF] = {
+            'contexts': [context.ApacheMPMEventContext()],
+            'services': ['apache2'],
+        }
+
     return resource_map
 
 
