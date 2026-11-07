@@ -182,6 +182,9 @@ def get_certificate_request(json_encode=True, bindings=None):
     # These are network addresses with no corresponding hostname.
     # Add the ips to the hostname cert to allow for this.
     req.add_hostname_cn_ip(_sans)
+    vips = config('vip')
+    if vips:
+        req.add_hostname_cn_ip(vips.split())
     return req.get_request()
 
 
