@@ -28,6 +28,7 @@ sys.path.append('lib')
 
 import ceph_rgw as ceph
 import charms_ceph.utils as ceph_utils
+import charms_ceph.selog as selog
 import multisite
 import rgw_hostname
 
@@ -137,6 +138,9 @@ APACHE_PACKAGES = [
 
 MULTISITE_SYSTEM_USER = 'multisite-sync'
 MULTISITE_DEFAULT_SYNC_GROUP_ID = 'default'
+
+selog.register_log_callback(lambda msg: log(msg, "WARN"))
+selog.register_defaults({'appid': 'ceph.radosgw'})
 
 
 def upgrade_available():
@@ -441,6 +445,9 @@ def identity_joined(relid=None):
         requested_roles = ','.join(roles) if len(roles) > 1 else roles[0]
     # remove stale settings without service prefix left by old charms,
     # which cause the keystone charm to ignore new settings w/ prefix.
+    selog.log('Identity relation joined',
+              event='authn_identity_relation',
+              detail='identity_relation_joined')
     relation_set(service='',
                  region='',
                  public_url='',
@@ -472,6 +479,9 @@ def identity_changed(relid=None):
     def _identity_changed():
         identity_joined(relid)
         CONFIGS.write_all()
+    selog.log('Identity relation changed',
+              event='authn_identity_relation',
+              detail='identity_relation_changed')
     _identity_changed()
 
 
