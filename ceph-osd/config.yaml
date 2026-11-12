@@ -492,3 +492,10 @@ options:
       in tuning. Changing the configuration option on the ceph-osd charm will
       affect ALL pools on the OSDs managed by the named application of the
       ceph-osd charm in the Juju model.
+  force-net-addr:
+    type: boolean
+    default: False
+    description: |
+      Don't filter out network addresses based on available interfaces.
+      NOTE: Changing this option does not automatically restart the Monitor or OSD services.
+      Operators must do so manually to ensure the new network addresses are considered.
