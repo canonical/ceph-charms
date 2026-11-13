@@ -9,6 +9,7 @@
 #
 
 import glob
+import json
 import os
 import shutil
 import sys
@@ -32,6 +33,7 @@ from charmhelpers.core.hookenv import (
     log,
     DEBUG,
     INFO,
+    WARNING,
     config,
     is_leader,
     relation_ids,
@@ -85,19 +87,24 @@ def install_upstart_scripts():
 @hooks.hook('install.real')
 def install():
     execd_preinstall()
+    if keys_only():
+        log('keys-only mode: not installing ceph packages', level=INFO)
+        return
     package_install()
     install_upstart_scripts()
+
+
+def ceph_packages():
+    _release = lsb_release()['DISTRIB_CODENAME'].lower()
+    if CompareHostReleases(_release) >= "focal":
+        return ceph.PACKAGES_FOCAL
+    return ceph.PACKAGES
 
 
 def package_install():
     add_source(config('source'), config('key'))
     apt_update(fatal=True)
-    _release = lsb_release()['DISTRIB_CODENAME'].lower()
-    if CompareHostReleases(_release) >= "focal":
-        _packages = ceph.PACKAGES_FOCAL
-    else:
-        _packages = ceph.PACKAGES
-    apt_install(packages=_packages, fatal=True)
+    apt_install(packages=ceph_packages(), fatal=True)
 
 
 def emit_cephconf():
@@ -143,11 +150,22 @@ def emit_cephconf():
 
 @hooks.hook('config-changed')
 def config_changed():
+    if keys_only():
+        log('keys-only mode: not writing /etc/ceph files', level=INFO)
+        notify_client()
+        return
     c = config()
     if c.previous('source') != config('source') or \
-       c.previous('key') != config('key'):
-        package_install()
+        c.previous('key') != config('key') or \
+        filter_installed_packages(ceph_packages()):
+            package_install()
     emit_cephconf()
+
+
+@hooks.hook('secret-changed')
+def secret_changed():
+    """Republish client keys after the user-keys-secret is rotated."""
+    notify_client()
 
 
 def notify_radosgws():
@@ -171,14 +189,14 @@ def notify_cephfs_mds():
 @hooks.hook('radosgw-relation-changed')
 @hooks.hook('radosgw-relation-joined')
 def radosgw_relation(relid=None, unit=None):
-    # Install radosgw for admin tools
-    apt_install(packages=filter_installed_packages(['radosgw']))
     if not unit:
         unit = remote_unit()
 
     # NOTE: radosgw needs some usage OSD storage, so defer key
     #       provision until OSD units are detected.
     if ready():
+        # Install radosgw for admin tools
+        apt_install(packages=filter_installed_packages(['radosgw']))
         log('mon cluster in quorum and osds related '
             '- providing radosgw with keys')
         ceph_addrs = config('monitor-hosts')
@@ -248,7 +266,7 @@ def mds_relation_joined(relid=None, unit=None):
 
 @hooks.hook('client-relation-joined')
 def client_relation_joined(relid=None, unit=None):
-    if ready():
+    if client_ready():
         service_name = None
         if relid is None:
             units = [remote_unit()]
@@ -260,6 +278,11 @@ def client_relation_joined(relid=None, unit=None):
         if unit is None:
             unit = units[0]
         if service_name is not None:
+            key = client_key(service_name)
+            if not key:
+                log(f'keys-only mode: no user key for client.{service_name}',
+                    level=WARNING)
+                return
             ceph_addrs = config('monitor-hosts')
             data = {'key': ceph.get_named_key(service_name),
                     'auth': config('auth-supported'),
@@ -268,7 +291,7 @@ def client_relation_joined(relid=None, unit=None):
             settings = relation_get(rid=relid, unit=unit) or {}
             data_update = {}
             if 'broker_req' in settings:
-                rsp = process_requests(settings['broker_req'])
+                rsp = handle_broker_request(settings['broker_req'])
                 unit_id = unit.replace('/', '-')
                 unit_response_key = 'broker-rsp-' + unit_id
                 data_update[unit_response_key] = rsp
@@ -284,7 +307,7 @@ def client_relation_joined(relid=None, unit=None):
 @hooks.hook('client-relation-changed')
 def client_relation_changed():
     """Process broker requests from ceph client relations."""
-    if ready():
+    if client_ready():
         settings = relation_get() or {}
         if 'broker_req' in settings:
             # the request is processed only by the leader as reported by juju
@@ -298,9 +321,10 @@ def client_relation_changed():
                 # commit#650f3a5d511690ec27648b30f3b24532378a33a1
                 # in changed hook otherwise the key will not be created
                 # get_named_key is creating auth if there is no one.
-                ceph.get_named_key(settings["application-name"])
+                if not keys_only():
+                    ceph.get_named_key(settings["application-name"])
 
-                rsp = process_requests(settings['broker_req'])
+                rsp = handle_broker_request(settings['broker_req'])
                 unit_id = remote_unit().replace('/', '-')
                 unit_response_key = 'broker-rsp-' + unit_id
                 # broker_rsp is being left for backward compatibility,
@@ -319,6 +343,71 @@ def ready():
     return config('fsid') and config('admin-key')
 
 
+def keys_only():
+    """No admin key: serve clients from user keys only.
+
+    In this mode the charm installs no ceph packages, writes no /etc/ceph
+    files and runs no ceph commands.
+    """
+    return not config('admin-key')
+
+
+def client_ready():
+    """Whether the ceph-client relation can be answered."""
+    if not config('fsid'):
+        return False
+    if config('admin-key'):
+        return True
+    try:
+        return bool(ceph.user_keys())
+    except ceph.UserKeysSecretError as e:
+        log(str(e), level=WARNING)
+        return False
+
+
+def client_key(name):
+    """Key for client.<name>; never creates one in keys-only mode."""
+    if keys_only():
+        return ceph._config_user_key(name)
+    return ceph.get_named_key(name)
+
+
+KEYS_ONLY_BROKER_ERROR = (
+    'keys-only mode (no admin-key): broker operations are not supported; '
+    'pools must already exist')
+
+
+def handle_broker_request(req):
+    """Process a broker request, or refuses in keys-only mode.
+    
+    A request without operations (e.g. client that only wants a key)
+    is answered normally; it runs no ceph commands.
+    """
+    if keys_only():
+        try:
+            parsed = json.loads(req)
+        except (TypeError, ValueError):
+            parsed = None
+        if isinstance(parsed, dict) and parsed.get('ops'):
+            rsp = {'exit-code': 1, 'stderr': KEYS_ONLY_BROKER_ERROR}
+            if parsed.get('request-id'):
+                rsp['request-id'] = parsed['request-id']
+            log(KEYS_ONLY_BROKER_ERROR, level=WARNING)
+            return json.dumps(rsp)
+    return process_requests(req)
+
+
+def clients_missing_keys():
+    """Related client application without a user key (keys-only mode)."""
+    missing = set()
+    for relid in relation_ids('client'):
+        for unit in related_units(relid):
+            name = unit.split('/')[0]
+            if not ceph._config_user_key(name):
+                missing.add(name)
+    return sorted(missing)
+
+
 def assess_status():
     '''Assess status of current unit'''
     if is_unit_upgrading_set():
@@ -329,6 +418,22 @@ def assess_status():
 
     if ready():
         status_set('active', 'Ready to proxy settings')
+        return
+
+    if config('fsid') and config('user-keys-secret'):
+        try:
+            ceph.user_keys()
+        except ceph.UserKeysSecretError as e:
+            status_set('blocked', str(e))
+            return
+
+    if client_ready():
+        missing = clients_missing_keys()
+        if missing:
+            status_set('blocked', f'keys-only: no user key for {
+                ', '.join(missing)}')
+        else:
+            status_set('active', 'Ready to proxy settings (keys-only)')
     else:
         status_set('blocked', 'Ensure FSID and admin-key are set')
 

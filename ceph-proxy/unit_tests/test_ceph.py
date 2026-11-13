@@ -23,14 +23,14 @@ class CephTestCase(unittest.TestCase):
             'client.radosgw.gateway:'
             'AQBljmtb65mrHhAAGy9VRkfsatWVLb9EpoWDfw==',
             'admin-user': 'client.myadmin'
-        }[key]
+        }.get(key)
 
     @staticmethod
     def empty_config_side_effect(key):
         return {
             'user-keys': '',
             'admin-user': 'client.myadmin'
-        }[key]
+        }.get(key)
 
     @mock.patch('ceph.config')
     def test_config_user_key_populated(self, mock_config):
@@ -60,7 +60,7 @@ class CephTestCase(unittest.TestCase):
         mock_config.side_effect = lambda key: {
             'user-keys': 'glance:{} client.cinder-ceph:other'.format(user_key),
             'admin-user': 'client.myadmin',
-        }[key]
+        }.get(key)
         named_key = ceph._config_user_key(user_name)
         self.assertEqual(user_key, named_key)
 
@@ -80,7 +80,7 @@ class CephTestCase(unittest.TestCase):
                 'client.glance:{}'
             ).format(user_key),
             'admin-user': 'client.myadmin',
-        }[key]
+        }.get(key)
         named_key = ceph._config_user_key(user_name)
         self.assertEqual(user_key, named_key)
         self.assertTrue(mock_log.called)
@@ -103,7 +103,7 @@ class CephTestCase(unittest.TestCase):
         mock_config.side_effect = lambda key: {
             'user-keys': 'broken-entry client.glance',
             'admin-user': 'client.myadmin',
-        }[key]
+        }.get(key)
         mock_get_named_entity_key.return_value = expected_key
 
         named_key = ceph.get_named_key(user_name)
@@ -169,3 +169,53 @@ class CephTestCase(unittest.TestCase):
         mock_ceph_user.return_value = ceph_user
         named_key = ceph.get_named_key(user_name, caps)
         self.assertEqual(named_key, expected_key)
+
+
+class UserKeysSecretTestCase(unittest.TestCase):
+    URI = 'secret:d0erdgfmp25c762i8np0'
+    GLANCE_KEY = 'AQCnjmtbuEACMxAA7joUmgLIGI4/3LKkPzUy8g=='
+
+    def _config(self, **values):
+        return lambda key: values.get(key.replace('-', '_'))
+
+    @mock.patch('subprocess.check_output')
+    @mock.patch('ceph.config')
+    def test_user_key_from_secret(self, mock_config, mock_check_output):
+        mock_config.side_effect = self._config(user_keys_secret=self.URI)
+        mock_check_output.return_value = 'client.glance:{}\n'.format(
+            self.GLANCE_KEY)
+        self.assertEqual(self.GLANCE_KEY, ceph._config_user_key('glance'))
+        mock_check_output.assert_called_once_with(
+            ['secret-get', '--refresh', self.URI, 'user-keys'],
+            universal_newlines=True)
+
+    @mock.patch('subprocess.check_output')
+    @mock.patch('ceph.config')
+    def test_user_keys_merges_option_and_secret(self, mock_config,
+                                                mock_check_output):
+        mock_config.side_effect = self._config(
+            user_keys='client.cinder:AAA', user_keys_secret=self.URI)
+        mock_check_output.return_value = 'client.glance:BBB'
+        self.assertEqual('client.cinder:AAA client.glance:BBB',
+                         ceph.user_keys())
+
+    @mock.patch('subprocess.check_output')
+    @mock.patch('ceph.config')
+    def test_no_secret_runs_no_command(self, mock_config, mock_check_output):
+        mock_config.side_effect = self._config(user_keys='client.cinder:AAA')
+        self.assertEqual('client.cinder:AAA', ceph.user_keys())
+        mock_check_output.assert_not_called()
+
+    @mock.patch('ceph.log')
+    @mock.patch('subprocess.check_output')
+    @mock.patch('ceph.config')
+    def test_unreadable_secret(self, mock_config, mock_check_output,
+                               mock_log):
+        mock_config.side_effect = self._config(user_keys_secret=self.URI)
+        mock_check_output.side_effect = subprocess.CalledProcessError(
+            1, 'secret-get', output='client.glance:SECRET')
+        with self.assertRaises(ceph.UserKeysSecretError):
+            ceph.user_keys()
+        self.assertIsNone(ceph._config_user_key('glance'))
+        for call in mock_log.call_args_list:
+            self.assertNotIn('SECRET', str(call))
