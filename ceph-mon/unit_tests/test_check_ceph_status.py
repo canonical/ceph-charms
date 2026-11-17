@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from io import StringIO
+
 import unittest
 import os
 import sys
@@ -25,6 +27,16 @@ import check_ceph_status
 
 @patch('subprocess.check_output')
 class NagiosTestCase(unittest.TestCase):
+
+    def test_parse_args_help(self, mock_subprocess):
+        with patch('sys.stdout', new_callable=StringIO) as stdout:
+            with self.assertRaises(SystemExit) as raised:
+                check_ceph_status.parse_args(['--help'])
+        self.assertEqual(raised.exception.code, 0)
+        self.assertIn('Threshold for degraded ratio (0.1 = 10%)',
+                      stdout.getvalue())
+        self.assertIn('Threshold for misplaced ratio (0.1 = 10%)',
+                      stdout.getvalue())
 
     def test_get_ceph_version(self, mock_subprocess):
         mock_subprocess.return_value = 'ceph version 10.2.9 ' \
