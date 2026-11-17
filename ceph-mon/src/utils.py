@@ -178,9 +178,16 @@ def get_networks(config_opt='ceph-public-network'):
     which we have an address configured.
     """
     networks = config(config_opt)
+    force = config("force-net-addr")
+    if force:
+        def filt(_):
+            return True
+    else:
+        filt = get_address_in_network
+
     if networks:
         networks = networks.split()
-        return [n for n in networks if get_address_in_network(n)]
+        return [n for n in networks if filt(n)]
 
     return []
 

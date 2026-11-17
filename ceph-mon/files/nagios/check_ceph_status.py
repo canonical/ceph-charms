@@ -256,10 +256,10 @@ def parse_args(args):
                              'config files.')
     parser.add_argument('--degraded_thresh', dest='degraded_thresh',
                         default=1.0, type=float,
-                        help="Threshold for degraded ratio (0.1 = 10%)")
+                        help="Threshold for degraded ratio (0.1 = 10%%)")
     parser.add_argument('--misplaced_thresh', dest='misplaced_thresh',
                         default=1.0, type=float,
-                        help="Threshold for misplaced ratio (0.1 = 10%)")
+                        help="Threshold for misplaced ratio (0.1 = 10%%)")
     parser.add_argument('--recovery_rate', dest='recovery_rate',
                         default=1, type=int,
                         help="Recovery rate (in objects/s) below which we"
