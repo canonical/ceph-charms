@@ -18,6 +18,7 @@ import tempfile
 from subprocess import CalledProcessError
 from pathlib import Path
 from typing import List, Tuple, Union
+from urllib.parse import urlparse
 
 import charms_ceph.selog as selog
 import charms_ceph.utils as ceph_utils
@@ -138,6 +139,9 @@ class CephDashboardCharm(ops_openstack.core.OSBaseCharm):
         self.framework.observe(
             self.ingress.on.lb_configured, self._configure_dashboard
         )
+        self.framework.observe(
+            self.on.update_status, self._request_loadbalancer
+        )
 
         # Certificates Relation
         self.ca_client = ca_client.CAClient(self, "certificates")
@@ -161,13 +165,33 @@ class CephDashboardCharm(ops_openstack.core.OSBaseCharm):
 
         self._stored.set_default(is_started=False)
 
-    def _request_loadbalancer(self, _event) -> None:
-        """Send request to create loadbalancer"""
+    def _get_dashboard_endpoint(self) -> Union[Tuple[str, int], None]:
+        """Return the active dashboard host and port advertised by Ceph."""
+        try:
+            services = json.loads(subprocess.check_output(
+                ['ceph', 'mgr', 'services', '--format=json']))
+            endpoint = urlparse(services['dashboard'])
+            if (endpoint.scheme in ('http', 'https') and endpoint.hostname
+                    and endpoint.port):
+                return endpoint.hostname, endpoint.port
+        except (CalledProcessError, OSError, KeyError, TypeError, ValueError):
+            logger.debug('Dashboard endpoint is not available', exc_info=True)
+        return None
+
+    def _request_loadbalancer(self, event) -> None:
+        """Register the advertised backend, keeping the frontend unchanged."""
+        if not self.ingress.relations:
+            return
+        endpoint = self._get_dashboard_endpoint()
+        if endpoint is None:
+            event.defer()
+            return
+        host, port = endpoint
         self.ingress.request_loadbalancer(
             self.LB_SERVICE_NAME,
             self.TLS_PORT,
-            self.TLS_PORT,
-            self._get_bind_ip(),
+            port,
+            host,
             'http',
         )
 
@@ -260,19 +284,21 @@ class CephDashboardCharm(ops_openstack.core.OSBaseCharm):
             return False
 
     def _check_dashboard_responding(self) -> bool:
-        """Check the dashboard port is open"""
+        """Check the active dashboard's advertised port is open."""
+        endpoint = self._get_dashboard_endpoint()
+        if endpoint is None:
+            return False
 
         @tenacity.retry(wait=tenacity.wait_fixed(2),
                         stop=tenacity.stop_after_attempt(30), reraise=True)
         def _check_port(ip, port):
-            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            result = sock.connect_ex((ip, port))
-            assert result == 0
+            with socket.create_connection((ip, port), timeout=5):
+                pass
 
         try:
-            _check_port(self._get_bind_ip(), self.TLS_PORT)
+            _check_port(*endpoint)
             return True
-        except AssertionError:
+        except OSError:
             return False
 
     def _check_grafana_config(self) -> bool:

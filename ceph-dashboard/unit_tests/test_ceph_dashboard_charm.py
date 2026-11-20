@@ -173,7 +173,7 @@ class TestCephDashboardCharmBase(CharmTestCase):
         self.socket.gethostname.return_value = 'server1'
         self.socket.getfqdn.return_value = 'server1.local'
         self.subprocess.check_output.return_value = (
-            b'{"enabled_modules": ["dashboard"]}')
+            b'{"dashboard": "https://10.0.0.20:443/"}')
 
     def get_harness(self):
         initial_config = {'grafana-api-url': None}
@@ -275,10 +275,56 @@ class TestCephDashboardCharmBase(CharmTestCase):
             rel_data['cert_requests'],
             '{"server1.local": {"sans": ["10.0.0.10", "server1"]}}')
 
+    def test_dashboard_advertised_endpoint(self):
+        self.harness.add_relation('loadbalancer', 'loadbalancer')
+        self.harness.begin()
+        for url, host, port in [
+                ('https://10.0.0.20:443/', '10.0.0.20', 443),
+                ('https://mgr.example:8443/', 'mgr.example', 8443),
+                ('https://[2001:db8::1]:9443/', '2001:db8::1', 9443)]:
+            with self.subTest(url=url):
+                self.subprocess.check_output.return_value = json.dumps(
+                    {'dashboard': url}).encode()
+                self.assertTrue(
+                    self.harness.charm._check_dashboard_responding())
+                self.socket.create_connection.assert_called_with(
+                    (host, port), timeout=5)
+                with patch.object(self.harness.charm.ingress,
+                                  'request_loadbalancer') as request:
+                    self.harness.charm.on.update_status.emit()
+                    request.assert_called_once_with(
+                        'ceph-dashboard', 8443, port, host, 'http')
+        self.subprocess.check_output.assert_called_with(
+            ['ceph', 'mgr', 'services', '--format=json'])
+
+    def test_dashboard_endpoint_unavailable(self):
+        self.harness.add_relation('loadbalancer', 'loadbalancer')
+        self.harness.begin()
+        for output in [b'{}', b'not json', b'{"dashboard": "https://host/"}',
+                       b'{"dashboard": "https://host:bad/"}']:
+            with self.subTest(output=output):
+                self.subprocess.check_output.return_value = output
+                self.assertFalse(
+                    self.harness.charm._check_dashboard_responding())
+                event = MagicMock()
+                with patch.object(self.harness.charm.ingress,
+                                  'request_loadbalancer') as request:
+                    self.harness.charm._request_loadbalancer(event)
+                    request.assert_not_called()
+                event.defer.assert_called_once_with()
+        self.socket.create_connection.assert_not_called()
+
+    def test_dashboard_endpoint_command_failure(self):
+        self.harness.add_relation('loadbalancer', 'loadbalancer')
+        self.harness.begin()
+        self.subprocess.check_output.side_effect = (
+            subprocess.CalledProcessError(1, ['ceph', 'mgr', 'services']))
+        self.assertFalse(self.harness.charm._check_dashboard_responding())
+        event = MagicMock()
+        self.harness.charm._request_loadbalancer(event)
+        event.defer.assert_called_once_with()
+
     def test_check_dashboard(self):
-        socket_mock = MagicMock()
-        self.socket.socket.return_value = socket_mock
-        socket_mock.connect_ex.return_value = 0
         self.ceph_utils.is_dashboard_enabled.return_value = True
         self.harness.begin()
         self.assertEqual(
@@ -297,21 +343,19 @@ class TestCephDashboardCharmBase(CharmTestCase):
             self.harness.charm.check_dashboard(),
             ActiveStatus())
 
-        socket_mock.connect_ex.return_value = 1
+        self.socket.create_connection.side_effect = OSError(
+            'Connection refused')
         self.assertEqual(
             self.harness.charm.check_dashboard(),
             BlockedStatus('Dashboard not responding'))
 
-        socket_mock.connect_ex.return_value = 0
+        self.socket.create_connection.side_effect = None
         self.ceph_utils.is_dashboard_enabled.return_value = False
         self.assertEqual(
             self.harness.charm.check_dashboard(),
             BlockedStatus('Dashboard is not enabled'))
 
     def test_check_dashboard_grafana(self):
-        socket_mock = MagicMock()
-        self.socket.socket.return_value = socket_mock
-        socket_mock.connect_ex.return_value = 0
         self.ceph_utils.is_dashboard_enabled.return_value = True
         rel_id = self.harness.add_relation('grafana-dashboard', 'grafana')
         self.harness.begin()
